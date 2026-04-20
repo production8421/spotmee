@@ -1,0 +1,48 @@
+/**
+ * Global public baseline + reusable marketing patterns.
+ */
+:root {
+    --container-width: 1200px;
+    --container-padding: 20px;
+
+    --primary-color: #000;
+    --secondary-color: #333;
+    --accent-color: #CAA86B;
+
+    --text-color: #222;
+    --white: #fff;
+
+    --radius: 6px;
+}
+
+/* ========== RESET ========== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Body typography comes from resources/css/style.css (marketing shell). */
+
+/* ========== CONTAINER ========== */
+.container {
+    max-width: var(--container-width);
+    margin: 0 auto;
+    padding: 0 var(--container-padding);
+    width: 100%;
+}
+
+@layer base {
+    [x-cloak] {
+        display: none !important;
+    }
+}
+
+@layer components {
+    .site-container {
+        max-width: var(--container-width);
+        margin: 0 auto;
+        padding: 0 var(--container-padding);
+        width: 100%;
+    }
+}
