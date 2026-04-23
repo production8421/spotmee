@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\Mail\SiteEmailTemplateService;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 
 #[Fillable([
     'header_logo_path',
@@ -74,14 +76,29 @@ use Illuminate\Database\Eloquent\Model;
     'webhook_booking_completed_secret',
     'webhook_booking_cancelled_url',
     'webhook_booking_cancelled_secret',
+    'notification_email_templates',
+    'smtp_enabled',
+    'smtp_host',
+    'smtp_port',
+    'smtp_encryption',
+    'smtp_username',
+    'smtp_password',
+    'smtp_from_address',
+    'smtp_from_name',
+    'host_registration_auto_approve',
 ])]
 class ApplicationSetting extends Model
 {
     public static function instance(): self
     {
+        $table = (new static)->getTable();
+        if (! Schema::hasTable($table)) {
+            return new static;
+        }
+
         $row = static::query()->first();
         if ($row === null) {
-            $row = static::query()->create([]);
+            return static::query()->create([]);
         }
 
         return $row;
@@ -288,7 +305,6 @@ class ApplicationSetting extends Model
     }
 
     /**
-     * @param  mixed  $items
      * @return list<array{question: string, answer: string}>|null
      */
     public static function normalizeFaqPageItemsFromRequestInput(mixed $items): ?array
@@ -340,7 +356,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized “How it works” page intro block (second section: title, subtitle, copy, two CTAs, optional image).
      *
-     * @param  mixed  $raw
      * @return array{heading: string, emphasis: string, subtitle: string, description_1: string, description_2: string, button1_label: string, button1_url: string, button2_label: string, button2_url: string, image_path: ?string}
      */
     public static function normalizeHowItWorksIntroSection(mixed $raw): array
@@ -443,7 +458,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized “How it works” page third section (image left, title + description right).
      *
-     * @param  mixed  $raw
      * @return array{title: string, emphasis: string, description: string, image_path: ?string}
      */
     public static function normalizeHowItWorksApproachSection(mixed $raw): array
@@ -570,7 +584,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized “How it works” home section (three steps + heading).
      *
-     * @param  mixed  $raw
      * @return array{heading: string, emphasis: string, steps: list<array{image_path: ?string, badge: string, title: string, body: string}>}
      */
     public static function normalizeHomeHowSection(mixed $raw): array
@@ -663,7 +676,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized “Why people love” home section (four feature columns + heading + CTA).
      *
-     * @param  mixed  $raw
      * @return array{heading: string, emphasis: string, description: string, features: list<array{image_path: ?string, link_label: string, link_url: string, text: string}>, cta_label: string, cta_url: string}
      */
     public static function normalizeHomeWhySection(mixed $raw): array
@@ -778,7 +790,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized “Earn / host” split home section (title, three bullets, copy, CTA, footnote, image).
      *
-     * @param  mixed  $raw
      * @return array{heading: string, emphasis: string, points: list<string>, description: string, cta_label: string, cta_url: string, footnote: string, image_path: ?string}
      */
     public static function normalizeHomeEarnSection(mixed $raw): array
@@ -870,7 +881,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized “Community” home section (heading, subcopy, four image cards, CTA).
      *
-     * @param  mixed  $raw
      * @return array{heading: string, emphasis: string, description: string, cards: list<array{image_path: ?string, title: string, body: string}>, cta_label: string, cta_url: string}
      */
     public static function normalizeHomeCommunitySection(mixed $raw): array
@@ -971,7 +981,6 @@ class ApplicationSetting extends Model
     /**
      * Normalized full-width promo banner (heading, optional highlight, CTA, background image).
      *
-     * @param  mixed  $raw
      * @return array{heading: string, emphasis: string, cta_label: string, cta_url: string, image_path: ?string}
      */
     public static function normalizeHomePromoBannerSection(mixed $raw): array
@@ -1053,6 +1062,44 @@ class ApplicationSetting extends Model
         return filled($this->stripe_live_secret_key);
     }
 
+    /**
+     * Safe hint for admin UI: confirms a secret is stored without exposing the full key in HTML.
+     */
+    public function maskedStripeTestSecretKey(): ?string
+    {
+        return self::maskStripeSecretForDisplay($this->stripe_test_secret_key);
+    }
+
+    /**
+     * @see maskedStripeTestSecretKey()
+     */
+    public function maskedStripeLiveSecretKey(): ?string
+    {
+        return self::maskStripeSecretForDisplay($this->stripe_live_secret_key);
+    }
+
+    private static function maskStripeSecretForDisplay(mixed $key): ?string
+    {
+        $key = is_string($key) ? trim($key) : '';
+        if ($key === '') {
+            return null;
+        }
+
+        $len = strlen($key);
+        if ($len <= 12) {
+            return '********';
+        }
+
+        $last = substr($key, -4);
+        foreach (['sk_test_', 'rk_test_', 'sk_live_', 'rk_live_'] as $prefix) {
+            if (str_starts_with($key, $prefix)) {
+                return $prefix.'••••'.$last;
+            }
+        }
+
+        return '••••••••'.$last;
+    }
+
     public function stripePublishableKey(): ?string
     {
         $mode = strtolower((string) ($this->stripe_mode ?? 'test'));
@@ -1084,6 +1131,29 @@ class ApplicationSetting extends Model
     public function hasWebhookBookingCancelledSecret(): bool
     {
         return filled($this->webhook_booking_cancelled_secret);
+    }
+
+    /**
+     * Normalized notification email overrides (all configurable template keys).
+     *
+     * @return array<string, array{subject: string, body_html: string}>
+     */
+    public function notificationEmailTemplatesNormalized(): array
+    {
+        $raw = $this->notification_email_templates;
+        if (! is_array($raw)) {
+            $raw = [];
+        }
+        $out = [];
+        foreach (SiteEmailTemplateService::allTemplateKeys() as $key) {
+            $slot = $raw[$key] ?? [];
+            $out[$key] = [
+                'subject' => isset($slot['subject']) && is_string($slot['subject']) ? $slot['subject'] : '',
+                'body_html' => isset($slot['body_html']) && is_string($slot['body_html']) ? $slot['body_html'] : '',
+            ];
+        }
+
+        return $out;
     }
 
     /**
@@ -1216,6 +1286,11 @@ class ApplicationSetting extends Model
             'how_it_works_approach_section' => 'array',
             'faq_page_items' => 'array',
             'footer_social_urls' => 'array',
+            'notification_email_templates' => 'array',
+            'smtp_enabled' => 'boolean',
+            'smtp_port' => 'integer',
+            'smtp_password' => 'encrypted',
+            'host_registration_auto_approve' => 'boolean',
         ];
     }
 }

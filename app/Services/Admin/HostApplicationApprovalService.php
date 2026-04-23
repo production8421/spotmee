@@ -15,28 +15,63 @@ final class HostApplicationApprovalService
 {
     public function approve(HostApplication $application, User $admin): void
     {
-        if ($application->isApproved()) {
+        if ($application->isApproved() || $application->isRejected()) {
+            return;
+        }
+
+        if (! $application->isPending()) {
             return;
         }
 
         $plainPassword = Str::password(20);
 
         $hostUser = DB::transaction(function () use ($application, $admin, $plainPassword) {
-            $user = $this->ensureHostUser($application, $plainPassword);
-
-            $user->assignRole(UserRole::Host->value);
-
-            $application->forceFill([
-                'user_id' => $user->id,
-                'status' => HostApplicationStatus::Approved,
-                'approved_at' => now(),
-                'approved_by' => $admin->id,
-            ])->save();
-
-            return $user->fresh();
+            return $this->provisionApprovedHost($application, $admin->id, $plainPassword);
         });
 
         Mail::to($hostUser->email)->send(new HostApprovedMail($hostUser, $application->fresh(), $plainPassword, $admin));
+    }
+
+    /**
+     * Approve immediately after the public host application form (when site setting allows).
+     *
+     * @throws \RuntimeException When the application is not pending.
+     */
+    public function autoApproveFromRegistration(HostApplication $application): User
+    {
+        if (! $application->isPending()) {
+            throw new \RuntimeException('Host application must be pending to auto-approve.');
+        }
+
+        $plainPassword = Str::password(20);
+
+        $hostUser = DB::transaction(function () use ($application, $plainPassword) {
+            return $this->provisionApprovedHost($application, null, $plainPassword);
+        });
+
+        Mail::to($hostUser->email)->send(new HostApprovedMail($hostUser, $application->fresh(), $plainPassword, null));
+
+        return $hostUser;
+    }
+
+    /**
+     * @return User The host user (Host role assigned).
+     */
+    private function provisionApprovedHost(HostApplication $application, ?int $approvedByUserId, string $plainPassword): User
+    {
+        $user = $this->ensureHostUser($application, $plainPassword);
+        if (! $user->hasRole(UserRole::Host->value)) {
+            $user->assignRole(UserRole::Host->value);
+        }
+
+        $application->forceFill([
+            'user_id' => $user->id,
+            'status' => HostApplicationStatus::Approved,
+            'approved_at' => now(),
+            'approved_by' => $approvedByUserId,
+        ])->save();
+
+        return $user->fresh();
     }
 
     private function ensureHostUser(HostApplication $application, string $plainPassword): User

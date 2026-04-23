@@ -1,173 +1,282 @@
 @extends('layouts.web.master')
-@section('title', 'Become a Host - SPOTMEE')
+
+@section('title', 'Become a Host — SPOTMEE')
+
+@php
+    $hostTerms   = $applicationSetting?->legal_host_terms_url;
+    $hostPrivacy = $applicationSetting?->legal_host_privacy_url;
+@endphp
+
 @section('content')
+    {{-- =====================================================================
+         Hero / inner banner
+    ===================================================================== --}}
+    <section class="site-container pt-6 sm:pt-10">
+        <div class="inner-banner"
+             style="background-image: url('{{ asset('images/banner-img.png') }}'); background-size: cover; background-position: center;">
+            <div class="absolute inset-0 bg-gradient-to-br from-[rgba(0,69,77,0.88)] via-[rgba(0,109,119,0.6)] to-[rgba(131,197,190,0.3)]"></div>
 
-<main class="spotmee-main">
-    <!-- Hero Section -->
-    <div class="px-5">
-        <section class="relative w-full py-24 bg-cover bg-center rounded-[30px] overflow-hidden flex items-center" 
-                 style="background-image: url('{{ asset('images/earn-money-right-img.png') }}'); min-height: 600px;">
-            <div class="absolute inset-0 bg-linear-to-r from-black/80 to-transparent"></div>
-            <div class="relative z-10 container mx-auto px-6 md:px-12">
-                <div class="max-w-2xl">
-                    <h1 class="inner-heading" data-aos="fade-right">
-                        Your Gym, <br><span class="text-(--primary-color)">Your Income.</span>
-                    </h1>
-                    <p class="text-white/90 text-xl md:text-2xl mb-10 font-light leading-relaxed" data-aos="fade-right" data-aos-delay="200">
-                        Join thousands of hosts earning extra money by sharing their private workout spaces with fitness enthusiasts in their community.
-                    </p>
-                    <div class="flex flex-col sm:flex-row gap-4" data-aos="fade-up" data-aos-delay="400">
-                        <a href="{{ route('register') }}" class="cta-btn">Start Hosting Now</a>
-                        <a href="#how-it-works-host" class="px-10 py-3 bg-white/10 backdrop-blur-md text-white border border-white/20 rounded-full font-bold hover:bg-white hover:text-(--text-color) transition-all text-center">Learn More</a>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
-
-    <!-- Earnings Calculator Concept -->
-    <section class="container mx-auto px-4 py-20">
-        <div class="bg-white border border-gray-100 rounded-[40px] p-8 md:p-16 shadow-xl -mt-32 relative z-20" data-aos="zoom-in">
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-                <div>
-                    <h2 class="heading mb-6">How much could you <span class="text-(--primary-color)">earn?</span></h2>
-                    <p class="md-para mb-8 text-gray-600">Earnings depend on your equipment quality, location, and availability. Most hosts earn enough to upgrade their gym every month!</p>
-                    <div class="space-y-6">
-                        <div class="flex items-center gap-4">
-                            <div class="w-12 h-12 bg-(--primary-color)/10 rounded-full flex items-center justify-center text-(--primary-color)">
-                                <i class="fas fa-dollar-sign text-xl"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-lg">Top hosts earn $1,500+/mo</h4>
-                                <p class="text-sm text-gray-500">Based on 20 hours of booking per week.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="bg-gray-50 rounded-[30px] p-8 text-center border border-dashed border-gray-200">
-                    <p class="text-gray-500 font-medium mb-2 uppercase tracking-wider text-sm">Potential Monthly Earnings</p>
-                    <h3 class="text-6xl font-black text-(--text-color) mb-6">$850 - $2,100</h3>
-                    <p class="text-gray-400 italic text-sm">*ESTIMATED BASED ON SIMILAR GYMS IN YOUR AREA</p>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Why Host Section -->
-    <section id="how-it-works-host" class="container mx-auto px-4 py-20">
-        <div class="text-center mb-16">
-            <h2 class="heading" data-aos="fade-up">Why Host on <span class="text-(--primary-color)">SPOTMEE?</span></h2>
-            <p class="md-para max-w-2xl mx-auto" data-aos="fade-up" data-aos-delay="100">We provide the platform, you provide the space. Together we build a healthier community.</p>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-10">
-            <!-- Benefit 1 -->
-            <div class="group benefit-card" data-aos="fade-up" data-aos-delay="100">
-                <div class="benefit-icon">
-                    <i class="fas fa-user-shield text-3xl text-(--primary-color) group-hover:text-white"></i>
-                </div>
-                <h3 class="text-2xl font-bold mb-4">Verified Users</h3>
-                <p class="text-gray-500 leading-relaxed">Every guest goes through a verification process. You can see ratings and reviews before they ever step into your gym.</p>
-            </div>
-
-            <!-- Benefit 2 -->
-            <div class="group benefit-card" data-aos="fade-up" data-aos-delay="200">
-                <div class="benefit-icon">
-                    <i class="fas fa-calendar-check text-3xl text-(--primary-color) group-hover:text-white"></i>
-                </div>
-                <h3 class="text-2xl font-bold mb-4">Ultimate Flexibility</h3>
-                <p class="text-gray-500 leading-relaxed">Your gym, your rules. Block out times whenever you need the space for yourself. Set your own pricing and rules.</p>
-            </div>
-
-            <!-- Benefit 3 -->
-            <div class="group benefit-card" data-aos="fade-up" data-aos-delay="300">
-                <div class="benefit-icon">
-                    <i class="fas fa-wallet text-3xl text-(--primary-color) group-hover:text-white"></i>
-                </div>
-                <h3 class="text-2xl font-bold mb-4">Direct Payouts</h3>
-                <p class="text-gray-500 leading-relaxed">No chasing payments. We handle the transactions securely and deposit earnings directly to your bank account.</p>
-            </div>
-        </div>
-    </section>
-
-    <!-- How to Start -->
-    <section class="bg-[#F8FAFC] py-24">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col lg:flex-row items-center gap-16">
-                <div class="w-full lg:w-1/2" data-aos="fade-right">
-                    <img src="{{ asset('images/work-img-2.png') }}" alt="Set Up Gym" class="w-full rounded-[40px] shadow-2xl">
-                </div>
-                <div class="w-full lg:w-1/2" data-aos="fade-left">
-                    <h2 class="heading mb-10">Starting is <span class="text-(--primary-color)">Easy</span></h2>
-                    <div class="space-y-10">
-                        <div class="flex gap-6">
-                            <div class="step-number">1</div>
-                            <div>
-                                <h4 class="step-title">Create Your Listing</h4>
-                                <p class="text-gray-600">Upload photos of your gym, list your equipment, and set your availability calendar.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-6">
-                            <div class="step-number">2</div>
-                            <div>
-                                <h4 class="step-title">Set Your Price</h4>
-                                <p class="text-gray-600">Choose an hourly rate that works for you. You can change it at any time.</p>
-                            </div>
-                        </div>
-                        <div class="flex gap-6">
-                            <div class="step-number">3</div>
-                            <div>
-                                <h4 class="step-title">Host & Earn</h4>
-                                <p class="text-gray-600">Accept bookings, welcome users (or use smart access), and watch your earnings grow.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Testimonial Section -->
-    <section class="container mx-auto px-4 py-24">
-        <div class="max-w-4xl mx-auto bg-(--primary-color) rounded-[40px] p-10 md:p-16 text-center text-white relative overflow-hidden" data-aos="fade-up">
-            <div class="absolute top-0 right-0 p-10 opacity-10">
-                <i class="fas fa-quote-right text-9xl"></i>
-            </div>
-            <div class="relative z-10">
-                <img src="{{ asset('images/popular-gym-img-001.png') }}" class="w-24 h-24 rounded-full border-4 border-white/20 mx-auto mb-8 object-cover" alt="Host Profile">
-                <p class="text-2xl md:text-3xl font-light italic mb-8 leading-relaxed">
-                    "Hosting on SPOTMEE has been a game-changer. I've met awesome local athletes and my gym actually pays for itself now. The platform makes everything seamless!"
+            <div class="inner-banner__content">
+                <span class="inner-banner__eyebrow" data-aos="fade-down">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    {{ __('Become a host') }}
+                </span>
+                <h1 class="inner-banner__title" data-aos="fade-down" data-aos-delay="100">
+                    {{ __('Turn your space into') }}
+                    <span class="text-[var(--color-brand-200)]">{{ __('steady income') }}</span>
+                </h1>
+                <p class="inner-banner__subtitle" data-aos="fade-up" data-aos-delay="200">
+                    {{ __('Create your host account to start listing your private gym, studio, or training space on SPOTMEE.') }}
                 </p>
-                <h4 class="text-xl font-bold">— Mark Thompson, Garage Gym Host</h4>
             </div>
         </div>
     </section>
 
-    <!-- CTA Section -->
-    <div class="px-5 mb-24">
-        <section class="relative w-full py-20 bg-(--text-color) rounded-[40px] overflow-hidden text-center">
-            <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
-            <div class="relative z-10 px-4">
-                <h2 class="text-white text-[35px] md:text-[55px] font-extrabold mb-8 leading-tight" data-aos="fade-up">
-                    Ready to turn your space <br> into a powerhouse?
-                </h2>
-                <a href="{{ route('register') }}" class="cta-btn" data-aos="zoom-in" data-aos-delay="200">List Your Gym Today</a>
-                <p class="text-white/50 mt-8 text-sm uppercase tracking-widest">Join over 500+ Active Hosts Nationwide</p>
+    {{-- =====================================================================
+         Signup card — How it works + Why host + What you will need + Terms
+    ===================================================================== --}}
+    <section class="site-container py-14 sm:py-20">
+        <div class="mx-auto max-w-5xl">
+
+            {{-- Top card shell --}}
+            <div class="relative overflow-hidden rounded-[28px] border border-[var(--color-brand-100)] bg-white shadow-[var(--shadow-md)]"
+                 data-aos="fade-up">
+
+                {{-- Top brand band --}}
+                <div class="relative bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-brand-500)] to-[var(--color-brand-200)] px-6 py-8 text-center sm:px-10 sm:py-10">
+                    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.18),transparent_60%)]"></div>
+
+                    <div class="relative z-10 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm sm:h-20 sm:w-20">
+                        <i class="fa-solid fa-shield-halved text-2xl sm:text-3xl"></i>
+                    </div>
+                    <h2 class="relative z-10 mt-5 text-2xl font-bold leading-tight text-white sm:text-3xl">
+                        {{ __('Become a Host') }}
+                    </h2>
+                    <p class="relative z-10 mx-auto mt-2 max-w-xl text-[15px] text-white/85">
+                        {{ __('Create your host account to start listing your private gym, studio, or training space on SPOTMEE.') }}
+                    </p>
+                </div>
+
+                {{-- Body --}}
+                <div class="px-5 py-8 sm:px-10 sm:py-10">
+
+                    {{-- Info grid: How it works + Why host with us --}}
+                    <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+
+                        {{-- How it works --}}
+                        <div class="rounded-2xl border border-[var(--color-brand-100)] bg-[color-mix(in_srgb,var(--color-brand-50)_55%,#ffffff)]"
+                             data-aos="fade-up" data-aos-delay="100">
+                            <div class="flex items-center gap-3 border-b border-[var(--color-brand-100)] px-5 py-3">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-primary)] shadow-sm">
+                                    <i class="fa-solid fa-route text-[13px]"></i>
+                                </span>
+                                <strong class="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-500)]">
+                                    {{ __('How it works') }}
+                                </strong>
+                            </div>
+                            <ul class="divide-y divide-[var(--color-brand-100)] px-5 py-1">
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        <span class="font-semibold">1.</span> {{ __('Create your host account') }}
+                                    </span>
+                                </li>
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        <span class="font-semibold">2.</span> {{ __('Admin approves your account and listing') }}
+                                    </span>
+                                </li>
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        <span class="font-semibold">3.</span>
+                                        {{ __('Your listing goes live and you start reaching guests near you') }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        {{-- Why host with us --}}
+                        <div class="rounded-2xl border border-[var(--color-brand-100)] bg-[color-mix(in_srgb,var(--color-brand-50)_55%,#ffffff)]"
+                             data-aos="fade-up" data-aos-delay="150">
+                            <div class="flex items-center gap-3 border-b border-[var(--color-brand-100)] px-5 py-3">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-primary)] shadow-sm">
+                                    <i class="fa-solid fa-trophy text-[13px]"></i>
+                                </span>
+                                <strong class="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-500)]">
+                                    {{ __('Why host with us?') }}
+                                </strong>
+                            </div>
+                            <ul class="divide-y divide-[var(--color-brand-100)] px-5 py-1">
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        {{ __('Reach people looking for spaces like yours') }}
+                                    </span>
+                                </li>
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        {{ __('Monetize unused hours') }}
+                                    </span>
+                                </li>
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        {{ __('Simple booking and payment management') }}
+                                    </span>
+                                </li>
+                                <li class="flex items-start gap-3 py-3">
+                                    <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                        <i class="fa-solid fa-check text-[11px]"></i>
+                                    </span>
+                                    <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                        {{ __('Showcase your equipment and what makes your place unique') }}
+                                    </span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    {{-- What you will need --}}
+                    <div class="mt-5 rounded-2xl border border-[var(--color-brand-100)] bg-[color-mix(in_srgb,var(--color-brand-50)_55%,#ffffff)]"
+                         data-aos="fade-up" data-aos-delay="200">
+                        <div class="flex items-center gap-3 border-b border-[var(--color-brand-100)] px-5 py-3">
+                            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-white text-[var(--color-primary)] shadow-sm">
+                                <i class="fa-solid fa-clipboard-list text-[13px]"></i>
+                            </span>
+                            <strong class="text-[12px] font-semibold uppercase tracking-[0.1em] text-[var(--color-ink-500)]">
+                                {{ __('What you will need') }}
+                            </strong>
+                        </div>
+
+                        <ul class="grid grid-cols-1 divide-y divide-[var(--color-brand-100)] px-5 sm:grid-cols-2 sm:divide-y-0 sm:gap-x-6 sm:[&>li]:border-0">
+                            <li class="flex items-start gap-3 py-3">
+                                <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                    <i class="fa-solid fa-check text-[11px]"></i>
+                                </span>
+                                <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                    {{ __('Full name and date of birth') }}
+                                </span>
+                            </li>
+                            <li class="flex items-start gap-3 py-3">
+                                <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                    <i class="fa-solid fa-check text-[11px]"></i>
+                                </span>
+                                <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                    {{ __('Contact information (phone, email)') }}
+                                </span>
+                            </li>
+                            <li class="flex items-start gap-3 py-3">
+                                <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                    <i class="fa-solid fa-check text-[11px]"></i>
+                                </span>
+                                <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                    {{ __('Address details') }}
+                                </span>
+                            </li>
+                            <li class="flex items-start gap-3 py-3">
+                                <span class="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-[var(--color-primary)] text-white">
+                                    <i class="fa-solid fa-check text-[11px]"></i>
+                                </span>
+                                <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
+                                    {{ __('Social Security Number (optional)') }}
+                                </span>
+                            </li>
+                        </ul>
+                    </div>
+
+                    {{-- Agreement + CTA --}}
+                    <form method="POST" action="{{ route('host.apply.begin') }}" novalidate class="mt-8"
+                          data-aos="fade-up" data-aos-delay="250">
+                        @csrf
+
+                        <label for="terms_accepted"
+                               class="flex cursor-pointer items-start gap-3 rounded-2xl border border-[var(--color-brand-100)] bg-white p-4 transition-colors hover:border-[var(--color-primary)]">
+                            <input type="checkbox"
+                                   id="terms_accepted"
+                                   name="terms_accepted"
+                                   value="1"
+                                   @checked(old('terms_accepted'))
+                                   class="mt-0.5 h-5 w-5 flex-shrink-0 cursor-pointer rounded border-[var(--color-brand-200)] text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30">
+                            <span class="text-[14px] leading-relaxed text-[var(--color-ink-700)]">
+                                {{ __('I agree to the') }}
+                                @if (filled($hostTerms))
+                                    <a href="{{ $hostTerms }}" target="_blank" rel="noopener noreferrer"
+                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Terms and Conditions') }}</a>
+                                @else
+                                    <a href="#"
+                                       onclick="event.preventDefault();"
+                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Terms and Conditions') }}</a>
+                                @endif
+                                {{ __('and') }}
+                                @if (filled($hostPrivacy))
+                                    <a href="{{ $hostPrivacy }}" target="_blank" rel="noopener noreferrer"
+                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Privacy Policy') }}</a>
+                                @else
+                                    <a href="#"
+                                       onclick="event.preventDefault();"
+                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Privacy Policy') }}</a>
+                                @endif
+                            </span>
+                        </label>
+                        @error('terms_accepted')
+                            <p class="mt-2 text-[13px] font-semibold text-red-600">{{ $message }}</p>
+                        @enderror
+
+                        <button type="submit" class="btn btn-primary btn-lg mt-5 w-full justify-center">
+                            {{ __('Create Account') }}
+                            <i class="fa-solid fa-arrow-right text-[13px]"></i>
+                        </button>
+                    </form>
+
+                    <p class="mt-6 text-center text-[14px] text-[var(--color-ink-500)]">
+                        {{ __('Already have an account?') }}
+                        <a href="{{ route('login') }}"
+                           class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">
+                            {{ __('Sign in') }}
+                        </a>
+                    </p>
+                </div>
             </div>
-        </section>
-    </div>
-</main>
 
+            {{-- Trust / reassurance row below the card --}}
+            <div class="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-3" data-aos="fade-up" data-aos-delay="300">
+                <div class="rounded-2xl border border-[var(--color-brand-100)] bg-white p-5 text-center">
+                    <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-brand-50)] text-[var(--color-primary)]">
+                        <i class="fa-solid fa-lock text-[16px]"></i>
+                    </span>
+                    <h4 class="mt-3 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('Secure & private') }}</h4>
+                    <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('Your data is encrypted and never sold.') }}</p>
+                </div>
+                <div class="rounded-2xl border border-[var(--color-brand-100)] bg-white p-5 text-center">
+                    <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-brand-50)] text-[var(--color-primary)]">
+                        <i class="fa-solid fa-bolt text-[16px]"></i>
+                    </span>
+                    <h4 class="mt-3 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('Fast onboarding') }}</h4>
+                    <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('List your facility in under 10 minutes.') }}</p>
+                </div>
+                <div class="rounded-2xl border border-[var(--color-brand-100)] bg-white p-5 text-center">
+                    <span class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-[var(--color-brand-50)] text-[var(--color-primary)]">
+                        <i class="fa-solid fa-hand-holding-dollar text-[16px]"></i>
+                    </span>
+                    <h4 class="mt-3 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('Direct payouts') }}</h4>
+                    <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('Earnings are deposited straight to your bank.') }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
 @endsection
-
-@push('scripts')
-<script>
-    // Smooth scroll for anchor link
-    document.querySelector('a[href="#how-it-works-host"]').addEventListener('click', function(e) {
-        e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-            behavior: 'smooth'
-        });
-    });
-</script>
-@endpush

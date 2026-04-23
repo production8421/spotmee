@@ -84,7 +84,7 @@
                                         <button class="btn btn-primary btn-block w-100" type="submit">{{ __('Sign in') }}</button>
                                     </div>
                                     <p class="text-muted small mt-3 mb-0 text-center">
-                                        <a href="{{ $applicationSetting->resolvedHostRegistrationUrl() }}">{{ __('Want to become a host? Apply here.') }}</a>
+                                        <a href="{{ route('host.apply') }}">{{ __('Want to become a host? Apply here.') }}</a>
                                     </p>
                                 </div>
                             </form>

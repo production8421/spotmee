@@ -1,94 +1,193 @@
 @php
-  $settings = $settings ?? \App\Models\ApplicationSetting::instance();
-  $headerLogoUrl = $settings->headerLogoUrl() ?? asset('images/header-logo.png');
-@endphp
-<header class="relative w-full mt-10 z-50">
-    <div class="mx-auto px-4">
-      <div class="flex items-center justify-between h-16">
-  
-        <div class="flex items-center">
-         <a href="{{ route('home') }}">
-            <img src="{{ $headerLogoUrl }}" alt="{{ config('app.name') }} Logo" class="max-w-[140px] ml-[20px] w-auto">
-         </a>
-        </div>
-  
-        <!-- Desktop Menu (≥1024px) -->
-        <nav class="hidden lg:flex space-x-8 text-[20px] font-regular text-[#333333] mb-[40px]">
-          <a href="{{ route('home') }}" class="hover:text-blue-600">Home</a>
-          <a href="{{ route('how-it-works') }}" class="hover:text-blue-600">How It Works</a>
-          <a href="{{ route('find-a-gym') }}" class="hover:text-blue-600">Find a Gym</a>
-          <a href="{{ route('become-a-host') }}" class="hover:text-blue-600">Become a Host</a>
-          <a href="{{ route('about') }}" class="hover:text-blue-600">About Us</a>
-          <a href="{{ route('blog') }}" class="hover:text-blue-600">Blog</a>
-          <a href="{{ route('contact') }}" class="hover:text-blue-600">Contact</a>
-        </nav>
-  
-        <!-- Desktop Buttons (≥1024px) -->
-        <div class="hidden lg:flex items-center gap-6 mb-[40px]">
-          @php
-            $user = auth()->user();
-          @endphp
-          @if ($user)
-            <form method="POST" action="{{ route('logout') }}">
-              @csrf
-              <button type="submit" class="text-[20px] font-regular text-[var(--text-color)] hover:text-blue-600">
-                Logout
-              </button>
-            </form>
-            <a href="{{ route('dashboard') }}" class="sign-up-btn">Dashboard</a>
-          @else
-          <a href="{{ route('login') }}" class="text-[20px] font-regular text-[var(--text-color)] hover:text-blue-600">Login</a>
-          <a href="#" class="sign-up-btn">Sign Up</a>
-          @endif
+    /**
+     * Header — Spotmee
+     * Add / remove / reorder nav items in the $navLinks array below.
+     * The whole header is driven by tokens in resources/css/app.css,
+     * so colour / font / radius tweaks happen in one place.
+     */
+    $settings      = $settings ?? \App\Models\ApplicationSetting::instance();
+    $headerLogoUrl = $settings->headerLogoUrl() ?? asset('images/header-logo.png');
+    $user          = auth()->user();
+    $current       = \Illuminate\Support\Facades\Route::currentRouteName();
 
+    $isActive = fn (string ...$routes) => in_array($current, $routes, true)
+        || collect($routes)->contains(fn ($r) => str_starts_with((string) $current, $r . '.'));
+
+    $navLinks = [
+        ['label' => __('Home'),           'href' => route('home'),           'active' => $isActive('home')],
+        ['label' => __('How It Works'),   'href' => route('how-it-works'),   'active' => $isActive('how-it-works')],
+        ['label' => __('Find a Gym'),     'href' => route('find-a-gym'),     'active' => $isActive('find-a-gym')],
+        ['label' => __('Become a Host'),  'href' => route('become-a-host'),  'active' => $isActive('become-a-host', 'host.apply')],
+        ['label' => __('About Us'),       'href' => route('about'),          'active' => $isActive('about')],
+        ['label' => __('FAQ'),            'href' => route('faq'),            'active' => $isActive('faq')],
+        ['label' => __('Contact'),        'href' => route('contact'),        'active' => $isActive('contact')],
+    ];
+
+    $userInitial = $user ? mb_strtoupper(mb_substr($user->name ?? $user->email ?? 'U', 0, 1)) : null;
+@endphp
+
+<header id="siteHeader" class="site-header" role="banner">
+    <div class="site-container">
+        <div class="site-header__inner">
+
+            {{-- Logo --}}
+            <a href="{{ route('home') }}" class="site-logo shrink-0" aria-label="{{ config('app.name') }} home">
+                <img src="{{ $headerLogoUrl }}" alt="{{ config('app.name') }}">
+            </a>
+
+            {{-- Desktop nav --}}
+            <nav class="site-nav" aria-label="Primary">
+                @foreach ($navLinks as $link)
+                    <a href="{{ $link['href'] }}"
+                       class="site-nav-link {{ $link['active'] ? 'is-active' : '' }}">
+                        {{ $link['label'] }}
+                    </a>
+                @endforeach
+            </nav>
+
+            {{-- Desktop actions --}}
+            <div class="hidden items-center gap-3 lg:flex">
+                @if ($user)
+                    <a href="{{ route('dashboard') }}" class="btn btn-outline btn-sm">
+                        <i class="fa-solid fa-gauge-high text-[12px]"></i>
+                        {{ __('Dashboard') }}
+                    </a>
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <button type="submit" class="btn btn-ghost btn-sm" aria-label="{{ __('Logout') }}">
+                            {{ __('Logout') }}
+                        </button>
+                    </form>
+                    <a href="{{ route('dashboard') }}" class="site-avatar" aria-label="{{ $user->name ?? $user->email }}">
+                        {{ $userInitial }}
+                    </a>
+                @else
+                    <a href="{{ route('login') }}" class="btn btn-ghost btn-sm">{{ __('Login') }}</a>
+                    <a href="{{ route('host.apply') }}" class="btn btn-primary btn-sm">
+                        {{ __('Sign Up') }}
+                        <i class="fa-solid fa-arrow-right text-[12px]"></i>
+                    </a>
+                @endif
+            </div>
+
+            {{-- Mobile hamburger --}}
+            <button type="button"
+                    class="site-hamburger"
+                    data-drawer-open
+                    aria-label="{{ __('Open menu') }}"
+                    aria-controls="mobileDrawer"
+                    aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     class="h-5 w-5">
+                    <line x1="4" y1="7" x2="20" y2="7"/>
+                    <line x1="4" y1="12" x2="20" y2="12"/>
+                    <line x1="4" y1="17" x2="20" y2="17"/>
+                </svg>
+            </button>
         </div>
-  
-        <!-- Hamburger (<1024px) -->
-        <button id="menuBtn" class="lg:hidden text-2xl">☰</button>
-  
-      </div>
     </div>
-  
-    <!-- Mobile Menu (<1024px) -->
-    <div id="mobileMenu" class="hidden lg:hidden mt-10">
-      <nav class="flex flex-col space-y-4 p-2 text-[20px] font-regular text-[var(--text-color)]">
-        <a href="{{ route('home') }}">Home</a>
-        <a href="{{ route('how-it-works') }}">How It Works</a>
-        <a href="{{ route('find-a-gym') }}">Find a Gym</a>
-        <a href="{{ route('become-a-host') }}">Become a Host</a>
-        <a href="{{ route('about') }}">About Us</a>
-        <a href="{{ route('blog') }}">Blog</a>
-        <a href="{{ route('contact') }}">Contact</a>
-        @if ($user)
-          <form method="POST" action="{{ route('logout') }}">
-            @csrf
-            <button type="submit">Logout</button>
-          </form>
-          <a href="{{ route('dashboard') }}" class="bg-[#4682B4] text-white text-center py-2 rounded-full">
-            Dashboard
-          </a>
-        @else
-          <a href="{{ route('login') }}">Login</a>
-          <a href="#" class="bg-[#4682B4] text-white text-center py-2 rounded-full">
-            Sign Up
-          </a>
-        @endif
-      </nav>
+
+    {{-- Mobile drawer --}}
+    <div id="mobileDrawer" class="mobile-drawer" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="mobile-drawer__backdrop" data-drawer-close></div>
+
+        <aside class="mobile-drawer__panel">
+            <div class="flex items-center justify-between border-b border-[var(--color-ink-100)] px-5 py-4">
+                <a href="{{ route('home') }}" class="site-logo" aria-label="{{ config('app.name') }}">
+                    <img src="{{ $headerLogoUrl }}" alt="{{ config('app.name') }}" class="h-9 w-auto object-contain">
+                </a>
+                <button type="button" class="site-hamburger" data-drawer-close aria-label="{{ __('Close menu') }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                         class="h-5 w-5">
+                        <line x1="6" y1="6" x2="18" y2="18"/>
+                        <line x1="18" y1="6" x2="6" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+
+            <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Mobile">
+                @foreach ($navLinks as $link)
+                    <a href="{{ $link['href'] }}"
+                       class="mobile-nav-link {{ $link['active'] ? 'is-active' : '' }}">
+                        <span>{{ $link['label'] }}</span>
+                        @if ($link['active'])
+                            <i class="fa-solid fa-circle text-[12px] text-[var(--color-primary)]"></i>
+                        @endif
+                    </a>
+                @endforeach
+            </nav>
+
+            <div class="space-y-2 border-t border-[var(--color-ink-100)] p-4">
+                @if ($user)
+                    <div class="mb-2 flex items-center gap-3 rounded-2xl bg-[var(--color-brand-50)] p-3">
+                        <span class="site-avatar">{{ $userInitial }}</span>
+                        <div class="min-w-0">
+                            <p class="truncate text-[14px] font-semibold text-[var(--color-ink-900)]">
+                                {{ $user->name ?? __('Welcome') }}
+                            </p>
+                            <p class="truncate text-[12px] text-[var(--color-ink-500)]">{{ $user->email }}</p>
+                        </div>
+                    </div>
+                    <a href="{{ route('dashboard') }}" class="btn btn-outline w-full">
+                        <i class="fa-solid fa-gauge-high text-[12px]"></i> {{ __('Dashboard') }}
+                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                        @csrf
+                        <button type="submit" class="btn btn-soft w-full">{{ __('Logout') }}</button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="btn btn-outline w-full">{{ __('Login') }}</a>
+                    <a href="{{ route('host.apply') }}" class="btn btn-primary w-full">
+                        {{ __('Sign Up') }}
+                        <i class="fa-solid fa-arrow-right text-[12px]"></i>
+                    </a>
+                @endif
+            </div>
+        </aside>
     </div>
-  </header>
-  
-  <script>
-    const menuBtn = document.getElementById("menuBtn");
-    const mobileMenu = document.getElementById("mobileMenu");
-  
-    menuBtn.addEventListener("click", () => {
-      mobileMenu.classList.toggle("hidden");
-  
-      if (menuBtn.innerText === "☰") {
-        menuBtn.innerText = "✕";
-      } else {
-        menuBtn.innerText = "☰";
-      }
-    });
-  </script>
-  
+</header>
+
+<script>
+    (function () {
+        'use strict';
+
+        const header  = document.getElementById('siteHeader');
+        const drawer  = document.getElementById('mobileDrawer');
+        const openBtn = document.querySelector('[data-drawer-open]');
+        const closers = document.querySelectorAll('[data-drawer-close]');
+
+        /* ---- Sticky header shadow on scroll ---- */
+        const onScroll = () => {
+            header.classList.toggle('site-header--scrolled', window.scrollY > 8);
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        onScroll();
+
+        /* ---- Mobile drawer ---- */
+        const openDrawer = () => {
+            drawer.classList.add('is-open');
+            drawer.setAttribute('aria-hidden', 'false');
+            openBtn?.setAttribute('aria-expanded', 'true');
+            document.body.classList.add('is-drawer-open');
+        };
+        const closeDrawer = () => {
+            drawer.classList.remove('is-open');
+            drawer.setAttribute('aria-hidden', 'true');
+            openBtn?.setAttribute('aria-expanded', 'false');
+            document.body.classList.remove('is-drawer-open');
+        };
+
+        openBtn?.addEventListener('click', openDrawer);
+        closers.forEach(el => el.addEventListener('click', closeDrawer));
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && drawer.classList.contains('is-open')) closeDrawer();
+        });
+
+        /* Close drawer when resizing up past lg breakpoint */
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 1024) closeDrawer();
+        });
+    })();
+</script>

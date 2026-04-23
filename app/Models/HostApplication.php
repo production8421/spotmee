@@ -22,6 +22,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'status',
     'approved_at',
     'approved_by',
+    'rejected_at',
+    'rejection_message',
 ])]
 class HostApplication extends Model
 {
@@ -35,12 +37,23 @@ class HostApplication extends Model
             'social_security_number' => 'encrypted',
             'status' => HostApplicationStatus::class,
             'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
         ];
     }
 
     public function isApproved(): bool
     {
         return $this->status === HostApplicationStatus::Approved;
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === HostApplicationStatus::Rejected;
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === HostApplicationStatus::Pending;
     }
 
     /**

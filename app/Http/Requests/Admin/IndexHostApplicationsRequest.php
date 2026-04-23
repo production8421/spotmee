@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -28,13 +29,13 @@ class IndexHostApplicationsRequest extends FormRequest
     }
 
     /**
-     * @return array<string, array<int, \Illuminate\Contracts\Validation\ValidationRule|string>>
+     * @return array<string, array<int, ValidationRule|string>>
      */
     public function rules(): array
     {
         return [
             'q' => ['nullable', 'string', 'max:120'],
-            'status' => ['nullable', 'string', Rule::in(['pending', 'approved'])],
+            'status' => ['nullable', 'string', Rule::in(['pending', 'approved', 'rejected'])],
             'city' => ['nullable', 'string', 'max:120'],
             'state' => ['nullable', 'string', 'max:120'],
             'submitted_from' => ['nullable', 'date'],

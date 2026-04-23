@@ -1,11 +1,21 @@
 <!-- Page Sidebar Start-->
+        @php
+            $authUser = auth()->user();
+            $subscriberOnlySidebar = $authUser
+                && $authUser->hasRole('Subscriber')
+                && ! $authUser->hasRole('Administrator')
+                && ! $authUser->hasRole('Host');
+            $subscriberHomeHref = $subscriberOnlySidebar
+                ? route('dashboard').'#subscriber-gym-bookings'
+                : route('dashboard');
+        @endphp
         <div class="sidebar-wrapper" data-sidebar-layout="stroke-svg">
           <div>
-            <div class="logo-wrapper"><a href="{{ route('dashboard') }}">@include('cuba.partials.brand-header-images')</a>
+            <div class="logo-wrapper"><a href="{{ $subscriberHomeHref }}">@include('cuba.partials.brand-header-images')</a>
               <div class="back-btn"><i class="fa-solid fa-angle-left"></i></div>
               <div class="toggle-sidebar"><i class="status_toggle middle sidebar-toggle" data-feather="grid"> </i></div>
             </div>
-            <div class="logo-icon-wrapper"><a href="{{ route('dashboard') }}"><img class="img-fluid" src="{{ $_brandHeaderIcon }}" alt="" style="max-height: 36px; width: auto; object-fit: contain;"></a></div>
+            <div class="logo-icon-wrapper"><a href="{{ $subscriberHomeHref }}"><img class="img-fluid" src="{{ $_brandHeaderIcon }}" alt="" style="max-height: 36px; width: auto; object-fit: contain;"></a></div>
             <nav class="sidebar-main">
               <div class="left-arrow" id="left-arrow"><i data-feather="arrow-left"></i></div>
               <div id="sidebar-menu">
@@ -18,6 +28,7 @@
                       <h6>Pinned</h6>
                     </div>
                   </li>
+                  @unless ($subscriberOnlySidebar)
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('dashboard') }}">
                       <svg class="stroke-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-home"></use>
@@ -25,6 +36,16 @@
                       <svg class="fill-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-home"></use>
                       </svg><span>Dashboard</span></a></li>
+                  @endunless
+                  @role('Subscriber')
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('dashboard') }}#subscriber-gym-bookings">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-calendar"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-calender"></use>
+                      </svg><span>{{ __('My gym bookings') }}</span></a></li>
+                  @endrole
                   @role('Host')
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('host.gym-listings.index') }}">
                       <svg class="stroke-icon">
@@ -69,6 +90,13 @@
                       <svg class="fill-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-calender"></use>
                       </svg><span>{{ __('Gym Bookings') }}</span></a></li>
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('admin.notifications.index') }}">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#notification"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#notification"></use>
+                      </svg><span>{{ __('Notifications') }}</span></a></li>
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('admin.media.index') }}">
                       <svg class="stroke-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-file"></use>

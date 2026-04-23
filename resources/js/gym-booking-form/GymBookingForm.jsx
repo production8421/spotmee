@@ -40,6 +40,7 @@ function buildLocalizedFromBootstrap(b) {
   return {
     blockedUrl: b.blockedUrl,
     storeUrl: b.storeUrl,
+    quote_url: typeof b.quoteUrl === "string" ? b.quoteUrl.trim() : "",
     csrf: b.csrf,
     gym_title: b.gymTitle || "Gym",
     availability: b.availability || {},
@@ -63,6 +64,8 @@ function buildLocalizedFromBootstrap(b) {
         ? Number(b.listingPersonLimit)
         : null,
     pt_icon_url: typeof b.ptIconUrl === "string" ? b.ptIconUrl.trim() : "",
+    is_subscriber: !!b.isSubscriber,
+    user_email: typeof b.userEmail === "string" ? b.userEmail.trim() : "",
   };
 }
 
@@ -74,10 +77,16 @@ const BookingFormContent = ({ localizedData }) => {
   /** Re-render slot options when party size / selection changes (parent must subscribe; nested Form fields alone do not). */
   const watchedNumberOfPersons = Form.useWatch("numberOfPersons", form);
   const watchedTimeSlots = Form.useWatch("timeSlot", form);
+  const watchedCouponCode = Form.useWatch("couponCode", form);
   const { message } = App.useApp();
+  const msgSlotsMustBeConsecutive = __(
+    "Selected slots must be consecutive with no gaps.",
+    "rent-your-jim"
+  );
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmationCode, setConfirmationCode] = useState("");
+  const [cancelBookingUrl, setCancelBookingUrl] = useState("");
   const [availability, setAvailability] = useState({});
   const [personalTrainerSchedule, setPersonalTrainerSchedule] = useState(
     localizedData?.personal_trainer_schedule ?? {}
@@ -89,8 +98,10 @@ const BookingFormContent = ({ localizedData }) => {
   const [stripe, setStripe] = useState(null);
   const [elements, setElements] = useState(null);
   const [paymentElement, setPaymentElement] = useState(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
   const stripeRef = useRef(null);
   const paymentElementRef = useRef(null);
+  const quoteRequestIdRef = useRef(0);
 
   const blockedUrl = localizedData?.blockedUrl;
   const storeUrl = localizedData?.storeUrl;
@@ -105,6 +116,7 @@ const BookingFormContent = ({ localizedData }) => {
   const stripePublishableKey = localizedData?.stripe_publishable_key || "";
   const paymentIntentUrl = localizedData?.payment_intent_url || "";
   const confirmPaymentUrl = localizedData?.confirm_payment_url || "";
+  const quoteUrl = localizedData?.quote_url || "";
   const listingPersonLimit =
     localizedData?.listing_person_limit != null &&
     Number.isFinite(Number(localizedData.listing_person_limit)) &&
@@ -119,6 +131,9 @@ const BookingFormContent = ({ localizedData }) => {
     typeof localizedData?.pt_icon_url === "string" && localizedData.pt_icon_url.trim() !== ""
       ? localizedData.pt_icon_url.trim()
       : null;
+  const isSubscriber = !!localizedData?.is_subscriber;
+  const subscriberAccountEmail =
+    typeof localizedData?.user_email === "string" ? localizedData.user_email.trim() : "";
   // Object mapping slot values to trainer selection: { "09:00|10:00": true, "10:00|11:00": false }
   const [trainerPerSlot, setTrainerPerSlot] = useState({});
   // Personal trainer add-on type: 'paid' or 'free_trial' (trial is 1 slot, $0, enforced once-per-gym on Continue to Payment)
@@ -158,13 +173,13 @@ const BookingFormContent = ({ localizedData }) => {
         appearance: {
           theme: 'stripe',
           variables: {
-            colorPrimary: '#4682B4',
+            colorPrimary: '#006d77',
             colorBackground: '#ffffff',
-            colorText: '#32325d',
-            colorDanger: '#fa755a',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+            colorText: '#0a1f23',
+            colorDanger: '#e11d48',
+            fontFamily: '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
             spacingUnit: '4px',
-            borderRadius: '8px',
+            borderRadius: '10px',
           },
         },
       });
@@ -479,6 +494,7 @@ const BookingFormContent = ({ localizedData }) => {
       persons: persons,
       pricePerSlot: pricePerSlot.toFixed(2),
       pricePerPerson: pricePerPerson.toFixed(2),
+      gymSubtotalBeforeCoupon: basePrice.toFixed(2),
       basePrice: basePrice.toFixed(2),
       trainerFee: trainerFee.toFixed(2),
       trainerSlotCount: trainerSlotCount,
@@ -496,6 +512,10 @@ const BookingFormContent = ({ localizedData }) => {
   useEffect(() => {
     const timeSlots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
     if (timeSlots.length === 0) return;
+    if (!slotsAreContiguousRaw(timeSlots)) {
+      setCalculatedPrice(null);
+      return;
+    }
 
     const sortedSlots = [...timeSlots].sort((a, b) => {
       const [aStart] = a.split("|");
@@ -887,18 +907,25 @@ const BookingFormContent = ({ localizedData }) => {
         return {};
       });
     }
-    
+
+    if (!slotsAreContiguousRaw(values)) {
+      setCalculatedPrice(null);
+      return;
+    }
+
+    setStep0Error((prev) => (prev === msgSlotsMustBeConsecutive ? null : prev));
+
     const sortedSlots = [...values].sort((a, b) => {
       const [aStart] = a.split('|');
       const [bStart] = b.split('|');
       return aStart.localeCompare(bStart);
     });
-    
+
     const [firstStart] = sortedSlots[0].split('|');
     const [, lastEnd] = sortedSlots[sortedSlots.length - 1].split('|');
-    
+
     const numberOfPersons = form.getFieldValue("numberOfPersons") || 1;
-    
+
     const currentTrainerSelections = {};
     if (ptAddOnType === "free_trial") {
       if (ptFreeTrialSlot && trialStillIn) currentTrainerSelections[ptFreeTrialSlot] = true;
@@ -912,8 +939,15 @@ const BookingFormContent = ({ localizedData }) => {
     calculateTotalPrice(firstStart, lastEnd, numberOfPersons, currentTrainerSelections, applyPtFreeTrial);
   };
 
-  /** Laravel `StorePublicGymBookingRequest` JSON body (shared by store, payment-intent, and confirm). */
-  const buildBookingPayload = (values) => {
+  /**
+   * Laravel booking JSON body (store + payment-intent), or quote preview when `forQuote` is true
+   * (omits `accept_terms`; guest fields may be empty for preview).
+   */
+  const buildBookingPayload = (values, opts = {}) => {
+    const forQuote = opts.forQuote === true;
+    if (!values?.timeSlot?.length) {
+      throw new Error("Missing time slots");
+    }
     const sortedSlots = [...values.timeSlot].sort((a, b) => {
       const [aStart] = a.split("|");
       const [bStart] = b.split("|");
@@ -938,9 +972,13 @@ const BookingFormContent = ({ localizedData }) => {
     }
     const slotDur = getSlotDuration();
     const normalizedSlots = sortedSlots.map((s) => normalizeSlotValue(s));
-    return {
-      guest_name: values.guestName,
-      guest_email: values.guestEmail,
+    const guestEmailRaw = String(values.guestEmail ?? "").trim();
+    const guest_email =
+      guestEmailRaw ||
+      (isSubscriber && subscriberAccountEmail ? subscriberAccountEmail : "");
+    const payload = {
+      guest_name: values.guestName || "",
+      guest_email,
       guest_phone: values.guestPhone || "",
       notes: values.notes || "",
       booking_date: values.bookingDate.format("YYYY-MM-DD"),
@@ -953,13 +991,21 @@ const BookingFormContent = ({ localizedData }) => {
         pt_addon === "free_trial" && ptFreeTrialSlot
           ? normalizeSlotValue(ptFreeTrialSlot)
           : null,
-      accept_terms: !!values.agreeTerms,
     };
+    if (!forQuote) {
+      payload.accept_terms = !!values.agreeTerms;
+    }
+    const cc = String(values.couponCode ?? "").trim();
+    if (cc) {
+      payload.coupon_code = cc;
+    }
+    return payload;
   };
 
   const postJson = async (url, body) => {
     const res = await fetch(url, {
       method: "POST",
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -971,6 +1017,193 @@ const BookingFormContent = ({ localizedData }) => {
     const data = await res.json().catch(() => ({}));
     return { res, data };
   };
+
+  const firstErrorMessageFromPayload = (data, fallbackMessage) => {
+    const parts = [];
+    if (data?.errors && typeof data.errors === "object") {
+      Object.keys(data.errors).forEach((k) => {
+        const arr = data.errors[k];
+        if (Array.isArray(arr)) parts.push(arr.join(" "));
+      });
+    }
+    return parts.join(" ") || data?.message || fallbackMessage;
+  };
+
+  const applyQuoteToCalculatedPrice = (data, couponFallback = "") => {
+    const disc = Number(data.coupon_discount);
+    setCalculatedPrice((prev) => ({
+      ...(prev || {}),
+      slots: data.slots,
+      slotDuration: data.slot_duration,
+      persons: data.persons,
+      pricePerSlot: Number(data.price_per_slot).toFixed(2),
+      pricePerPerson: Number(data.price_per_person).toFixed(2),
+      gymSubtotalBeforeCoupon: Number(
+        data.gym_subtotal_before_coupon ?? data.full_gym_base_before_coupon ?? data.base_price
+      ).toFixed(2),
+      basePrice: Number(data.base_price).toFixed(2),
+      trainerFee: Number(data.trainer_fee).toFixed(2),
+      trainerSlotCount: data.trainer_slot_count,
+      includesTrainer: !!data.includes_trainer,
+      ptFreeTrial: !!data.pt_free_trial,
+      total: Number(data.total_price).toFixed(2),
+      couponDiscount: Number.isFinite(disc) ? disc.toFixed(2) : "0.00",
+      couponCodeApplied: data.coupon_code || couponFallback,
+      couponAppliedSlots: Math.max(
+        0,
+        parseInt(String(data.coupon_applied_slots ?? 0), 10) || 0
+      ),
+      subtotalBeforeCoupon: Number(data.subtotal_before_coupon).toFixed(2),
+    }));
+  };
+
+  const validateBookingServerSide = async (values) => {
+    if (!quoteUrl) {
+      return { ok: true };
+    }
+    let payload;
+    try {
+      payload = buildBookingPayload(values, { forQuote: true });
+    } catch {
+      return { ok: false, error: __("Please complete booking details first.", "rent-your-jim") };
+    }
+
+    const { res, data } = await postJson(quoteUrl, payload);
+    if (!res.ok || !data?.success) {
+      return {
+        ok: false,
+        error: firstErrorMessageFromPayload(
+          data,
+          __("Please review your booking details and try again.", "rent-your-jim")
+        ),
+      };
+    }
+
+    applyQuoteToCalculatedPrice(data, String(values.couponCode ?? "").trim());
+    return { ok: true };
+  };
+
+  /**
+   * POST quote with current form values (including coupon_code when the field is non-empty).
+   * @returns {"ok"|"error"|"cancelled"|"noop"}
+   */
+  async function performQuoteRequest() {
+    if (!quoteUrl) return "error";
+    const values = form.getFieldsValue(true);
+    if (!values.bookingDate || !Array.isArray(values.timeSlot) || values.timeSlot.length === 0) {
+      return "noop";
+    }
+    if (!slotsAreContiguousRaw(values.timeSlot)) {
+      return "noop";
+    }
+    const couponTrim = String(values.couponCode ?? "").trim();
+    if (!couponTrim) return "noop";
+
+    const guestEmailForCoupon = String(values.guestEmail ?? "").trim();
+    if (!isSubscriber && !guestEmailForCoupon) {
+      return "noop";
+    }
+
+    let payload;
+    try {
+      payload = buildBookingPayload(values, { forQuote: true });
+    } catch {
+      return "noop";
+    }
+    const requestId = ++quoteRequestIdRef.current;
+    const { res, data } = await postJson(quoteUrl, payload);
+    if (requestId !== quoteRequestIdRef.current) return "cancelled";
+    if (!res.ok) {
+      message.error(
+        firstErrorMessageFromPayload(
+          data,
+          __("Could not apply that promo code.", "rent-your-jim")
+        )
+      );
+      return "error";
+    }
+    if (!data.success) {
+      message.error(
+        firstErrorMessageFromPayload(data, __("Could not apply that promo code.", "rent-your-jim"))
+      );
+      return "error";
+    }
+    applyQuoteToCalculatedPrice(data, couponTrim);
+    return "ok";
+  }
+
+  const handleApplyCoupon = async () => {
+    const values = form.getFieldsValue(true);
+    const couponTrim = String(values.couponCode ?? "").trim();
+    if (!couponTrim) {
+      message.warning(__("Enter a coupon code first.", "rent-your-jim"));
+      return;
+    }
+    if (!quoteUrl) {
+      message.warning(__("Promo codes are not available for this listing.", "rent-your-jim"));
+      return;
+    }
+    if (!values.bookingDate || !Array.isArray(values.timeSlot) || values.timeSlot.length === 0) {
+      message.warning(__("Select date and time slots first.", "rent-your-jim"));
+      return;
+    }
+    if (!slotsAreContiguousRaw(values.timeSlot)) {
+      message.warning(msgSlotsMustBeConsecutive);
+      return;
+    }
+    const guestEmailRaw = String(values.guestEmail ?? "").trim();
+    if (!isSubscriber && !guestEmailRaw) {
+      message.warning(
+        __("Enter your email address before applying a coupon.", "rent-your-jim")
+      );
+      return;
+    }
+    setApplyingCoupon(true);
+    try {
+      const result = await performQuoteRequest();
+      if (result === "ok") {
+        message.success(__("Coupon applied.", "rent-your-jim"));
+      }
+    } finally {
+      setApplyingCoupon(false);
+    }
+  };
+
+  // When a promo code is entered, ask the server for the authoritative breakdown (coupon rules, caps, etc.).
+  useEffect(() => {
+    if (!quoteUrl) return;
+    const couponTrim =
+      watchedCouponCode != null && watchedCouponCode !== undefined
+        ? String(watchedCouponCode).trim()
+        : "";
+    if (!couponTrim) return;
+
+    const timeSlots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
+    if (!bookingDate || timeSlots.length === 0) return;
+    if (!slotsAreContiguousRaw(timeSlots)) return;
+
+    const delayMs = 450;
+    const timer = setTimeout(() => {
+      void performQuoteRequest();
+    }, delayMs);
+
+    return () => {
+      clearTimeout(timer);
+      quoteRequestIdRef.current += 1;
+    };
+  }, [
+    quoteUrl,
+    watchedCouponCode,
+    bookingDate,
+    watchedTimeSlots,
+    watchedNumberOfPersons,
+    trainerPerSlot,
+    ptAddOnType,
+    ptFreeTrialSlot,
+    selectedDurationType,
+    form,
+    message,
+  ]);
 
   /** Create booking without Stripe (cash / zero-amount server path). */
   const submitStoreBooking = async (payload) => {
@@ -992,6 +1225,9 @@ const BookingFormContent = ({ localizedData }) => {
       throw new Error(data.message || "Failed to create booking");
     }
     setConfirmationCode(data.confirmation_code || "");
+    setCancelBookingUrl(
+      typeof data.cancel_booking_url === "string" ? data.cancel_booking_url.trim() : ""
+    );
     setSubmitted(true);
     message.success(__("Booking confirmed!", "rent-your-jim"));
   };
@@ -1005,8 +1241,15 @@ const BookingFormContent = ({ localizedData }) => {
         setStep0Error(__("Please select date and at least one time slot", "rent-your-jim"));
         return;
       }
+      if (!slotsAreContiguousRaw(values.timeSlot)) {
+        setStep0Error(msgSlotsMustBeConsecutive);
+        return;
+      }
 
-      if (!values.guestName || !values.guestEmail) {
+      const effectiveGuestEmailStep =
+        String(values.guestEmail ?? "").trim() ||
+        (isSubscriber && subscriberAccountEmail ? subscriberAccountEmail : "");
+      if (!values.guestName || !effectiveGuestEmailStep) {
         setStep0Error(__("Please fill in all required guest information", "rent-your-jim"));
         return;
       }
@@ -1014,6 +1257,20 @@ const BookingFormContent = ({ localizedData }) => {
       if (!calculatedPrice || calculatedPrice.total == null) {
         setStep0Error(__("Please select date and time to calculate price", "rent-your-jim"));
         return;
+      }
+
+      setLoading(true);
+      try {
+        const serverValidation = await validateBookingServerSide(values);
+        if (!serverValidation.ok) {
+          setStep0Error(serverValidation.error || __("Please review booking details.", "rent-your-jim"));
+          return;
+        }
+      } catch (error) {
+        setStep0Error(error?.message || __("Please review booking details.", "rent-your-jim"));
+        return;
+      } finally {
+        setLoading(false);
       }
 
       const payload = buildBookingPayload(values);
@@ -1149,6 +1406,9 @@ const BookingFormContent = ({ localizedData }) => {
           if (data.success) {
             setStep1Error(null);
             setConfirmationCode(data.confirmation_code || "");
+            setCancelBookingUrl(
+              typeof data.cancel_booking_url === "string" ? data.cancel_booking_url.trim() : ""
+            );
             setSubmitted(true);
             message.success(__("Booking confirmed!", "rent-your-jim"));
           } else {
@@ -1188,7 +1448,7 @@ const BookingFormContent = ({ localizedData }) => {
       <div className="ryj-booking-success">
         <Result
           status="success"
-          icon={<CheckCircleOutlined style={{ color: "#4682B4" }} />}
+          icon={<CheckCircleOutlined style={{ color: "#006d77" }} />}
           title="Booking Confirmed & Payment Processed!"
           subTitle={
             <>
@@ -1197,9 +1457,25 @@ const BookingFormContent = ({ localizedData }) => {
               <p style={{ marginTop: 16 }}>
                 Your booking has been confirmed and payment has been processed successfully.
               </p>
-              <p style={{ marginTop: 12, padding: "12px 16px", background: "#f0f6fc", borderRadius: 8, borderLeft: "4px solid #2271b1", fontSize: 14 }}>
+              <p style={{ marginTop: 12, padding: "12px 16px", background: "#edf6f9", borderRadius: 10, borderLeft: "4px solid #006d77", fontSize: 14, color: "#0a1f23" }}>
                 {__("A confirmation email has been sent to you with your booking details and a link to cancel if needed.", "rent-your-jim")}
               </p>
+              {cancelBookingUrl ? (
+                <p style={{ marginTop: 16 }}>
+                  <a
+                    href={cancelBookingUrl}
+                    style={{ color: "#b32d2e", fontWeight: 600 }}
+                  >
+                    {__("Cancel this booking", "rent-your-jim")}
+                  </a>
+                  <span style={{ display: "block", marginTop: 8, fontSize: 13, color: "#666" }}>
+                    {__(
+                      "Opens a secure page to cancel and request a card refund (if you paid online). Valid until your session start time.",
+                      "rent-your-jim"
+                    )}
+                  </span>
+                </p>
+              ) : null}
             </>
           }
           extra={[
@@ -1211,6 +1487,7 @@ const BookingFormContent = ({ localizedData }) => {
                 setCurrentStep(0);
                 setPaymentIntent(null);
                 setCalculatedPrice(null);
+                setCancelBookingUrl("");
                 form.resetFields();
               }}
             >
@@ -1252,6 +1529,9 @@ const BookingFormContent = ({ localizedData }) => {
           layout="vertical"
           onFinish={handleSubmit}
           requiredMark="optional"
+          initialValues={{
+            guestEmail: isSubscriber && subscriberAccountEmail ? subscriberAccountEmail : undefined,
+          }}
         >
           {/* Date Selection */}
           <Form.Item
@@ -1312,8 +1592,23 @@ const BookingFormContent = ({ localizedData }) => {
               <Form.Item
                 label={<><ClockCircleOutlined /> Select Time Slots</>}
                 name="timeSlot"
-                rules={[{ required: true, message: "Please select at least one time slot" }]}
-                extra="You can select multiple slots for longer sessions"
+                rules={[
+                  { required: true, message: "Please select at least one time slot" },
+                  {
+                    validator: (_, value) => {
+                      const arr = Array.isArray(value) ? value : [];
+                      if (arr.length > 1 && !slotsAreContiguousRaw(arr)) {
+                        return Promise.reject(new Error(msgSlotsMustBeConsecutive));
+                      }
+                      return Promise.resolve();
+                    },
+                  },
+                ]}
+                validateTrigger={["onChange", "onSubmit"]}
+                extra={__(
+                  "Select multiple slots in one uninterrupted row (no gaps).",
+                  "rent-your-jim"
+                )}
               >
                 <Select
                   key={`slots-${bookingDate ? bookingDate.format("YYYY-MM-DD") : "none"}-${selectedDurationType ?? "x"}`}
@@ -1326,6 +1621,19 @@ const BookingFormContent = ({ localizedData }) => {
                   notFoundContent="No available slots for this day"
                 />
               </Form.Item>
+              {selectedBookingSlots.length > 1 &&
+                !slotsAreContiguousRaw(selectedBookingSlots) && (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                    message={msgSlotsMustBeConsecutive}
+                    description={__(
+                      "Pricing and promo codes apply only after your gym slots form one continuous block.",
+                      "rent-your-jim"
+                    )}
+                  />
+                )}
             </>
           )}
 
@@ -1495,6 +1803,32 @@ const BookingFormContent = ({ localizedData }) => {
             </div>
           )}
 
+          <div className="ryj-form-section ryj-coupon-section">
+            <h3>{__("Coupon", "rent-your-jim")}</h3>
+            <div className="ryj-coupon-row">
+              <div className="ryj-coupon-input-wrap">
+                <Form.Item name="couponCode" noStyle>
+                  <Input
+                    size="large"
+                    placeholder={__("Enter coupon code", "rent-your-jim")}
+                    maxLength={64}
+                    allowClear
+                    autoComplete="off"
+                  />
+                </Form.Item>
+              </div>
+              <Button
+                type="default"
+                size="large"
+                className="ryj-coupon-apply-btn"
+                loading={applyingCoupon}
+                onClick={() => void handleApplyCoupon()}
+              >
+                {__("Apply Coupon", "rent-your-jim")}
+              </Button>
+            </div>
+          </div>
+
           {/* Price Calculation Display */}
           {calculatedPrice && (
             <div className="ryj-price-calculation">
@@ -1520,7 +1854,10 @@ const BookingFormContent = ({ localizedData }) => {
                   <>
                     <div className="ryj-price-row">
                       <span className="ryj-price-label">Subtotal:</span>
-                      <span className="ryj-price-value">${calculatedPrice.basePrice}</span>
+                      <span className="ryj-price-value">
+                        $
+                        {calculatedPrice.gymSubtotalBeforeCoupon ?? calculatedPrice.basePrice}
+                      </span>
                     </div>
                     <div className="ryj-price-row ryj-trainer-fee">
                       <span className="ryj-price-label">
@@ -1534,6 +1871,39 @@ const BookingFormContent = ({ localizedData }) => {
                       </span>
                       <span className="ryj-price-value">
                         {calculatedPrice.ptFreeTrial ? __("Free", "rent-your-jim") : `+$${calculatedPrice.trainerFee}`}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {Number(calculatedPrice.couponDiscount) > 0 && (
+                  <>
+                    <div className="ryj-price-row" style={{ fontSize: 13, color: "#595959" }}>
+                      <span className="ryj-price-label">{__("Before promo", "rent-your-jim")}:</span>
+                      <span className="ryj-price-value">
+                        $
+                        {calculatedPrice.gymSubtotalBeforeCoupon ?? calculatedPrice.subtotalBeforeCoupon}
+                      </span>
+                    </div>
+                    <div className="ryj-price-row">
+                      <span className="ryj-price-label">
+                        {__("Promo", "rent-your-jim")}
+                        {calculatedPrice.couponCodeApplied
+                          ? ` (${String(calculatedPrice.couponCodeApplied)})`
+                          : ""}
+                        {(() => {
+                          const n = Math.max(
+                            0,
+                            parseInt(String(calculatedPrice.couponAppliedSlots ?? 0), 10) || 0
+                          );
+                          if (n <= 0) return "";
+                          return n === 1
+                            ? ` — ${__("1 free gym slot", "rent-your-jim")}`
+                            : ` — ${n} ${__("free gym slots", "rent-your-jim")}`;
+                        })()}
+                        :
+                      </span>
+                      <span className="ryj-price-value" style={{ color: "#389e0d" }}>
+                        -${calculatedPrice.couponDiscount}
                       </span>
                     </div>
                   </>
@@ -1606,7 +1976,26 @@ const BookingFormContent = ({ localizedData }) => {
                 {calculatedPrice && (
                   <Alert
                     message={`Total Amount: $${calculatedPrice.total}`}
-                    description={`Duration: ${calculatedPrice.hours} hour${calculatedPrice.hours !== 1 ? 's' : ''} × $${calculatedPrice.hourlyRate}/hour`}
+                    description={
+                      calculatedPrice.durationMinutes != null
+                        ? `${(Number(calculatedPrice.durationMinutes) / 60).toFixed(1)} h • ${calculatedPrice.slots} × ${calculatedPrice.slotDuration} min slots${
+                            Number(calculatedPrice.couponDiscount) > 0
+                              ? (() => {
+                                  const n = Math.max(
+                                    0,
+                                    parseInt(String(calculatedPrice.couponAppliedSlots ?? 0), 10) || 0
+                                  );
+                                  if (n > 0) {
+                                    return n === 1
+                                      ? ` • ${__("1 free gym slot", "rent-your-jim")}`
+                                      : ` • ${n} ${__("free gym slots", "rent-your-jim")}`;
+                                  }
+                                  return ` • ${__("promo applied", "rent-your-jim")}`;
+                                })()
+                              : ""
+                          }`
+                        : `${calculatedPrice.slots} × ${calculatedPrice.slotDuration} min slots`
+                    }
                     type="info"
                     showIcon
                     style={{ marginBottom: 20 }}
@@ -1663,7 +2052,7 @@ const BookingFormContent = ({ localizedData }) => {
             ]}
           >
             <Checkbox>
-              I agree to the <a href={termsUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4682B4' }}>Terms and Conditions</a> and <a href={privacyUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#4682B4' }}>Privacy Policy</a>
+              I agree to the <a href={termsUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#006d77', fontWeight: 600 }}>Terms and Conditions</a> and <a href={privacyUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#006d77', fontWeight: 600 }}>Privacy Policy</a>
             </Checkbox>
           </Form.Item>
 
@@ -1777,7 +2166,17 @@ const BookingFormApp = () => {
   return (
     <ConfigProvider
       locale={enUS}
-      theme={{ token: { colorPrimary: "#4682B4", borderRadius: 8 } }}
+      theme={{
+        token: {
+          colorPrimary: "#006d77",
+          colorInfo: "#006d77",
+          colorSuccess: "#1a8d95",
+          colorLink: "#006d77",
+          borderRadius: 10,
+          fontFamily:
+            '"Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        },
+      }}
     >
       <App>
         {!localizedData && !bootstrapError ? (

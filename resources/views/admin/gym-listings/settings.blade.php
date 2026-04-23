@@ -55,20 +55,49 @@
                         @csrf
                         @method('PUT')
 
+                        @php
+                            $stripeMode = old('stripe_mode', $settings->stripe_mode ?? 'test');
+                        @endphp
                         <div class="mb-4">
-                            <label class="form-label fw-semibold" for="stripe_mode">{{ __('Payment Mode') }}</label>
-                            <select
-                                class="form-select @error('stripe_mode') is-invalid @enderror"
-                                id="stripe_mode"
-                                name="stripe_mode"
-                            >
-                                <option value="test" @selected(old('stripe_mode', $settings->stripe_mode ?? 'test') === 'test')>{{ __('Test Mode') }}</option>
-                                <option value="live" @selected(old('stripe_mode', $settings->stripe_mode ?? 'test') === 'live')>{{ __('Live Mode') }}</option>
-                            </select>
-                            <p class="text-muted small fst-italic mb-0 mt-1">{{ __('Use Test Mode for development, Live Mode for production.') }}</p>
-                            @error('stripe_mode')
-                                <div class="invalid-feedback d-block">{{ $message }}</div>
-                            @enderror
+                            <fieldset>
+                                <legend class="form-label fw-semibold mb-2">{{ __('Active Stripe keys') }}</legend>
+                                <div class="row g-2">
+                                    <div class="col-12 col-sm-6">
+                                        <input
+                                            type="radio"
+                                            class="btn-check"
+                                            name="stripe_mode"
+                                            id="stripe_mode_test"
+                                            value="test"
+                                            autocomplete="off"
+                                            @checked($stripeMode === 'test')
+                                        >
+                                        <label class="btn btn-outline-primary w-100 py-3 fw-semibold" for="stripe_mode_test">
+                                            {{ __('Test keys active') }}
+                                        </label>
+                                    </div>
+                                    <div class="col-12 col-sm-6">
+                                        <input
+                                            type="radio"
+                                            class="btn-check"
+                                            name="stripe_mode"
+                                            id="stripe_mode_live"
+                                            value="live"
+                                            autocomplete="off"
+                                            @checked($stripeMode === 'live')
+                                        >
+                                        <label class="btn btn-outline-primary w-100 py-3 fw-semibold" for="stripe_mode_live">
+                                            {{ __('Live keys active') }}
+                                        </label>
+                                    </div>
+                                </div>
+                                <p class="text-muted small fst-italic mb-0 mt-2">
+                                    {{ __('Choose which key pair is used for gym bookings and checkout. You can save both test and live credentials below and switch here at any time.') }}
+                                </p>
+                                @error('stripe_mode')
+                                    <div class="invalid-feedback d-block">{{ $message }}</div>
+                                @enderror
+                            </fieldset>
                         </div>
 
                         <hr class="text-muted">
@@ -94,6 +123,12 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-semibold" for="stripe_test_secret_key">{{ __('Test Secret Key') }}</label>
+                            @if ($settings->hasStripeTestSecret())
+                                <p class="small text-success mb-2">
+                                    {{ __('A secret key is saved on the server. For security it is never filled into this box again.') }}
+                                    <span class="d-block mt-1 font-monospace text-body">{{ $settings->maskedStripeTestSecretKey() }}</span>
+                                </p>
+                            @endif
                             <input
                                 class="form-control font-monospace @error('stripe_test_secret_key') is-invalid @enderror"
                                 id="stripe_test_secret_key"
@@ -106,7 +141,7 @@
                                 autocomplete="new-password"
                             >
                             @if ($settings->hasStripeTestSecret())
-                                <p class="text-muted small mb-0 mt-1">{{ __('Leave blank to keep the current secret.') }}</p>
+                                <p class="text-muted small mb-0 mt-1">{{ __('Leave blank to keep the current secret. Paste a new key only if you want to replace it.') }}</p>
                             @endif
                             <p class="text-muted small fst-italic mb-0 mt-1">{{ __('Keep this secret! Never share it publicly.') }}</p>
                             @error('stripe_test_secret_key')
@@ -136,6 +171,12 @@
 
                         <div class="mb-4">
                             <label class="form-label fw-semibold" for="stripe_live_secret_key">{{ __('Live Secret Key') }}</label>
+                            @if ($settings->hasStripeLiveSecret())
+                                <p class="small text-success mb-2">
+                                    {{ __('A secret key is saved on the server. For security it is never filled into this box again.') }}
+                                    <span class="d-block mt-1 font-monospace text-body">{{ $settings->maskedStripeLiveSecretKey() }}</span>
+                                </p>
+                            @endif
                             <input
                                 class="form-control font-monospace @error('stripe_live_secret_key') is-invalid @enderror"
                                 id="stripe_live_secret_key"
@@ -148,7 +189,7 @@
                                 autocomplete="new-password"
                             >
                             @if ($settings->hasStripeLiveSecret())
-                                <p class="text-muted small mb-0 mt-1">{{ __('Leave blank to keep the current secret.') }}</p>
+                                <p class="text-muted small mb-0 mt-1">{{ __('Leave blank to keep the current secret. Paste a new key only if you want to replace it.') }}</p>
                             @endif
                             <p class="text-muted small fst-italic mb-0 mt-1">{{ __('Keep this secret! Never share it publicly.') }}</p>
                             @error('stripe_live_secret_key')
@@ -342,7 +383,7 @@
                                 </div>
                                 <div class="col-md-8">
                                     <input class="form-control @error('webhook_booking_completed_url') is-invalid @enderror" id="webhook_booking_completed_url" type="url" name="webhook_booking_completed_url" value="{{ old('webhook_booking_completed_url', $settings->webhook_booking_completed_url) }}" placeholder="https://…" autocomplete="off">
-                                    <p class="text-muted small fst-italic mb-0 mt-1">{{ __('Leave empty to disable. Called when a guest completes a paid booking.') }}</p>
+                                    <p class="text-muted small fst-italic mb-0 mt-1">{{ __('Leave empty to disable. Called when a booking is confirmed (after payment or free checkout).') }}</p>
                                     @error('webhook_booking_completed_url')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                             </div>
@@ -355,7 +396,7 @@
                                     @if ($settings->hasWebhookBookingCompletedSecret())
                                         <p class="text-muted small mb-0 mt-1">{{ __('Leave blank to keep the current secret.') }}</p>
                                     @endif
-                                    <p class="text-muted small fst-italic mb-0 mt-1">{{ __('If set, requests include X-RYJ-Signature (HMAC-SHA256 of the JSON body) so you can verify the source.') }}</p>
+                                    <p class="text-muted small fst-italic mb-0 mt-1">{{ __('If set, requests include X-RYJ-Signature (HMAC-SHA256 of the raw JSON body, prefixed with sha256=), plus X-RYJ-Event and User-Agent RentYourGym-Webhook/1.0. Up to 3 delivery attempts on non-2xx responses.') }}</p>
                                     @error('webhook_booking_completed_secret')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                             </div>
@@ -379,7 +420,7 @@
                                     @if ($settings->hasWebhookBookingCancelledSecret())
                                         <p class="text-muted small mb-0 mt-1">{{ __('Leave blank to keep the current secret.') }}</p>
                                     @endif
-                                    <p class="text-muted small fst-italic mb-0 mt-1">{{ __('If set, cancellation webhook requests include X-RYJ-Signature (HMAC-SHA256 of the JSON body).') }}</p>
+                                    <p class="text-muted small fst-italic mb-0 mt-1">{{ __('If set, cancellation requests use the same signing and headers as completed webhooks (sha256= prefix, X-RYJ-Event, retries).') }}</p>
                                     @error('webhook_booking_cancelled_secret')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
                                 </div>
                             </div>

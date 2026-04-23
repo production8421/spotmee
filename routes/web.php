@@ -1,25 +1,31 @@
 <?php
 
 use App\Enums\UserRole;
-use App\Http\Controllers\Admin\GymBookingController;
+use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\CouponController;
+use App\Http\Controllers\Admin\FrontendSectionController;
+use App\Http\Controllers\Admin\GymBookingController;
 use App\Http\Controllers\Admin\GymListingController;
 use App\Http\Controllers\Admin\HostApplicationController as AdminHostApplicationController;
-use App\Http\Controllers\Admin\FrontendSectionController;
-use App\Http\Controllers\Host\GymListingController as HostGymListingController;
 use App\Http\Controllers\Admin\MediaLibraryController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Host\GymListingController as HostGymListingController;
 use App\Http\Controllers\Host\HostApplicationController as GuestHostApplicationController;
-use App\Models\ApplicationSetting;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PublicGymBookingCancellationController;
 use App\Http\Controllers\PublicGymBookingController;
 use App\Http\Controllers\PublicGymController;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
+use App\Http\Controllers\SubscriberGymBookingController;
+use App\Http\Controllers\WebContactController;
+use App\Models\ApplicationSetting;
 use App\Models\GymListing;
+use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 
 Route::get('host/apply', [GuestHostApplicationController::class, 'intro'])->name('host.apply');
 Route::post('host/apply/begin', [GuestHostApplicationController::class, 'begin'])
@@ -39,7 +45,7 @@ Route::redirect('/site', '/login', 302)->name('site.home');
 // Web Routes
 Route::get(
     '/',
-    fn() => view('web.home.index', [
+    fn () => view('web.home.index', [
         'isHome' => true,
         'settings' => ApplicationSetting::instance(),
     ])
@@ -47,7 +53,83 @@ Route::get(
 
 Route::get(
     '/find-a-gym',
-    fn() => view('web.find-a-gym.location-directory')
+    function (Request $request) {
+        $searchBy = trim((string) $request->query('searchby', ''));
+        $city = trim((string) $request->query('city', ''));
+        $selectedService = trim((string) $request->query('service', ''));
+
+        if ($searchBy === '' && $city === '' && $selectedService === '') {
+            return view('web.find-a-gym.location-directory');
+        }
+
+        if (! Schema::hasTable((new GymListing)->getTable())) {
+            $page = max(1, (int) $request->query('page', 1));
+
+            return view('web.find-a-gym.gym-list', [
+                'state' => '',
+                'stateLabel' => __('All States'),
+                'selectedService' => $selectedService,
+                'searchBy' => $searchBy,
+                'searchCity' => $city,
+                'listings' => new LengthAwarePaginator([], 0, 12, $page, [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]),
+            ]);
+        }
+
+        $serviceAliases = [
+            'boxing' => ['boxing'],
+            'yoga' => ['yoga'],
+            'crossfit' => ['crossfit', 'fitness', 'fitness_class'],
+            'personal_training' => ['personal_training', 'personal-training'],
+            'cardio' => ['cardio'],
+            'group_classes' => ['group_classes', 'group_class'],
+        ];
+
+        $query = GymListing::query()->where('is_published', true);
+
+        if ($city !== '') {
+            $cityLike = '%'.addcslashes($city, '%_\\').'%';
+            $query->where('city', 'like', $cityLike);
+        }
+
+        if ($searchBy !== '') {
+            $like = '%'.addcslashes($searchBy, '%_\\').'%';
+            $stateMap = array_change_key_case((array) config('gym_listing.states', []), CASE_LOWER);
+            $searchedStateCode = array_search(strtolower($searchBy), $stateMap, true);
+            $query->where(function ($sub) use ($like, $searchedStateCode): void {
+                $sub->where('name', 'like', $like)
+                    ->orWhere('address', 'like', $like)
+                    ->orWhere('city', 'like', $like)
+                    ->orWhere('state', 'like', $like)
+                    ->orWhere('postal_code', 'like', $like)
+                    ->orWhere('description', 'like', $like);
+                if (is_string($searchedStateCode)) {
+                    $sub->orWhereRaw('UPPER(state) = ?', [strtoupper($searchedStateCode)]);
+                }
+            });
+        }
+
+        if ($selectedService !== '') {
+            $aliases = $serviceAliases[$selectedService] ?? [$selectedService];
+            $query->where(function ($sub) use ($aliases): void {
+                foreach ($aliases as $alias) {
+                    $sub->orWhereJsonContains('service_options', $alias)
+                        ->orWhere('service_options', 'like', '%"'.addcslashes($alias, '%_\\').'"%');
+                }
+            });
+        }
+
+        return view('web.find-a-gym.gym-list', [
+            'state' => '',
+            'stateLabel' => __('All States'),
+            'selectedService' => $selectedService,
+            'searchBy' => $searchBy,
+            'searchCity' => $city,
+            'listings' => $query->orderByDesc('id')->paginate(12)->withQueryString(),
+        ]);
+    }
 )->name('find-a-gym');
 
 Route::get(
@@ -57,6 +139,21 @@ Route::get(
         $searchBy = trim((string) $request->query('searchby', ''));
         $city = trim((string) $request->query('city', ''));
         $selectedService = trim((string) $request->query('service', ''));
+
+        if (! Schema::hasTable((new GymListing)->getTable())) {
+            $page = max(1, (int) $request->query('page', 1));
+
+            return view('web.find-a-gym.gym-list', [
+                'state' => $selectedState,
+                'selectedService' => $selectedService,
+                'searchBy' => $searchBy,
+                'searchCity' => $city,
+                'listings' => new LengthAwarePaginator([], 0, 12, $page, [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]),
+            ]);
+        }
 
         $serviceAliases = [
             'boxing' => ['boxing'],
@@ -122,6 +219,11 @@ Route::get('/gyms/{slug}/bookings/blocked', [PublicGymBookingController::class, 
     ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
     ->name('gym.bookings.blocked');
 
+Route::post('/gyms/{slug}/bookings/quote', [PublicGymBookingController::class, 'quote'])
+    ->middleware('throttle:90,1')
+    ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
+    ->name('gym.bookings.quote');
+
 Route::post('/gyms/{slug}/bookings', [PublicGymBookingController::class, 'store'])
     ->middleware('throttle:15,1')
     ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
@@ -137,44 +239,66 @@ Route::post('/gyms/{slug}/bookings/confirm-payment', [PublicGymBookingController
     ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
     ->name('gym.bookings.confirm-payment');
 
+Route::get('/bookings/{booking}/cancel', PublicGymBookingCancellationController::class)
+    ->middleware(['signed', 'throttle:30,1'])
+    ->name('public.gym-bookings.cancel');
+
 Route::get(
     '/about',
-    fn() => view('web.about.index')
+    fn () => view('web.about.index')
 )->name('about');
 
 Route::get(
     '/become-a-host',
-    fn() => view('web.become-a-host.index')
+    fn () => view('web.become-a-host.index')
 )->name('become-a-host');
 
 Route::get(
     '/how-it-works',
-    fn() => view('web.how-it-works.index')
+    fn () => view('web.how-it-works.index')
 )->name('how-it-works');
 
-Route::get(
-    '/contact',
-    fn() => view('web.contact.index')
-)->name('contact');
+Route::get('/contact', [WebContactController::class, 'index'])->name('contact');
+Route::post('/contact', [WebContactController::class, 'store'])
+    ->middleware('throttle:20,1')
+    ->name('contact.store');
 
 Route::get(
-    '/blog',
-    fn() => view('web.blog.index')
-)->name('blog');
+    '/faq',
+    fn () => view('web.faq.index')
+)->name('faq');
+
+Route::get(
+    '/waiver-of-liability-host',
+    fn () => view('web.legal.waiver-host')
+)->name('legal.waiver-host');
+
+Route::get(
+    '/waiver-of-liability-user',
+    fn () => view('web.legal.waiver-user')
+)->name('legal.waiver-user');
+
+Route::get(
+    '/cancellation-policy',
+    fn () => view('web.legal.cancellation-policy')
+)->name('legal.cancellation-policy');
 
 Route::get(
     '/book-now',
-    fn() => view('web.book-now.index')
+    fn () => view('web.book-now.index')
 )->name('book-now');
 
 Route::get(
     '/cart',
-    fn() => view('web.cart.index')
+    fn () => view('web.cart.index')
 )->name('cart');
-
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::middleware(['role:'.UserRole::Subscriber->value])
+        ->post('account/gym-bookings/{booking}/cancel', [SubscriberGymBookingController::class, 'cancel'])
+        ->name('subscriber.gym-bookings.cancel');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -245,9 +369,15 @@ Route::middleware('auth')->group(function (): void {
                 ->middleware('throttle:60,1')
                 ->name('coupons.generate-code');
             Route::resource('coupons', CouponController::class)->except(['show']);
+            Route::patch('coupons/{coupon}/toggle-active', [CouponController::class, 'toggleActive'])
+                ->name('coupons.toggle-active');
 
             Route::get('gym-bookings', [GymBookingController::class, 'index'])
                 ->name('gym-bookings.index');
+            Route::get('notifications', [AdminNotificationController::class, 'index'])
+                ->name('notifications.index');
+            Route::delete('notifications/{notification}', [AdminNotificationController::class, 'destroy'])
+                ->name('notifications.destroy');
 
             Route::get('media/picker-images', [MediaLibraryController::class, 'pickerImages'])
                 ->middleware('throttle:60,1')
@@ -270,5 +400,7 @@ Route::middleware('auth')->group(function (): void {
                 ->name('host-applications.show');
             Route::post('host-applications/{host_application}/approve', [AdminHostApplicationController::class, 'approve'])
                 ->name('host-applications.approve');
+            Route::post('host-applications/{host_application}/reject', [AdminHostApplicationController::class, 'reject'])
+                ->name('host-applications.reject');
         });
 });

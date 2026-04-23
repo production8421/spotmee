@@ -4,30 +4,22 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use RuntimeException;
 
 class Coupon extends Model
 {
-    public const TYPE_PERCENT = 'percent';
-
-    public const TYPE_FIXED = 'fixed';
-
-    /** Discount applies to the full gym slot booking total. */
+    /** Discount applies to the full gym slot booking total (slots + trainer add-on). */
     public const APPLIES_FULL_BOOKING = 'full_booking';
-
-    /** Discount applies only to personal trainer add-on fees (requires PT on the booking). */
-    public const APPLIES_PERSONAL_TRAINING = 'personal_training';
 
     protected $fillable = [
         'code',
         'description',
-        'discount_type',
-        'discount_value',
+        'valid_sessions',
+        'percent_discount_enabled',
+        'percent_discount',
         'applies_to',
-        'max_redemptions',
         'times_used',
-        'starts_at',
-        'ends_at',
         'is_active',
     ];
 
@@ -37,11 +29,10 @@ class Coupon extends Model
     protected function casts(): array
     {
         return [
-            'discount_value' => 'decimal:2',
-            'max_redemptions' => 'integer',
+            'valid_sessions' => 'integer',
+            'percent_discount_enabled' => 'boolean',
+            'percent_discount' => 'decimal:2',
             'times_used' => 'integer',
-            'starts_at' => 'datetime',
-            'ends_at' => 'datetime',
             'is_active' => 'boolean',
         ];
     }
@@ -79,11 +70,6 @@ class Coupon extends Model
         throw new RuntimeException('Unable to generate a unique coupon code.');
     }
 
-    public function appliesToPersonalTrainingOnly(): bool
-    {
-        return $this->applies_to === self::APPLIES_PERSONAL_TRAINING;
-    }
-
     /**
      * Hosts this coupon is limited to (empty = any host).
      *
@@ -102,6 +88,14 @@ class Coupon extends Model
     public function gymListings(): BelongsToMany
     {
         return $this->belongsToMany(GymListing::class, 'coupon_gym_listing')->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<GymBooking, $this>
+     */
+    public function gymBookings(): HasMany
+    {
+        return $this->hasMany(GymBooking::class);
     }
 
     /**

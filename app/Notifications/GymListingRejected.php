@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\GymListing;
+use App\Services\Mail\SiteEmailTemplateService;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -52,11 +53,36 @@ class GymListingRejected extends Notification
         $msg = is_string($listing->rejection_message) ? trim($listing->rejection_message) : '';
         $msg = $msg !== '' ? $msg : null;
 
-        $mail = (new MailMessage)
-            ->subject(__('[:app] Gym listing not approved: :name', [
+        $vars = [
+            'RECIPIENT_NAME' => $notifiable->name,
+            'GYM_NAME' => $listing->name,
+            'GYM_CITY' => (string) $listing->city,
+            'REJECTION_MESSAGE' => $msg ?? '—',
+            'HOST_EDIT_LISTING_URL' => url(route('host.gym-listings.edit', $listing, false)),
+        ];
+
+        $subject = SiteEmailTemplateService::resolvedSubject(
+            SiteEmailTemplateService::KEY_GYM_LISTING_REJECTED_HOST,
+            $vars,
+            __('[:app] Gym listing not approved: :name', [
                 'app' => config('app.name'),
                 'name' => $listing->name,
-            ]))
+            ])
+        );
+
+        $html = SiteEmailTemplateService::resolvedHtmlOrNull(
+            SiteEmailTemplateService::KEY_GYM_LISTING_REJECTED_HOST,
+            $vars
+        );
+
+        if ($html !== null) {
+            return (new MailMessage)
+                ->subject($subject)
+                ->view('mail.raw-custom-html', ['html' => $html]);
+        }
+
+        $mail = (new MailMessage)
+            ->subject($subject)
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
             ->line(__('An administrator did not approve your gym listing submission on :app at this time.', [
                 'app' => config('app.name'),

@@ -72,6 +72,7 @@
                                 <option value="">{{ __('All') }}</option>
                                 <option value="pending" @selected(($filters['status'] ?? '') === 'pending')>{{ __('Pending') }}</option>
                                 <option value="approved" @selected(($filters['status'] ?? '') === 'approved')>{{ __('Approved') }}</option>
+                                <option value="rejected" @selected(($filters['status'] ?? '') === 'rejected')>{{ __('Rejected') }}</option>
                             </select>
                         </div>
                         <div class="col-6 col-md-3 col-xl-2">
@@ -159,6 +160,8 @@
                                         <td>
                                             @if ($application->isApproved())
                                                 <span class="badge badge-light-success">{{ __('Approved') }}</span>
+                                            @elseif ($application->isRejected())
+                                                <span class="badge badge-light-danger">{{ __('Rejected') }}</span>
                                             @else
                                                 <span class="badge badge-light-warning">{{ __('Pending') }}</span>
                                             @endif
@@ -166,7 +169,7 @@
                                         <td>{{ $application->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</td>
                                         <td class="text-end text-nowrap">
                                             <a class="btn btn-primary btn-sm" href="{{ route('admin.host-applications.show', $application) }}">{{ __('View details') }}</a>
-                                            @if (! $application->isApproved())
+                                            @if ($application->isPending())
                                                 <form class="d-inline" method="post" action="{{ route('admin.host-applications.approve', $application) }}">
                                                     @csrf
                                                     <button class="btn btn-success btn-sm" type="submit">{{ __('Approve') }}</button>

@@ -2,13 +2,27 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\UserRole;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
 
 class StorePublicGymBookingRequest extends FormRequest
 {
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $email = trim((string) $this->input('guest_email', ''));
+        if ($email === '') {
+            $user = Auth::user();
+            if ($user instanceof User && $user->hasRole(UserRole::Subscriber->value)) {
+                $this->merge(['guest_email' => $user->email]);
+            }
+        }
     }
 
     /**
@@ -30,6 +44,7 @@ class StorePublicGymBookingRequest extends FormRequest
             'trainer_per_slot.*' => ['boolean'],
             'pt_addon' => ['nullable', 'string', 'in:none,paid,free_trial'],
             'pt_free_trial_slot' => ['nullable', 'string', 'max:32'],
+            'coupon_code' => ['nullable', 'string', 'max:64'],
             'accept_terms' => ['required', 'accepted'],
         ];
     }

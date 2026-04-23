@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ConfirmPublicGymBookingPaymentRequest;
+use App\Http\Requests\QuotePublicGymBookingRequest;
 use App\Http\Requests\StorePublicGymBookingRequest;
 use App\Models\ApplicationSetting;
 use App\Models\GymBooking;
@@ -28,6 +29,59 @@ class PublicGymBookingController extends Controller
         $to = Carbon::now()->addDays(60)->endOfDay();
 
         return response()->json($service->blockedIntervalsForListing($listing, $from, $to));
+    }
+
+    public function quote(
+        QuotePublicGymBookingRequest $request,
+        string $slug,
+        GymBookingCreationService $service
+    ): JsonResponse {
+        $listing = GymListing::query()
+            ->where('is_published', true)
+            ->where('slug', $slug)
+            ->firstOrFail();
+
+        try {
+            $q = $service->resolvePublicBookingQuote($listing, $request->validated());
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $slots = count($q['time_slots']);
+        $persons = max(1, (int) $q['number_of_persons']);
+        $base = (float) $q['base_price'];
+        $trainerFee = (float) $q['trainer_fee'];
+        $fullGymBase = (float) ($q['full_gym_base_before_coupon'] ?? $base);
+        $pricePerSlot = $slots > 0 && $persons > 0 ? round($fullGymBase / ($slots * $persons), 2) : 0.0;
+        $pricePerPerson = $persons > 0 ? round($fullGymBase / $persons, 2) : 0.0;
+        $couponAppliedSlots = (int) ($q['coupon_applied_slots'] ?? 0);
+        $paidSlots = max(0, $slots - $couponAppliedSlots);
+
+        return response()->json([
+            'success' => true,
+            'slots' => $slots,
+            'paid_slots' => $paidSlots,
+            'coupon_applied_slots' => $couponAppliedSlots,
+            'slot_duration' => (int) $q['slot_duration'],
+            'persons' => $persons,
+            'price_per_slot' => $pricePerSlot,
+            'price_per_person' => $pricePerPerson,
+            'base_price' => $base,
+            'trainer_fee' => $trainerFee,
+            'trainer_slot_count' => (int) $q['trainer_slot_count'],
+            'includes_trainer' => ((int) $q['trainer_slot_count']) > 0,
+            'pt_free_trial' => (bool) $q['pt_free_trial'],
+            'coupon_discount' => (float) $q['coupon_discount'],
+            'coupon_code' => $q['coupon_code'],
+            'full_gym_base_before_coupon' => $fullGymBase,
+            'gym_subtotal_before_coupon' => round($fullGymBase, 2),
+            'subtotal_before_coupon' => round($fullGymBase + $trainerFee, 2),
+            'total_price' => (float) $q['total_price'],
+        ]);
     }
 
     public function store(
@@ -57,6 +111,7 @@ class PublicGymBookingController extends Controller
             'message' => __('Your booking is confirmed.'),
             'confirmation_code' => $booking->confirmation_code,
             'booking_id' => $booking->id,
+            'cancel_booking_url' => $this->cancelBookingUrlForResponse($booking),
         ]);
     }
 
@@ -114,10 +169,12 @@ class PublicGymBookingController extends Controller
                 'amount' => $amountCents,
                 'currency' => 'usd',
                 'automatic_payment_methods' => ['enabled' => true],
-                'metadata' => [
+                'metadata' => array_filter([
                     'gym_listing_id' => (string) $listing->id,
                     'gym_slug' => $listing->slug,
-                ],
+                    'coupon_code' => $quote['coupon_code'] ?? null,
+                    'coupon_id' => isset($quote['coupon_id']) ? (string) $quote['coupon_id'] : null,
+                ]),
             ]);
         } catch (\Throwable $e) {
             return response()->json([
@@ -171,6 +228,7 @@ class PublicGymBookingController extends Controller
                 'message' => __('Your booking is confirmed.'),
                 'confirmation_code' => $existing->confirmation_code,
                 'booking_id' => $existing->id,
+                'cancel_booking_url' => $this->cancelBookingUrlForResponse($existing),
             ]);
         }
 
@@ -251,6 +309,16 @@ class PublicGymBookingController extends Controller
             'message' => __('Your booking is confirmed.'),
             'confirmation_code' => $booking->confirmation_code,
             'booking_id' => $booking->id,
+            'cancel_booking_url' => $this->cancelBookingUrlForResponse($booking),
         ]);
+    }
+
+    private function cancelBookingUrlForResponse(GymBooking $booking): string
+    {
+        if (! $booking->isCancellable()) {
+            return '';
+        }
+
+        return $booking->signedCancelUrl();
     }
 }

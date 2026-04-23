@@ -38,7 +38,7 @@
                     <p class="text-muted small mb-0 mt-1">{{ __('Choose logos from the media library for the dashboard header, sidebar, login page, and footer.') }}</p>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('admin.settings.update') }}" novalidate>
+                    <form id="admin-settings-form" method="POST" action="{{ route('admin.settings.update') }}" novalidate>
                         @csrf
                         @method('PUT')
 
@@ -236,6 +236,160 @@
                                 @enderror
                             </div>
                         </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="mb-2">{{ __('SMTP (outgoing mail)') }}</h6>
+                        <p class="text-muted small mb-3">
+                            {{ __('When enabled, the application sends mail (notifications, contact form, etc.) through this SMTP server instead of the values in your .env file.') }}
+                        </p>
+
+                        <div class="form-check mb-3">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="smtp_enabled"
+                                id="smtp_enabled"
+                                value="1"
+                                {{ old('smtp_enabled', $settings->smtp_enabled ? '1' : '') === '1' ? 'checked' : '' }}
+                            >
+                            <label class="form-check-label fw-semibold" for="smtp_enabled">{{ __('Use custom SMTP from these settings') }}</label>
+                        </div>
+                        @error('smtp_enabled')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-8">
+                                <label class="form-label" for="smtp_host">{{ __('SMTP host') }}</label>
+                                <input
+                                    id="smtp_host"
+                                    type="text"
+                                    name="smtp_host"
+                                    value="{{ old('smtp_host', $settings->smtp_host) }}"
+                                    class="form-control @error('smtp_host') is-invalid @enderror"
+                                    autocomplete="off"
+                                    placeholder="smtp.example.com"
+                                >
+                                @error('smtp_host')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label" for="smtp_port">{{ __('Port') }}</label>
+                                <input
+                                    id="smtp_port"
+                                    type="number"
+                                    name="smtp_port"
+                                    value="{{ old('smtp_port', $settings->smtp_port ?: 587) }}"
+                                    class="form-control @error('smtp_port') is-invalid @enderror"
+                                    min="1"
+                                    max="65535"
+                                >
+                                @error('smtp_port')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label" for="smtp_encryption">{{ __('Encryption') }}</label>
+                            @php
+                                $smtpEnc = old('smtp_encryption', $settings->smtp_encryption ?: 'tls');
+                            @endphp
+                            <select name="smtp_encryption" id="smtp_encryption" class="form-select @error('smtp_encryption') is-invalid @enderror">
+                                <option value="tls" {{ $smtpEnc === 'tls' ? 'selected' : '' }}>{{ __('TLS (STARTTLS — common on port 587)') }}</option>
+                                <option value="ssl" {{ $smtpEnc === 'ssl' ? 'selected' : '' }}>{{ __('SSL (implicit TLS — common on port 465)') }}</option>
+                                <option value="none" {{ $smtpEnc === 'none' ? 'selected' : '' }}>{{ __('None') }}</option>
+                            </select>
+                            @error('smtp_encryption')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="row g-3 mb-2">
+                            <div class="col-md-6">
+                                <label class="form-label" for="smtp_username">{{ __('Username') }}</label>
+                                <input
+                                    id="smtp_username"
+                                    type="text"
+                                    name="smtp_username"
+                                    value="{{ old('smtp_username', $settings->smtp_username) }}"
+                                    class="form-control @error('smtp_username') is-invalid @enderror"
+                                    autocomplete="username"
+                                >
+                                @error('smtp_username')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smtp_password">{{ __('Password') }}</label>
+                                <input
+                                    id="smtp_password"
+                                    type="password"
+                                    name="smtp_password"
+                                    value=""
+                                    class="form-control @error('smtp_password') is-invalid @enderror"
+                                    autocomplete="new-password"
+                                    placeholder="{{ filled($settings->smtp_password) ? __('Leave blank to keep current password') : '' }}"
+                                >
+                                @error('smtp_password')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label" for="smtp_from_address">{{ __('From email address') }}</label>
+                                <input
+                                    id="smtp_from_address"
+                                    type="email"
+                                    name="smtp_from_address"
+                                    value="{{ old('smtp_from_address', $settings->smtp_from_address) }}"
+                                    class="form-control @error('smtp_from_address') is-invalid @enderror"
+                                >
+                                @error('smtp_from_address')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label" for="smtp_from_name">{{ __('From name') }}</label>
+                                <input
+                                    id="smtp_from_name"
+                                    type="text"
+                                    name="smtp_from_name"
+                                    value="{{ old('smtp_from_name', $settings->smtp_from_name) }}"
+                                    class="form-control @error('smtp_from_name') is-invalid @enderror"
+                                >
+                                @error('smtp_from_name')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="mb-2">{{ __('Host registration') }}</h6>
+                        <p class="text-muted small mb-3">
+                            {{ __('When enabled, new “Become a Host” applications skip manual approval: a host account is created immediately, login details are emailed to the applicant, and administrators receive a dashboard notification.') }}
+                        </p>
+                        <div class="form-check mb-0">
+                            <input
+                                class="form-check-input"
+                                type="checkbox"
+                                name="host_registration_auto_approve"
+                                id="host_registration_auto_approve"
+                                value="1"
+                                {{ old('host_registration_auto_approve', $settings->host_registration_auto_approve ? '1' : '') === '1' ? 'checked' : '' }}
+                            >
+                            <label class="form-check-label fw-semibold" for="host_registration_auto_approve">{{ __('Automatically approve host registrations (no admin review)') }}</label>
+                        </div>
+                        @error('host_registration_auto_approve')
+                            <div class="invalid-feedback d-block">{{ $message }}</div>
+                        @enderror
+
+                        @include('admin.settings.partials.notification-email-templates', ['settings' => $settings])
 
                         <div class="d-flex gap-2">
                             <button class="btn btn-primary" type="submit">{{ __('Save settings') }}</button>

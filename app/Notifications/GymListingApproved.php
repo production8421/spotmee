@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\GymListing;
+use App\Services\Mail\SiteEmailTemplateService;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -38,11 +39,35 @@ class GymListingApproved extends Notification
     {
         $listing = $this->listing->fresh() ?? $this->listing;
 
-        return (new MailMessage)
-            ->subject(__('[:app] Your gym listing was approved: :name', [
+        $vars = [
+            'RECIPIENT_NAME' => $notifiable->name,
+            'GYM_NAME' => $listing->name,
+            'GYM_CITY' => (string) $listing->city,
+            'HOST_LISTING_URL' => url(route('host.gym-listings.show', $listing, false)),
+        ];
+
+        $subject = SiteEmailTemplateService::resolvedSubject(
+            SiteEmailTemplateService::KEY_GYM_LISTING_APPROVED_HOST,
+            $vars,
+            __('[:app] Your gym listing was approved: :name', [
                 'app' => config('app.name'),
                 'name' => $listing->name,
-            ]))
+            ])
+        );
+
+        $html = SiteEmailTemplateService::resolvedHtmlOrNull(
+            SiteEmailTemplateService::KEY_GYM_LISTING_APPROVED_HOST,
+            $vars
+        );
+
+        if ($html !== null) {
+            return (new MailMessage)
+                ->subject($subject)
+                ->view('mail.raw-custom-html', ['html' => $html]);
+        }
+
+        return (new MailMessage)
+            ->subject($subject)
             ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
             ->line(__('Great news — an administrator has approved and published your gym listing on :app.', [
                 'app' => config('app.name'),

@@ -1,288 +1,603 @@
-/* Booking Form Styles */
-.ryj-booking-form-container {
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 20px;
+/* =============================================================================
+ * Spotmee · Gym booking form (React / Ant Design)
+ * Uses global design tokens defined in resources/css/app.css
+ *   --color-primary, --color-primary-hover, --color-brand-50/100/200/500,
+ *   --color-ink-100/300/500/700/900, --font-sans, --shadow-sm/md/lg
+ * -----------------------------------------------------------------------------
+ * Only visual/presentation tweaks — no selector names were removed so the React
+ * component's JSX class hooks keep working. Functionality is untouched.
+ * ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+ * Container / mount node
+ * --------------------------------------------------------------------------- */
+.spotmee-gym-booking-react-root {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0;
+    font-family: var(--font-sans, 'Plus Jakarta Sans', system-ui, sans-serif);
 }
 
+.ryj-booking-form-container {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+/* When rendered inside the modal, drop the outer card shadow and tighten spacing
+ * because the modal already provides its own container. */
 .ryj-booking-card {
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+    border-radius: 20px;
+    border: 1px solid var(--color-brand-100, #d9ecf0);
+    box-shadow: var(--shadow-sm, 0 4px 16px rgba(0, 109, 119, 0.06));
+    overflow: hidden;
+    background: #ffffff;
 }
 
 .ryj-booking-card .ant-card-body {
-  padding: 30px;
+    padding: 28px;
 }
 
+/* -----------------------------------------------------------------------------
+ * Header (hidden inside the modal since the modal owns the header, but kept
+ * styled so it looks clean when the form is rendered elsewhere)
+ * --------------------------------------------------------------------------- */
 .ryj-booking-header {
-  text-align: center;
-  margin-bottom: 30px;
+    text-align: center;
+    margin-bottom: 24px;
 }
 
 .ryj-booking-header h2 {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #333333;
-  margin: 0 0 8px 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-ink-900, #0a1f23);
+    margin: 0 0 6px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    letter-spacing: -0.01em;
 }
 
 .ryj-booking-header h2 .anticon {
-  color: #4682B4;
+    color: var(--color-primary, #006d77);
+    font-size: 1.25rem;
 }
 
 .ryj-booking-header p {
-  font-size: 1rem;
-  color: #666666;
-  margin: 0;
+    font-size: 0.95rem;
+    color: var(--color-ink-500, #5a7278);
+    margin: 0;
 }
 
+/* When rendered inside the modal, hide the inline header (modal already shows it) */
+#spotmee-booking-modal .ryj-booking-header {
+    display: none;
+}
+#spotmee-booking-modal .ryj-booking-card {
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+}
+#spotmee-booking-modal .ryj-booking-card .ant-card-body {
+    padding: 4px 0 0;
+}
+
+/* -----------------------------------------------------------------------------
+ * Steps
+ * --------------------------------------------------------------------------- */
+.ryj-booking-form-container .ant-steps {
+    margin-bottom: 24px;
+}
+
+.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-icon,
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon {
+    background-color: var(--color-primary, #006d77);
+    border-color: var(--color-primary, #006d77);
+}
+
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon {
+    color: #ffffff;
+}
+
+.ryj-booking-form-container .ant-steps-item-title {
+    font-weight: 600;
+}
+
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-title::after {
+    background-color: var(--color-brand-200, #83c5be);
+}
+
+/* -----------------------------------------------------------------------------
+ * Grouped form "sections"
+ * --------------------------------------------------------------------------- */
 .ryj-form-section {
-  background: #f5f8fa;
-  padding: 20px;
-  border-radius: 12px;
-  margin: 20px 0;
+    background: color-mix(in srgb, var(--color-brand-50, #edf6f9) 55%, #ffffff);
+    padding: 20px;
+    border-radius: 16px;
+    margin: 18px 0;
+    border: 1px solid var(--color-brand-100, #d9ecf0);
 }
 
 .ryj-form-section h3 {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #333333;
-  margin: 0 0 16px 0;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #e0e6ed;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-ink-900, #0a1f23);
+    margin: 0 0 14px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--color-brand-100, #d9ecf0);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    letter-spacing: -0.01em;
 }
 
+.ryj-form-section h3 .anticon {
+    color: var(--color-primary, #006d77);
+}
+
+/* -----------------------------------------------------------------------------
+ * Coupon row
+ * --------------------------------------------------------------------------- */
+.ryj-coupon-section {
+    margin-bottom: 8px;
+}
+
+.ryj-coupon-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.ryj-coupon-input-wrap {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.ryj-coupon-row .ant-form-item {
+    margin-bottom: 0;
+}
+
+.ryj-coupon-apply-btn {
+    flex: 0 0 auto;
+    height: 44px;
+    padding-inline: 18px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid var(--color-brand-200, #83c5be);
+    background: #ffffff;
+    color: var(--color-primary, #006d77);
+    transition: all 0.2s ease;
+}
+
+.ryj-coupon-apply-btn:hover,
+.ryj-coupon-apply-btn:focus {
+    border-color: var(--color-primary, #006d77) !important;
+    color: #ffffff !important;
+    background: var(--color-primary, #006d77) !important;
+    box-shadow: var(--shadow-sm);
+}
+
+/* -----------------------------------------------------------------------------
+ * Submit button (gradient primary)
+ * --------------------------------------------------------------------------- */
 .ryj-submit-btn {
-  height: 50px;
-  font-size: 1rem;
-  font-weight: 600;
-  background: linear-gradient(135deg, #4682B4 0%, #36648B 100%);
-  border: none;
-  margin-top: 10px;
+    height: 52px;
+    font-size: 1rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--color-primary, #006d77) 0%, var(--color-brand-500, #1a8d95) 100%);
+    border: none;
+    border-radius: 14px;
+    margin-top: 8px;
+    letter-spacing: 0.01em;
+    box-shadow: 0 6px 16px rgba(0, 109, 119, 0.28);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .ryj-submit-btn:hover {
-  background: linear-gradient(135deg, #36648B 0%, #27496d 100%);
+    background: linear-gradient(135deg, var(--color-primary-hover, #005962) 0%, var(--color-primary, #006d77) 100%) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(0, 109, 119, 0.34);
 }
 
-/* Success State */
+.ryj-submit-btn:active {
+    transform: translateY(0);
+}
+
+/* -----------------------------------------------------------------------------
+ * Success view
+ * --------------------------------------------------------------------------- */
 .ryj-booking-success {
-  padding: 40px 20px;
+    padding: 40px 20px;
 }
 
 .ryj-booking-success .ant-result-title {
-  color: #4682B4;
-  font-weight: 700;
+    color: var(--color-primary, #006d77);
+    font-weight: 800;
+    letter-spacing: -0.01em;
 }
 
 .ryj-confirmation-code {
-  display: inline-block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #4682B4;
-  background: #e8f4fc;
-  padding: 12px 24px;
-  border-radius: 8px;
-  letter-spacing: 2px;
-  margin-top: 10px;
+    display: inline-block;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--color-primary, #006d77);
+    background: var(--color-brand-50, #edf6f9);
+    border: 1.5px dashed var(--color-brand-200, #83c5be);
+    padding: 10px 22px;
+    border-radius: 12px;
+    letter-spacing: 3px;
+    margin-top: 10px;
 }
 
-/* Form Item Overrides */
+/* -----------------------------------------------------------------------------
+ * Form fields (inputs, pickers)
+ * --------------------------------------------------------------------------- */
 .ryj-booking-form-container .ant-form-item-label > label {
-  font-weight: 500;
-  color: #333333;
+    font-weight: 600;
+    color: var(--color-ink-900, #0a1f23);
+    font-size: 14px;
+}
+
+.ryj-booking-form-container .ant-form-item-label > label .anticon {
+    color: var(--color-primary, #006d77);
+    margin-right: 4px;
+}
+
+.ryj-booking-form-container .ant-form-item-extra {
+    color: var(--color-ink-500, #5a7278);
+    font-size: 12px;
+    margin-top: 4px;
 }
 
 .ryj-booking-form-container .ant-input-lg,
-.ryj-booking-form-container .ant-picker-large {
-  border-radius: 8px;
+.ryj-booking-form-container .ant-input-number-lg,
+.ryj-booking-form-container .ant-picker-large,
+.ryj-booking-form-container .ant-select-lg .ant-select-selector,
+.ryj-booking-form-container .ant-input-affix-wrapper-lg {
+    border-radius: 10px !important;
+    border-color: var(--color-brand-100, #d9ecf0);
+    transition: all 0.2s ease;
+}
+
+.ryj-booking-form-container .ant-input-lg:hover,
+.ryj-booking-form-container .ant-input-number-lg:hover,
+.ryj-booking-form-container .ant-picker-large:hover,
+.ryj-booking-form-container .ant-select-lg:hover .ant-select-selector,
+.ryj-booking-form-container .ant-input-affix-wrapper-lg:hover {
+    border-color: var(--color-brand-200, #83c5be) !important;
 }
 
 .ryj-booking-form-container .ant-input-lg:focus,
-.ryj-booking-form-container .ant-picker-large:focus,
-.ryj-booking-form-container .ant-input-lg:hover,
-.ryj-booking-form-container .ant-picker-large:hover {
-  border-color: #4682B4;
+.ryj-booking-form-container .ant-input-number-focused,
+.ryj-booking-form-container .ant-picker-focused,
+.ryj-booking-form-container .ant-select-focused .ant-select-selector,
+.ryj-booking-form-container .ant-input-affix-wrapper-focused,
+.ryj-booking-form-container .ant-input-affix-wrapper-lg:focus {
+    border-color: var(--color-primary, #006d77) !important;
+    box-shadow: 0 0 0 3px rgba(0, 109, 119, 0.12) !important;
 }
 
-.ryj-booking-form-container .ant-input-affix-wrapper-lg {
-  border-radius: 8px;
-}
-
-.ryj-booking-form-container .ant-input-affix-wrapper-lg:focus,
-.ryj-booking-form-container .ant-input-affix-wrapper-lg:hover {
-  border-color: #4682B4;
-}
-
-/* Date Picker Calendar */
-.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner {
-  background: #4682B4;
+/* -----------------------------------------------------------------------------
+ * DatePicker / TimePicker popup — recolor selection highlights
+ * --------------------------------------------------------------------------- */
+.ant-picker-cell-in-view.ant-picker-cell-selected .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-range-start .ant-picker-cell-inner,
+.ant-picker-cell-in-view.ant-picker-cell-range-end .ant-picker-cell-inner {
+    background: var(--color-primary, #006d77) !important;
 }
 
 .ant-picker-cell-in-view.ant-picker-cell-today .ant-picker-cell-inner::before {
-  border-color: #4682B4;
+    border-color: var(--color-primary, #006d77) !important;
 }
 
-/* Time Picker */
-.ant-picker-time-panel-column
-  > li.ant-picker-time-panel-cell-selected
-  .ant-picker-time-panel-cell-inner {
-  background: #e8f4fc;
+.ant-picker-cell-in-view.ant-picker-cell-in-range::before {
+    background: var(--color-brand-50, #edf6f9);
 }
 
-/* Responsive */
-@media (max-width: 480px) {
-  .ryj-booking-form-container {
-    padding: 0px;
-  }
-
-  .ryj-booking-card .ant-card-body {
-    padding: 20px 15px;
-  }
-
-  .ryj-booking-header h2 {
-    font-size: 1.4rem;
-  }
-
-  .ryj-form-section {
-    padding: 15px;
-  }
+.ant-picker-header-view button:hover,
+.ant-picker-cell:hover:not(.ant-picker-cell-selected) .ant-picker-cell-inner {
+    color: var(--color-primary, #006d77);
 }
 
-/* Price Calculation Display */
+.ant-picker-time-panel-column > li.ant-picker-time-panel-cell-selected .ant-picker-time-panel-cell-inner {
+    background: var(--color-brand-50, #edf6f9);
+    color: var(--color-primary, #006d77);
+    font-weight: 700;
+}
+
+/* -----------------------------------------------------------------------------
+ * Multi-select tags (time slot chips)
+ * --------------------------------------------------------------------------- */
+.ryj-booking-form-container .ant-select-selection-item {
+    background: var(--color-brand-50, #edf6f9);
+    border: 1px solid var(--color-brand-200, #83c5be);
+    color: var(--color-primary, #006d77);
+    font-weight: 600;
+    border-radius: 999px;
+    padding-inline: 10px;
+}
+
+.ryj-booking-form-container .ant-select-selection-item-remove {
+    color: var(--color-primary, #006d77) !important;
+}
+
+/* Dropdown highlight */
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background: var(--color-brand-50, #edf6f9) !important;
+    color: var(--color-primary, #006d77) !important;
+    font-weight: 600;
+}
+
+/* -----------------------------------------------------------------------------
+ * Radio groups (duration type, PT add-on type)
+ * --------------------------------------------------------------------------- */
+.ryj-booking-form-container .ant-radio-button-wrapper {
+    border-radius: 999px !important;
+    padding: 0 18px;
+    height: 40px;
+    line-height: 38px;
+    border: 1px solid var(--color-brand-100, #d9ecf0);
+    color: var(--color-ink-700, #2b4146);
+    font-weight: 600;
+    background: #ffffff;
+    margin-right: 8px;
+    transition: all 0.2s ease;
+}
+
+.ryj-booking-form-container .ant-radio-button-wrapper::before {
+    display: none !important;
+}
+
+.ryj-booking-form-container .ant-radio-button-wrapper:hover {
+    color: var(--color-primary, #006d77);
+    border-color: var(--color-brand-200, #83c5be);
+}
+
+.ryj-booking-form-container .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+    background: var(--color-primary, #006d77) !important;
+    border-color: var(--color-primary, #006d77) !important;
+    color: #ffffff !important;
+    box-shadow: var(--shadow-sm);
+}
+
+/* Standard radios (PT add-on paid/free_trial, per-slot free trial) */
+.ryj-booking-form-container .ant-radio-inner {
+    border-color: var(--color-brand-200, #83c5be);
+}
+.ryj-booking-form-container .ant-radio-checked .ant-radio-inner {
+    border-color: var(--color-primary, #006d77);
+    background-color: var(--color-primary, #006d77);
+}
+
+/* Checkbox */
+.ryj-booking-form-container .ant-checkbox-inner {
+    border-radius: 5px;
+    border-color: var(--color-brand-200, #83c5be);
+}
+.ryj-booking-form-container .ant-checkbox-checked .ant-checkbox-inner {
+    background-color: var(--color-primary, #006d77);
+    border-color: var(--color-primary, #006d77);
+}
+.ryj-booking-form-container .ant-checkbox-wrapper:hover .ant-checkbox-inner,
+.ryj-booking-form-container .ant-checkbox:hover .ant-checkbox-inner {
+    border-color: var(--color-primary, #006d77);
+}
+
+/* -----------------------------------------------------------------------------
+ * Alerts
+ * --------------------------------------------------------------------------- */
+.ryj-booking-form-container .ant-alert {
+    border-radius: 12px;
+    border: 1px solid transparent;
+    padding: 12px 16px;
+}
+
+.ryj-booking-form-container .ant-alert-success {
+    background: color-mix(in srgb, var(--color-brand-50, #edf6f9) 60%, #ffffff);
+    border-color: var(--color-brand-200, #83c5be);
+}
+.ryj-booking-form-container .ant-alert-success .ant-alert-icon {
+    color: var(--color-primary, #006d77);
+}
+
+.ryj-booking-form-container .ant-alert-info {
+    background: color-mix(in srgb, var(--color-brand-50, #edf6f9) 60%, #ffffff);
+    border-color: var(--color-brand-100, #d9ecf0);
+}
+.ryj-booking-form-container .ant-alert-info .ant-alert-icon {
+    color: var(--color-primary, #006d77);
+}
+
+/* -----------------------------------------------------------------------------
+ * Price calculation card
+ * --------------------------------------------------------------------------- */
 .ryj-price-calculation {
-  background: linear-gradient(135deg, #e8f4fc 0%, #dceef8 100%);
-  border: 2px solid #4682B4;
-  border-radius: 12px;
-  padding: 20px;
-  margin: 20px 0;
+    background: linear-gradient(135deg, var(--color-brand-50, #edf6f9) 0%, #ffffff 100%);
+    border: 1.5px solid var(--color-brand-200, #83c5be);
+    border-radius: 16px;
+    padding: 20px 22px;
+    margin: 22px 0;
+    box-shadow: var(--shadow-sm, 0 4px 16px rgba(0, 109, 119, 0.06));
 }
 
 .ryj-price-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
 }
 
 .ryj-price-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px dashed #b8d4e8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px dashed var(--color-brand-200, #83c5be);
+    gap: 12px;
 }
 
 .ryj-price-row:last-child {
-  border-bottom: none;
+    border-bottom: none;
 }
 
 .ryj-price-row .ryj-price-label {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333333;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-ink-700, #2b4146);
 }
 
 .ryj-price-row .ryj-price-value {
-  font-size: 14px;
-  font-weight: 600;
-  color: #333333;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-ink-900, #0a1f23);
+    text-align: right;
 }
 
 .ryj-price-row.ryj-price-total {
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 2px solid #4682B4;
-  border-bottom: none;
+    margin-top: 10px;
+    padding-top: 14px;
+    border-top: 2px solid var(--color-primary, #006d77);
+    border-bottom: none;
 }
 
 .ryj-price-row.ryj-price-total .ryj-price-label {
-  font-size: 16px;
-  font-weight: 700;
-  color: #4682B4;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--color-primary, #006d77);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .ryj-price-row.ryj-price-total .ryj-price-value {
-  font-size: 24px;
-  font-weight: 800;
-  color: #4682B4;
-}
-.ryj-cta-section h3 {
-  COLOR: #FFF ! IMPORTANT;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--color-primary, #006d77);
+    letter-spacing: -0.02em;
 }
 
-/* Stripe Payment Element Styles */
+/* -----------------------------------------------------------------------------
+ * Trainer add-on block
+ * --------------------------------------------------------------------------- */
+.ryj-trainer-section {
+    background: color-mix(in srgb, var(--color-brand-50, #edf6f9) 40%, #ffffff) !important;
+    border: 1px solid var(--color-brand-100, #d9ecf0) !important;
+    border-radius: 14px !important;
+    padding: 18px !important;
+}
+
+/* -----------------------------------------------------------------------------
+ * Stripe Payment Element
+ * --------------------------------------------------------------------------- */
 #stripe-payment-element {
-  padding: 0;
-  margin-bottom: 12px;
+    padding: 0;
+    margin-bottom: 12px;
 }
 
 #stripe-payment-element .StripeElement {
-  padding: 12px;
-  border: 1px solid #d9d9d9;
-  border-radius: 8px;
-  background-color: #fff;
-  transition: border-color 0.3s ease;
+    padding: 14px;
+    border: 1px solid var(--color-brand-100, #d9ecf0);
+    border-radius: 12px;
+    background-color: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 #stripe-payment-element .StripeElement--focus {
-  border-color: #4682B4;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(70, 130, 180, 0.2);
+    border-color: var(--color-primary, #006d77);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 109, 119, 0.14);
 }
 
 #stripe-payment-errors {
-  color: #fa755a;
-  font-size: 14px;
-  margin-top: 8px;
-  min-height: 20px;
-  font-weight: 500;
+    color: #e11d48;
+    font-size: 13px;
+    margin-top: 6px;
+    min-height: 20px;
+    font-weight: 600;
 }
 
-/* Ensure Stripe Elements are visible */
 #stripe-payment-element iframe {
-  min-height: 200px;
+    min-height: 200px;
 }
 
-/* Steps Component */
-.ryj-booking-form-container .ant-steps {
-  margin-bottom: 30px;
-}
-
-.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-icon {
-  background-color: #4682B4;
-  border-color: #4682B4;
-}
-
-.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon {
-  background-color: #4682B4;
-  border-color: #4682B4;
-}
-
-/* Payment Section */
+/* -----------------------------------------------------------------------------
+ * Payment section wrapper
+ * --------------------------------------------------------------------------- */
 .ryj-payment-section {
-  background: #f9fafb;
-  padding: 20px;
-  border-radius: 12px;
-  margin: 20px 0;
-  border: 2px solid #e5e7eb;
+    background: color-mix(in srgb, var(--color-brand-50, #edf6f9) 35%, #ffffff);
+    padding: 22px;
+    border-radius: 16px;
+    margin: 20px 0;
+    border: 1px solid var(--color-brand-100, #d9ecf0);
 }
 
 .ryj-payment-section h3 {
-  color: #4682B4;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+    color: var(--color-primary, #006d77);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
 }
 
-/* Laravel mount node (gym main page) */
-.spotmee-gym-booking-react-root {
-  max-width: 780px;
-  margin: 0 auto;
-  padding: 1.25rem 0 2rem;
+/* Override odd legacy rule that forced CTA headings white (harmless — scoped) */
+.ryj-cta-section h3 { color: #ffffff !important; }
+
+/* -----------------------------------------------------------------------------
+ * Antd Button (primary) inside the form should align with the gradient button
+ * --------------------------------------------------------------------------- */
+.ryj-booking-form-container .ant-btn-primary:not(.ryj-submit-btn) {
+    background: var(--color-primary, #006d77);
+    border-color: var(--color-primary, #006d77);
+    border-radius: 10px;
+    font-weight: 600;
+}
+.ryj-booking-form-container .ant-btn-primary:not(.ryj-submit-btn):hover {
+    background: var(--color-primary-hover, #005962) !important;
+    border-color: var(--color-primary-hover, #005962) !important;
+}
+
+/* Secondary / default buttons (e.g., Back button in step 1) */
+.ryj-booking-form-container .ant-btn-default {
+    border-radius: 10px;
+    border-color: var(--color-brand-200, #83c5be);
+    color: var(--color-ink-700, #2b4146);
+    font-weight: 600;
+}
+.ryj-booking-form-container .ant-btn-default:hover {
+    color: var(--color-primary, #006d77) !important;
+    border-color: var(--color-primary, #006d77) !important;
+}
+
+/* -----------------------------------------------------------------------------
+ * Responsive
+ * --------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+    .ryj-booking-card .ant-card-body {
+        padding: 20px 16px;
+    }
+
+    .ryj-booking-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .ryj-form-section {
+        padding: 16px;
+    }
+
+    .ryj-coupon-row {
+        flex-direction: column;
+    }
+
+    .ryj-coupon-apply-btn {
+        width: 100%;
+    }
+
+    .ryj-price-calculation {
+        padding: 16px;
+    }
+
+    .ryj-price-row.ryj-price-total .ryj-price-value {
+        font-size: 20px;
+    }
 }

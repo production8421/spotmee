@@ -23,17 +23,23 @@ class StoreCouponRequest extends FormRequest
                 'code' => Coupon::normalizeCode((string) $this->input('code', '')),
             ]);
         }
-        if ($this->input('max_redemptions') === '' || $this->input('max_redemptions') === null) {
-            $this->merge(['max_redemptions' => null]);
-        }
-        foreach (['starts_at', 'ends_at'] as $key) {
-            if ($this->input($key) === '') {
-                $this->merge([$key => null]);
-            }
-        }
+        $percentOn = $this->has('percent_discount_enabled') && filter_var($this->input('percent_discount_enabled'), FILTER_VALIDATE_BOOLEAN);
         $this->merge([
             'is_active' => $this->has('is_active') && filter_var($this->input('is_active'), FILTER_VALIDATE_BOOLEAN),
+            'percent_discount_enabled' => $percentOn,
+            'valid_sessions' => max(1, min(100000, (int) $this->input('valid_sessions', 1))),
         ]);
+        if ($percentOn) {
+            $pd = $this->input('percent_discount');
+            $this->merge([
+                'percent_discount' => is_numeric($pd) ? round((float) $pd, 2) : null,
+            ]);
+        } else {
+            $this->merge([
+                'percent_discount' => null,
+                'percent_discount_enabled' => false,
+            ]);
+        }
 
         $hostIds = $this->input('host_ids');
         if ($hostIds === null || $hostIds === '') {
@@ -61,16 +67,21 @@ class StoreCouponRequest extends FormRequest
         return [
             'code' => ['required', 'string', 'max:64', 'regex:/^[A-Z0-9_-]+$/', Rule::unique('coupons', 'code')],
             'description' => ['nullable', 'string', 'max:500'],
-            'discount_type' => ['required', 'string', Rule::in([Coupon::TYPE_PERCENT, Coupon::TYPE_FIXED])],
-            'discount_value' => ['required', 'numeric', 'min:0.01'],
-            'applies_to' => [
-                'required',
-                'string',
-                Rule::in([Coupon::APPLIES_FULL_BOOKING, Coupon::APPLIES_PERSONAL_TRAINING]),
+            'percent_discount_enabled' => ['boolean'],
+            'percent_discount' => [
+                'nullable',
+                'numeric',
+                'min:0.01',
+                'max:100',
+                Rule::requiredIf(fn () => $this->boolean('percent_discount_enabled')),
             ],
-            'max_redemptions' => ['nullable', 'integer', 'min:1'],
-            'starts_at' => ['nullable', 'date'],
-            'ends_at' => ['nullable', 'date', 'after_or_equal:starts_at'],
+            'valid_sessions' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100000',
+                Rule::requiredIf(fn () => ! $this->boolean('percent_discount_enabled')),
+            ],
             'is_active' => ['boolean'],
             'host_ids' => ['nullable', 'array'],
             'host_ids.*' => ['integer', 'distinct', 'exists:users,id'],
@@ -84,11 +95,6 @@ class StoreCouponRequest extends FormRequest
         $validator->after(function (Validator $v): void {
             if ($v->errors()->isNotEmpty()) {
                 return;
-            }
-            $type = $this->input('discount_type');
-            $val = (float) $this->input('discount_value');
-            if ($type === Coupon::TYPE_PERCENT && $val > 100) {
-                $v->errors()->add('discount_value', __('Percent discount cannot exceed 100.'));
             }
 
             foreach ($this->input('host_ids', []) as $hostId) {

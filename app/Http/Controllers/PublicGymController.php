@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\UserRole;
 use App\Models\ApplicationSetting;
 use App\Models\GymListing;
+use App\Models\User;
 use App\Support\RyjGymSchedule;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Auth;
 
 class PublicGymController extends Controller
 {
@@ -41,6 +44,7 @@ class PublicGymController extends Controller
         $bookingBootstrap = [
             'gymTitle' => $listing->name,
             'blockedUrl' => route('gym.bookings.blocked', ['slug' => $listing->slug]),
+            'quoteUrl' => route('gym.bookings.quote', ['slug' => $listing->slug]),
             'storeUrl' => route('gym.bookings.store', ['slug' => $listing->slug]),
             'paymentIntentUrl' => $stripeReady ? route('gym.bookings.payment-intent', ['slug' => $listing->slug]) : '',
             'confirmPaymentUrl' => $stripeReady ? route('gym.bookings.confirm-payment', ['slug' => $listing->slug]) : '',
@@ -59,6 +63,8 @@ class PublicGymController extends Controller
             'privacyUrl' => (string) ($settings->legal_booking_privacy_url ?? ''),
             'listingPersonLimit' => $listing->person_limit !== null ? (int) $listing->person_limit : null,
             'ptIconUrl' => asset('images/ryj/personal-training.svg'),
+            'isSubscriber' => Auth::user() instanceof User && Auth::user()->hasRole(UserRole::Subscriber->value),
+            'userEmail' => Auth::user() instanceof User ? (string) Auth::user()->email : '',
         ];
 
         return view('web.find-a-gym.gym-main-page', [

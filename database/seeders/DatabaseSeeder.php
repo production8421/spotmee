@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Administrator',
                 'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ],
         );
         $admin->syncRoles([UserRole::Administrator->value]);
@@ -33,6 +34,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Host User',
                 'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ],
         );
         $host->syncRoles([UserRole::Host->value]);
@@ -42,6 +44,7 @@ class DatabaseSeeder extends Seeder
             [
                 'name' => 'Subscriber User',
                 'password' => Hash::make('password'),
+                'email_verified_at' => now(),
             ],
         );
         $subscriber->syncRoles([UserRole::Subscriber->value]);

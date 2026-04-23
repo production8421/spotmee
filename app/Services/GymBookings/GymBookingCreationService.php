@@ -4,13 +4,17 @@ namespace App\Services\GymBookings;
 
 use App\Enums\UserRole;
 use App\Mail\GymBookingCreatedForAdminMail;
+use App\Mail\GymBookingCreatedForGuestMail;
 use App\Mail\GymBookingCreatedForHostMail;
 use App\Models\ApplicationSetting;
+use App\Models\Coupon;
 use App\Models\GymBooking;
 use App\Models\GymListing;
 use App\Models\User;
+use App\Services\GymListing\BookingWebhookDispatcher;
 use App\Support\RyjGymSchedule;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +24,10 @@ use Illuminate\Validation\ValidationException;
 
 final class GymBookingCreationService
 {
+    public function __construct(
+        private readonly BookingWebhookDispatcher $bookingWebhooks,
+    ) {}
+
     /**
      * Validate booking payload and compute price (no database writes).
      *
@@ -38,6 +46,13 @@ final class GymBookingCreationService
      *   end_time: string,
      *   guest_email: string,
      *   guest_name: string,
+     *   base_price: float,
+     *   trainer_fee: float,
+     *   full_gym_base_before_coupon: float,
+     *   coupon_id: ?int,
+     *   coupon_code: ?string,
+     *   coupon_discount: float,
+     *   coupon_applied_slots: int,
      * }
      */
     public function resolvePublicBookingQuote(GymListing $listing, array $validated): array
@@ -59,6 +74,9 @@ final class GymBookingCreationService
         $numberOfPersons = max(1, (int) $validated['number_of_persons']);
         $this->assertCapacityAvailable($listing, $date, $timeSlots, $numberOfPersons);
 
+        $guestEmail = $this->effectiveGuestEmailForBooking($validated);
+        $guestName = trim((string) ($validated['guest_name'] ?? ''));
+
         $trainerPerSlot = [];
         if (is_array($validated['trainer_per_slot'] ?? null)) {
             foreach ($validated['trainer_per_slot'] as $k => $v) {
@@ -70,7 +88,12 @@ final class GymBookingCreationService
 
         $ptFreeTrial = $ptAddon === 'free_trial' && $ptFreeTrialSlot !== '' && $ptFreeTrialSlot !== null;
         if ($ptFreeTrial) {
-            $this->assertPtFreeTrialAllowed($listing, (string) $validated['guest_email'], $ptFreeTrialSlot, $timeSlots);
+            if ($guestEmail === '') {
+                throw ValidationException::withMessages([
+                    'guest_email' => __('Please enter your email to use a free personal training trial.'),
+                ]);
+            }
+            $this->assertPtFreeTrialAllowed($listing, $guestEmail, $ptFreeTrialSlot, $timeSlots);
         }
 
         $trainerPerSlotFiltered = $this->filterTrainerSelections(
@@ -90,16 +113,14 @@ final class GymBookingCreationService
             throw ValidationException::withMessages(['pt_free_trial_slot' => __('Free trial applies to exactly one personal training slot.')]);
         }
 
-        $guestEmail = strtolower(trim((string) $validated['guest_email']));
-        $guestName = trim((string) $validated['guest_name']);
-
         $tier = $listing->hostTierKey();
         $settings = ApplicationSetting::instance();
         $rates = $settings->publicGuestTierRates($tier);
         $ptPrice = $settings->publicPtSlotCustomerPrice($listing->ptPricingTierKey());
 
-        $totalPrice = $this->computeTotalPrice(
-            count($timeSlots),
+        $slotCount = count($timeSlots);
+        $fullBreakdown = $this->computePriceBreakdown(
+            $slotCount,
             $slotDuration,
             $numberOfPersons,
             (float) ($rates['rate_40min'] ?? 0),
@@ -108,6 +129,81 @@ final class GymBookingCreationService
             $ptPrice,
             $ptFreeTrial && $trainerSlotCount > 0
         );
+        /** Gym slot revenue for all selected slots × persons (before any coupon). */
+        $fullGymBaseBeforeCoupon = $fullBreakdown['base'];
+        $base = $fullBreakdown['base'];
+        $trainerFee = $fullBreakdown['trainer_fee'];
+
+        $couponId = null;
+        $couponCodeApplied = null;
+        $couponDiscount = 0.0;
+        $couponAppliedSlots = 0;
+        $slotFreeSessionsCoupon = false;
+        $couponCodeRaw = trim((string) ($validated['coupon_code'] ?? ''));
+        if ($couponCodeRaw !== '') {
+            if ($guestEmail === '' && ! $this->isAuthenticatedSubscriber()) {
+                throw ValidationException::withMessages([
+                    'guest_email' => __('Enter your email address before applying this coupon.'),
+                ]);
+            }
+            $codeNorm = Coupon::normalizeCode($couponCodeRaw);
+            $coupon = Coupon::query()->where('code', $codeNorm)->first();
+            if ($coupon === null) {
+                throw ValidationException::withMessages(['coupon_code' => __('Invalid coupon code.')]);
+            }
+            $this->assertCouponValidForBooking(
+                $listing,
+                $coupon,
+                $fullBreakdown['base'],
+                $trainerFee
+            );
+
+            if ($coupon->percent_discount_enabled) {
+                $subtotal = round($fullBreakdown['base'] + $trainerFee, 2);
+                $pct = (float) ($coupon->percent_discount ?? 0);
+                $couponDiscount = round(min($subtotal, $subtotal * ($pct / 100)), 2);
+                $base = $fullBreakdown['base'];
+                $couponAppliedSlots = 0;
+                $couponId = $coupon->id;
+                $couponCodeApplied = $coupon->code;
+            } else {
+                $slotFreeSessionsCoupon = true;
+                $usedSlots = $this->sumCouponAppliedSlotsForIdentity(
+                    $coupon->id,
+                    $guestEmail,
+                    $this->authenticatedSubscriberUserId()
+                );
+                $remaining = (int) $coupon->valid_sessions - $usedSlots;
+                if ($remaining <= 0) {
+                    throw ValidationException::withMessages([
+                        'coupon_code' => __('This coupon has no remaining free slots for you.'),
+                    ]);
+                }
+
+                $freeSlotsThisBooking = min($remaining, $slotCount);
+                $paidSlots = $slotCount - $freeSlotsThisBooking;
+                $paidBreakdown = $this->computePriceBreakdown(
+                    $paidSlots,
+                    $slotDuration,
+                    $numberOfPersons,
+                    (float) ($rates['rate_40min'] ?? 0),
+                    (float) ($rates['rate_1hr'] ?? 0),
+                    $trainerSlotCount,
+                    $ptPrice,
+                    $ptFreeTrial && $trainerSlotCount > 0
+                );
+                $base = $paidBreakdown['base'];
+                $couponDiscount = round(max(0.0, $fullBreakdown['base'] - $paidBreakdown['base']), 2);
+                $couponAppliedSlots = $freeSlotsThisBooking;
+                $couponId = $coupon->id;
+                $couponCodeApplied = $coupon->code;
+            }
+        }
+
+        // Free-slot coupons: base_price is already the post-coupon gym charge; do not subtract coupon_discount again.
+        $totalPrice = $slotFreeSessionsCoupon
+            ? round(max(0.0, $base + $trainerFee), 2)
+            : round(max(0.0, $base + $trainerFee - $couponDiscount), 2);
 
         return [
             'date' => $date,
@@ -118,6 +214,13 @@ final class GymBookingCreationService
             'trainer_slot_count' => $trainerSlotCount,
             'pt_free_trial' => $ptFreeTrial,
             'pt_free_trial_slot' => $ptFreeTrial ? $ptFreeTrialSlot : null,
+            'base_price' => $base,
+            'trainer_fee' => $trainerFee,
+            'full_gym_base_before_coupon' => $fullGymBaseBeforeCoupon,
+            'coupon_id' => $couponId,
+            'coupon_code' => $couponCodeApplied,
+            'coupon_discount' => $couponDiscount,
+            'coupon_applied_slots' => $couponAppliedSlots,
             'total_price' => $totalPrice,
             'start_time' => $startTime,
             'end_time' => $endTime,
@@ -134,7 +237,7 @@ final class GymBookingCreationService
     {
         $q = $this->resolvePublicBookingQuote($listing, $validated);
 
-        return DB::transaction(function () use ($listing, $validated, $q, $stripePaymentIntentId) {
+        $result = DB::transaction(function () use ($listing, $validated, $q, $stripePaymentIntentId) {
             $guestEmail = $q['guest_email'];
             $guestName = $q['guest_name'];
             $date = $q['date'];
@@ -146,6 +249,31 @@ final class GymBookingCreationService
             $ptFreeTrial = $q['pt_free_trial'];
             $ptFreeTrialSlot = $q['pt_free_trial_slot'];
             $totalPrice = $q['total_price'];
+            $couponId = $q['coupon_id'] ?? null;
+            $couponDiscount = isset($q['coupon_discount']) ? (float) $q['coupon_discount'] : 0.0;
+            $couponAppliedSlots = (int) ($q['coupon_applied_slots'] ?? 0);
+
+            if ($couponId !== null) {
+                $couponRow = Coupon::query()->whereKey($couponId)->lockForUpdate()->first();
+                if ($couponRow === null || ! $couponRow->is_active) {
+                    throw ValidationException::withMessages([
+                        'coupon_code' => __('This coupon is no longer valid. Complete payment without it or try another code.'),
+                    ]);
+                }
+                if (! $couponRow->percent_discount_enabled && $couponAppliedSlots > 0) {
+                    $usedNow = $this->sumCouponAppliedSlotsForIdentity(
+                        (int) $couponRow->id,
+                        strtolower(trim($guestEmail)),
+                        $this->authenticatedSubscriberUserId()
+                    );
+                    $remainingNow = (int) $couponRow->valid_sessions - $usedNow;
+                    if ($couponAppliedSlots > $remainingNow) {
+                        throw ValidationException::withMessages([
+                            'coupon_code' => __('This coupon is no longer available for that many free slots. Refresh and try again.'),
+                        ]);
+                    }
+                }
+            }
 
             [$user, $temporaryPassword] = $this->resolveOrCreateGuestUser($guestEmail, $guestName);
 
@@ -175,9 +303,12 @@ final class GymBookingCreationService
                 'status' => 'confirmed',
                 'confirmation_code' => GymBooking::generateConfirmationCode(),
                 'stripe_payment_intent_id' => $stripePaymentIntentId,
+                'coupon_id' => $couponId,
+                'coupon_discount' => $couponDiscount > 0 ? round($couponDiscount, 2) : null,
+                'coupon_applied_slots' => $couponId !== null && $couponAppliedSlots > 0 ? $couponAppliedSlots : null,
             ]);
 
-            $this->sendNotifications($listing, $booking, $temporaryPassword !== null);
+            $this->sendNotifications($listing, $booking, $temporaryPassword);
 
             return [
                 'booking' => $booking,
@@ -185,6 +316,25 @@ final class GymBookingCreationService
                 'temporary_password' => $temporaryPassword,
             ];
         });
+
+        $booking = $result['booking'];
+        $booking->loadMissing('gymListing');
+        $listingForWebhook = $booking->gymListing ?? $listing;
+        if ($listingForWebhook instanceof GymListing) {
+            try {
+                $this->bookingWebhooks->dispatchBookingCompletedForBooking(
+                    $booking,
+                    $listingForWebhook,
+                );
+            } catch (\Throwable $e) {
+                Log::warning('booking_completed_webhook_failed', [
+                    'booking_id' => $booking->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -334,7 +484,7 @@ final class GymBookingCreationService
     }
 
     /**
-     * @return array<string, true>  keys normalized "HH:mm|HH:mm"
+     * @return array<string, true> keys normalized "HH:mm|HH:mm"
      */
     private function buildValidSlotSet(array $daySchedule, int $slotMinutes): array
     {
@@ -607,7 +757,10 @@ final class GymBookingCreationService
         return [$user, $plain];
     }
 
-    private function computeTotalPrice(
+    /**
+     * @return array{base: float, trainer_fee: float, subtotal: float}
+     */
+    private function computePriceBreakdown(
         int $numberOfSlots,
         int $slotDuration,
         int $persons,
@@ -616,16 +769,113 @@ final class GymBookingCreationService
         int $trainerSlotCount,
         float $ptSlotPrice,
         bool $ptFreeTrialApplies
-    ): float {
+    ): array {
         $perSlot = $slotDuration === 40 ? $rate40 : $rate1hr;
-        $base = $numberOfSlots * $perSlot * $persons;
-        $trainerFee = ($trainerSlotCount > 0 && ! $ptFreeTrialApplies) ? $trainerSlotCount * $ptSlotPrice : 0.0;
+        $base = round($numberOfSlots * $perSlot * $persons, 2);
+        $trainerFee = ($trainerSlotCount > 0 && ! $ptFreeTrialApplies)
+            ? round($trainerSlotCount * $ptSlotPrice, 2)
+            : 0.0;
 
-        return round($base + $trainerFee, 2);
+        return [
+            'base' => $base,
+            'trainer_fee' => $trainerFee,
+            'subtotal' => round($base + $trainerFee, 2),
+        ];
     }
 
-    private function sendNotifications(GymListing $listing, GymBooking $booking, bool $createdGuestAccount): void
+    private function assertCouponValidForBooking(
+        GymListing $listing,
+        Coupon $coupon,
+        float $base,
+        float $trainerFee
+    ): void {
+        if (! $coupon->is_active) {
+            throw ValidationException::withMessages(['coupon_code' => __('This coupon is not active.')]);
+        }
+
+        if (! $coupon->appliesToListing($listing)) {
+            throw ValidationException::withMessages(['coupon_code' => __('This coupon does not apply to this gym.')]);
+        }
+
+        if ($base + $trainerFee <= 0.0) {
+            throw ValidationException::withMessages(['coupon_code' => __('This booking has no charge to apply a coupon to.')]);
+        }
+
+        if ($coupon->percent_discount_enabled) {
+            $pct = (float) ($coupon->percent_discount ?? 0);
+            if ($pct <= 0.0 || $pct > 100.0) {
+                throw ValidationException::withMessages(['coupon_code' => __('This coupon percentage discount is not configured.')]);
+            }
+
+            return;
+        }
+
+        if ((int) $coupon->valid_sessions < 1) {
+            throw ValidationException::withMessages(['coupon_code' => __('This coupon is not configured for any sessions.')]);
+        }
+    }
+
+    /**
+     * Guest email from the request, or the logged-in subscriber’s account email when the field is left blank.
+     */
+    private function effectiveGuestEmailForBooking(array $validated): string
     {
+        $raw = strtolower(trim((string) ($validated['guest_email'] ?? '')));
+        if ($raw !== '') {
+            return $raw;
+        }
+        $user = Auth::user();
+        if ($user instanceof User && $user->hasRole(UserRole::Subscriber->value)) {
+            return strtolower(trim((string) $user->email));
+        }
+
+        return '';
+    }
+
+    private function isAuthenticatedSubscriber(): bool
+    {
+        return $this->authenticatedSubscriberUserId() !== null;
+    }
+
+    private function authenticatedSubscriberUserId(): ?int
+    {
+        $user = Auth::user();
+        if ($user instanceof User && $user->hasRole(UserRole::Subscriber->value)) {
+            return (int) $user->id;
+        }
+
+        return null;
+    }
+
+    /**
+     * Sum of free time slots already redeemed with this coupon (confirmed bookings only).
+     * Subscribers are tracked by {@see GymBooking::$user_id}; guests by {@see GymBooking::$guest_email}.
+     */
+    private function sumCouponAppliedSlotsForIdentity(int $couponId, string $guestEmailLower, ?int $subscriberUserId): int
+    {
+        $q = GymBooking::query()
+            ->where('coupon_id', $couponId)
+            ->where('status', 'confirmed');
+
+        if ($subscriberUserId !== null) {
+            $q->where('user_id', $subscriberUserId);
+        } else {
+            if ($guestEmailLower === '') {
+                return 0;
+            }
+            $q->whereRaw('LOWER(guest_email) = ?', [$guestEmailLower]);
+        }
+
+        return (int) $q->sum('coupon_applied_slots');
+    }
+
+    /**
+     * @param  ?string  $guestNewAccountPlainPassword  Non-null only when a new Subscriber user was created for this booking email.
+     */
+    private function sendNotifications(GymListing $listing, GymBooking $booking, ?string $guestNewAccountPlainPassword): void
+    {
+        $createdGuestAccount = $guestNewAccountPlainPassword !== null;
+
         $adminEmails = User::query()
             ->role(UserRole::Administrator->value)
             ->pluck('email')
@@ -651,6 +901,15 @@ final class GymBookingCreationService
                 Mail::to($hostEmail)->send(new GymBookingCreatedForHostMail($listing, $booking));
             } catch (\Throwable $e) {
                 Log::error('Gym booking host mail failed: '.$e->getMessage());
+            }
+        }
+
+        $guestEmail = strtolower(trim((string) $booking->guest_email));
+        if ($guestEmail !== '') {
+            try {
+                Mail::to($guestEmail)->send(new GymBookingCreatedForGuestMail($listing, $booking, $guestNewAccountPlainPassword));
+            } catch (\Throwable $e) {
+                Log::error('Gym booking guest mail failed: '.$e->getMessage());
             }
         }
     }

@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UpdateCouponRequest;
 use App\Models\Coupon;
 use App\Models\GymListing;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,9 @@ class CouponController extends Controller
     {
         $coupons = Coupon::query()
             ->withCount(['hosts', 'gymListings'])
+            ->withSum([
+                'gymBookings as redeemed_confirmed' => static fn ($q) => $q->where('status', 'confirmed'),
+            ], 'coupon_applied_slots')
             ->orderByDesc('id')
             ->paginate(20);
 
@@ -61,6 +65,7 @@ class CouponController extends Controller
     public function store(StoreCouponRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $validated['applies_to'] = Coupon::APPLIES_FULL_BOOKING;
         $hostIds = $validated['host_ids'] ?? [];
         $gymListingIds = $validated['gym_listing_ids'] ?? [];
         unset($validated['host_ids'], $validated['gym_listing_ids']);
@@ -89,6 +94,7 @@ class CouponController extends Controller
     public function update(UpdateCouponRequest $request, Coupon $coupon): RedirectResponse
     {
         $validated = $request->validated();
+        $validated['applies_to'] = Coupon::APPLIES_FULL_BOOKING;
         $hostIds = $validated['host_ids'] ?? [];
         $gymListingIds = $validated['gym_listing_ids'] ?? [];
         unset($validated['host_ids'], $validated['gym_listing_ids']);
@@ -113,8 +119,20 @@ class CouponController extends Controller
             ->with('status', __('Coupon deleted.'));
     }
 
+    public function toggleActive(Coupon $coupon): RedirectResponse
+    {
+        $this->authorize('update', $coupon);
+
+        $wasActive = (bool) $coupon->is_active;
+        $coupon->forceFill(['is_active' => ! $wasActive])->save();
+
+        return redirect()
+            ->route('admin.coupons.index')
+            ->with('status', $wasActive ? __('Coupon deactivated.') : __('Coupon activated.'));
+    }
+
     /**
-     * @return array{hosts: \Illuminate\Database\Eloquent\Collection<int, User>, gymListings: \Illuminate\Database\Eloquent\Collection<int, GymListing>}
+     * @return array{hosts: Collection<int, User>, gymListings: Collection<int, GymListing>}
      */
     private function couponFormOptions(): array
     {

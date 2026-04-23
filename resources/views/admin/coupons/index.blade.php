@@ -44,11 +44,9 @@
                             <thead>
                                 <tr>
                                     <th>{{ __('Code') }}</th>
-                                    <th>{{ __('Discount scope') }}</th>
                                     <th>{{ __('Hosts / gyms') }}</th>
                                     <th>{{ __('Discount') }}</th>
-                                    <th>{{ __('Uses') }}</th>
-                                    <th>{{ __('Validity') }}</th>
+                                    <th>{{ __('Slots redeemed') }}</th>
                                     <th>{{ __('Status') }}</th>
                                     <th class="text-muted small">{{ __('Updated') }}</th>
                                     <th class="text-end">{{ __('Actions') }}</th>
@@ -64,13 +62,6 @@
                                             @endif
                                         </td>
                                         <td class="small">
-                                            @if ($coupon->applies_to === \App\Models\Coupon::APPLIES_PERSONAL_TRAINING)
-                                                <span class="badge bg-info text-dark">{{ __('Personal training') }}</span>
-                                            @else
-                                                <span class="badge bg-light text-dark border">{{ __('Full booking') }}</span>
-                                            @endif
-                                        </td>
-                                        <td class="small">
                                             @if (($coupon->hosts_count ?? 0) === 0 && ($coupon->gym_listings_count ?? 0) === 0)
                                                 <span class="text-muted">{{ __('Any') }}</span>
                                             @else
@@ -82,33 +73,18 @@
                                                 @endif
                                             @endif
                                         </td>
-                                        <td>
-                                            @if ($coupon->discount_type === \App\Models\Coupon::TYPE_PERCENT)
-                                                {{ rtrim(rtrim(number_format((float) $coupon->discount_value, 2), '0'), '.') }}%
-                                            @else
-                                                ${{ number_format((float) $coupon->discount_value, 2) }}
-                                            @endif
-                                        </td>
-                                        <td>
-                                            {{ (int) $coupon->times_used }}
-                                            @if ($coupon->max_redemptions !== null)
-                                                / {{ (int) $coupon->max_redemptions }}
-                                            @else
-                                                <span class="text-muted">/ ∞</span>
-                                            @endif
-                                        </td>
                                         <td class="small">
-                                            @if ($coupon->starts_at)
-                                                {{ $coupon->starts_at->format('Y-m-d') }}
+                                            @if ($coupon->percent_discount_enabled && $coupon->percent_discount !== null)
+                                                <span class="badge bg-info text-dark">
+                                                    {{ rtrim(rtrim(number_format((float) $coupon->percent_discount, 2), '0'), '.') }}% {{ __('off total') }}
+                                                </span>
                                             @else
-                                                —
+                                                {{ (int) $coupon->valid_sessions }}
+                                                <span class="text-muted">{{ __('free slots / identity') }}</span>
                                             @endif
-                                            →
-                                            @if ($coupon->ends_at)
-                                                {{ $coupon->ends_at->format('Y-m-d') }}
-                                            @else
-                                                —
-                                            @endif
+                                        </td>
+                                        <td>
+                                            {{ (int) ($coupon->redeemed_confirmed_sum_coupon_applied_slots ?? 0) }}
                                         </td>
                                         <td>
                                             @if ($coupon->is_active)
@@ -118,18 +94,29 @@
                                             @endif
                                         </td>
                                         <td class="text-muted small">{{ $coupon->updated_at?->format('Y-m-d H:i') }}</td>
-                                        <td class="text-end text-nowrap">
-                                            <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.coupons.edit', $coupon) }}">{{ __('Edit') }}</a>
-                                            <form class="d-inline" method="post" action="{{ route('admin.coupons.destroy', $coupon) }}" onsubmit="return confirm(@json(__('Delete this coupon?')));">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button class="btn btn-sm btn-outline-danger" type="submit">{{ __('Delete') }}</button>
-                                            </form>
+                                        <td class="text-end">
+                                            <div class="d-inline-flex flex-wrap justify-content-end gap-1">
+                                                <a class="btn btn-sm btn-outline-primary" href="{{ route('admin.coupons.edit', $coupon) }}">{{ __('Edit') }}</a>
+                                                <form class="d-inline" method="post" action="{{ route('admin.coupons.toggle-active', $coupon) }}">
+                                                    @csrf
+                                                    @method('PATCH')
+                                                    @if ($coupon->is_active)
+                                                        <button class="btn btn-sm btn-outline-secondary" type="submit">{{ __('Deactivate') }}</button>
+                                                    @else
+                                                        <button class="btn btn-sm btn-outline-success" type="submit">{{ __('Activate') }}</button>
+                                                    @endif
+                                                </form>
+                                                <form class="d-inline" method="post" action="{{ route('admin.coupons.destroy', $coupon) }}" onsubmit="return confirm(@json(__('Delete this coupon?')));">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button class="btn btn-sm btn-outline-danger" type="submit">{{ __('Delete') }}</button>
+                                                </form>
+                                            </div>
                                         </td>
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="9" class="text-center text-muted py-4">{{ __('No coupons yet. Create one to get started.') }}</td>
+                                        <td colspan="7" class="text-center text-muted py-4">{{ __('No coupons yet. Create one to get started.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

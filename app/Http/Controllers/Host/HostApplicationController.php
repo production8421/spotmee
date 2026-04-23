@@ -2,11 +2,16 @@
 
 namespace App\Http\Controllers\Host;
 
+use App\Enums\HostApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Host\BeginHostApplicationRequest;
 use App\Http\Requests\Host\StoreHostApplicationRequest;
+use App\Models\ApplicationSetting;
 use App\Models\HostApplication;
+use App\Services\Admin\HostApplicationApprovalService;
 use App\Services\Host\HostApplicationAdminNotifier;
+use App\Services\Host\HostApplicationAutoApproveAdminNotifier;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,15 +49,33 @@ class HostApplicationController extends Controller
         return view('host.apply-submitted');
     }
 
-    public function store(StoreHostApplicationRequest $request, HostApplicationAdminNotifier $notifier): RedirectResponse
-    {
+    public function store(
+        StoreHostApplicationRequest $request,
+        HostApplicationAdminNotifier $notifier,
+        HostApplicationApprovalService $approvalService,
+        HostApplicationAutoApproveAdminNotifier $autoApproveAdminNotifier,
+    ): RedirectResponse {
         $data = $request->validated();
+        $data['status'] = HostApplicationStatus::Pending;
         if (Auth::check()) {
             $data['user_id'] = Auth::id();
         }
 
         $application = HostApplication::query()->create($data);
-        $notifier->notify($application);
+
+        if (ApplicationSetting::instance()->host_registration_auto_approve) {
+            try {
+                $approvalService->autoApproveFromRegistration($application);
+                $autoApproveAdminNotifier->notify($application->fresh());
+            } catch (\Throwable $e) {
+                Log::error('host_registration_auto_approve_failed', [
+                    'application_id' => $application->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+        } else {
+            $notifier->notify($application);
+        }
 
         $request->session()->forget('host_apply_terms_accepted');
 

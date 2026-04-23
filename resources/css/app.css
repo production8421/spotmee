@@ -1,342 +1,423 @@
 @import 'tailwindcss';
 
+/* ==========================================================================
+ * SPOTMEE · GLOBAL DESIGN SYSTEM
+ * --------------------------------------------------------------------------
+ * This is THE file to edit for site-wide UI changes.
+ *   1. Brand colors         → :root  ·  --brand-*
+ *   2. Typography           → :root  ·  --font-*  /  --text-*
+ *   3. Radii / shadows      → :root  ·  --radius-* / --shadow-*
+ *   4. Reusable primitives  → @layer components  (btn, site-header, site-footer…)
+ *   5. Legacy page classes  → keep below component layer until each page is
+ *      redesigned section-by-section.
+ * --------------------------------------------------------------------------
+ * Palette: Ocean Breeze
+ *   Deep teal  #006d77   Soft mint  #83c5be   Ice  #edf6f9
+ * ========================================================================== */
 
 
-@font-face {
-    font-family: 'Sofia Pro';
-    src: url('/fonts/sofia-pro/Sofia Pro Light Az.otf') format('opentype');
-    font-weight: 300;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Sofia Pro';
-    src: url('/fonts/sofia-pro/Sofia Pro Regular Az.otf') format('opentype');
-    font-weight: 400;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Sofia Pro';
-    src: url('/fonts/sofia-pro/Sofia Pro Medium Az.otf') format('opentype');
-    font-weight: 500;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Sofia Pro';
-    src: url('/fonts/sofia-pro/Sofia Pro Semi Bold Az.otf') format('opentype');
-    font-weight: 600;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Sofia Pro';
-    src: url('/fonts/sofia-pro/Sofia Pro Bold Az.otf') format('opentype');
-    font-weight: 700;
-    font-style: normal;
-}
-
-@font-face {
-    font-family: 'Sofia Pro';
-    src: url('/fonts/sofia-pro/Sofia Pro Black Az.otf') format('opentype');
-    font-weight: 900;
-    font-style: normal;
-}
-
+/* ================================================================
+ * 1 · DESIGN TOKENS (Tailwind v4 theme — auto-generate utilities)
+ * ================================================================ */
 @theme {
-    --font-sans: 'Sofia Pro', 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    /* Brand — Ocean Breeze */
+    --color-brand-50:  #edf6f9;
+    --color-brand-100: #d9ecf0;
+    --color-brand-200: #83c5be;
+    --color-brand-300: #5db0a7;
+    --color-brand-500: #1a8d95;
+    --color-brand-600: #006d77;
+    --color-brand-700: #005962;
+    --color-brand-800: #00454d;
+
+    /* Ink (neutrals tuned to the teal palette) */
+    --color-ink-900: #0a1f23;
+    --color-ink-700: #2b4146;
+    --color-ink-500: #5a7278;
+    --color-ink-300: #a9bbc0;
+    --color-ink-100: #e0e9ec;
+    --color-ink-50:  #f4f8f9;
+
+    /* Type */
+    --font-sans: 'Plus Jakarta Sans', 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --font-display: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+
+    /* Radii */
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --radius-xl: 32px;
+
+    /* Shadows (tinted teal for brand cohesion) */
+    --shadow-sm: 0 1px 2px rgba(0, 109, 119, 0.06);
+    --shadow-md: 0 6px 24px rgba(0, 109, 119, 0.08);
+    --shadow-lg: 0 20px 40px rgba(0, 109, 119, 0.12);
 }
+
+
+/* ================================================================
+ * 2 · ROOT VARIABLES (global aliases — change once, applies everywhere)
+ * ================================================================ */
 :root {
-    --bg-color: #FFFFFF;
-    --text-color: #333333;
-    --primary-color: #4682B4;
+    /* Semantic colors */
+    --color-primary:        #006d77;
+    --color-primary-hover:  #005962;
+    --color-primary-soft:   #83c5be;
+    --color-surface:        #ffffff;
+    --color-surface-muted:  #edf6f9;
 
+    /* Legacy aliases (kept so older templates keep rendering) */
+    --bg-color:      #ffffff;
+    --text-color:    #0a1f23;
+    --primary-color: #006d77;
+
+    /* Type scale */
+    --text-display: clamp(2.25rem, 4.5vw, 3.75rem);
+    --text-h1:      clamp(1.875rem, 3vw, 2.75rem);
+    --text-h2:      clamp(1.5rem, 2.2vw, 2.125rem);
+    --text-h3:      1.375rem;
+    --text-body:    1rem;
+    --text-small:   0.875rem;
+
+    /* Layout */
+    --container-max: 1280px;
+    --header-height: 84px;
 }
+
+
+/* ================================================================
+ * 3 · BASE
+ * ================================================================ */
+html {
+    scroll-behavior: smooth;
+}
+
 body {
-    @apply bg-[var(--bg-color)] font-sans;
-}
-.heading {
-    @apply text-[30px] sm:text-[40px] font-bold text-[var(--text-color)] mb-4 leading-[1.1];
-}
-.spotmee-main {
-    @apply overflow-hidden;
-}
-.md-title {
-    @apply text-[20px] sm:text-[28px] font-bold text-[var(--text-color)]  ;
-}
-.md-para {
-    @apply text-[18px] font-normal text-[var(--text-color)] ;
-
-}
-.md-para-slider {
-    @apply text-[18px] font-normal text-[#999999] ;
-
+    @apply bg-[var(--bg-color)] text-[var(--text-color)] font-sans antialiased;
+    font-feature-settings: 'ss01', 'cv11';
 }
 
-.step {
-    @apply inline-block bg-[#F3F4F6] text-[var(--text-color)] rounded-full px-4 py-1 mb-2 text-sm font-semibold;
-}
-
-.spotmee-card-img {
-    @apply w-full h-[400px] object-cover rounded-[20px] shadow-sm;
-}
-
-.rating {
-    @apply text-sm font-semibold text-[var(--text-color)];
-}
-
-.price {
-    @apply font-bold text-[var(--text-color)] text-[20px];
-}
-
-.gym-card {
-    @apply px-3 py-2;
-}
-
-.gym-card-img {
-    @apply w-full h-full object-cover rounded-[24px];  
-}
-.spotmee-card {
-    @apply flex flex-col items-center
-}
-.spotmee-card-icon {
-    @apply bg-[#EBF1F6] rounded-full w-24 h-24 flex items-center justify-center mb-6;
-}
-
-.md-para-spotmee {
-    @apply text-[var(--text-color)] text-[18px] leading-[1.2] max-w-[270px] ;
-}
-.spotmee-card-span {
-    @apply inline-block bg-[#EFF6FB] border border-gray-100 shadow-sm text-gray-700 text-xs font-semibold px-4 py-1.5 rounded-full;
-}
-.list-span {
-    @apply text-[var(--text-color)] text-[20px] font-semibold;
-}
-.list-div {
-    @apply flex-shrink-0 w-5 h-5 rounded-full bg-[var(--primary-color)] flex items-center justify-center text-white text-xs;
-}
-.community-img {
-    @apply w-full h-full object-cover rounded-[20px];
-}
-
-.cta-btn {
-    @apply inline-block bg-[var(--primary-color)] text-white font-normal text-[20px] 
-           px-8 py-3 rounded-full shadow-lg 
-           transition-all duration-300
-           hover:bg-[#3a6d96] hover:shadow-blue-500/30;
-}
-.sign-up-btn {
-    @apply inline-block bg-[var(--primary-color)] text-white font-normal text-[20px] 
-           px-8 py-3 rounded-full shadow-lg 
-           transition-all duration-300
-           hover:bg-[#3a6d96] hover:shadow-blue-500/30;
-}
-
-.footer-link {
-    @apply text-[var(--text-color)] text-[18px] font-normal
-           hover:text-blue-600 transition-colors duration-300;
-}
-
-.footer-h3 {
-    @apply text-[24px] font-bold text-[var(--text-color)] mb-6;
-}
-.footer-social-icon {
-    @apply w-10 h-10 flex items-center justify-center rounded-full 
-             bg-[var(--primary-color)] text-white
-             hover:bg-blue-600 transition-all;
-}
-.hero-banner {
-    @apply relative w-full pt-[100px] pb-[371px] bg-cover bg-center overflow-hidden flex items-center rounded-[15px] ;
-}
-.form-wrapper {
-    @apply w-full  bg-white/80 backdrop-blur-md rounded-2xl mt-[100px] sm:p-8 shadow-2xl;
-}
-.social-icon {
-    @apply w-10 h-10 flex items-center justify-center rounded-full
-    text-[#4882b0]
-    hover:bg-[#4882b0] hover:text-white transition-all
-    
+/* Prevent content jump when mobile menu locks scroll */
+body.is-drawer-open {
+    overflow: hidden;
 }
 
 
-/* Auth Pages Styling */
-.auth-container-new {
-    @apply relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center;
-}
-.auth-title {
-    @apply text-[30px] md:text-[40px] font-bold text-[var(--text-color)] mb-2;
-}
-.auth-subtitle {
-    @apply text-[18px] md:text-[20px] text-gray-600 font-normal mb-2;
-}   
-.auth-label {
-    @apply block text-[18px] md:text-[20px] font-normal mb-2 text-[var(--text-color)]
-}
-.auth-input {
-    @apply w-full bg-[#F3F4F6] rounded-lg px-5 py-4 outline-none focus:ring-2 focus:ring-[#4682B4] text-[18px] text-[var(--text-color)];
-}
-.auth-link {
-    @apply text-[#4682B4] font-bold hover:underline;
-}
+/* ================================================================
+ * 4 · COMPONENT LAYER — reusable, modern primitives
+ *     Used by the new Header, Footer and future redesigned sections.
+ * ================================================================ */
+@layer components {
 
-.inner-heading {
-    @apply text-white text-[30px] md:text-[40px] font-bold mb-8 leading-tight;
-}
+    /* ---------- Layout ---------- */
+    .site-container {
+        @apply mx-auto w-full px-4 sm:px-6 lg:px-8;
+        max-width: var(--container-max);
+    }
 
-/* how it works */
-.how-it-works-banner {
-    @apply relative w-full py-20 bg-cover bg-center rounded-[15px] flex items-center justify-center overflow-hidden;
-}
-.seeker-icon {
-    @apply w-24 h-24 bg-[#EBF1F6] rounded-full flex items-center justify-center mb-6 group-hover:bg-(--primary-color) transition-all duration-300;
-}
-.seeker-card {
-    @apply flex flex-col items-center text-center ;
-}   
-.feature-card {
-    @apply bg-white p-8 rounded-[24px] border border-gray-100 shadow-sm hover:shadow-md transition-shadow;
-}   
+    /* ---------- Buttons ---------- */
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 text-[15px] font-semibold leading-none transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+    }
+    .btn-sm    { @apply px-4 py-2.5 text-[14px]; }
+    .btn-lg    { @apply px-7 py-3.5 text-[16px]; }
 
-.feature-icon {
-    @apply w-16 h-16 bg-[#EBF1F6] rounded-2xl flex items-center justify-center mb-6;
-}
-.feature-title {
-    @apply text-[22px] font-bold mb-3;
-}
-.host-title {
-    @apply font-bold text-[20px] text-(--text-color);
-}
-.cta-section {
-    @apply relative w-full h-[450px] bg-cover bg-center rounded-[30px] overflow-hidden flex items-center justify-center;
-}
+    .btn-primary {
+        @apply bg-[var(--color-primary)] text-white;
+        box-shadow: var(--shadow-md);
+    }
+    .btn-primary:hover {
+        @apply -translate-y-0.5;
+        background-color: var(--color-primary-hover);
+        box-shadow: var(--shadow-lg);
+    }
 
-/* find a gym */
-.find-a-gym {
-    @apply bg-[#F8FAFC] rounded-[24px] p-8 md:p-12 relative overflow-hidden;
-}
-.find-a-gym-search {
-    @apply bg-white p-3 rounded-[20px] shadow-2xl flex flex-col md:flex-row gap-3;
-}
+    .btn-outline {
+        @apply border border-[var(--color-ink-100)] bg-white text-[var(--color-ink-900)];
+    }
+    .btn-outline:hover {
+        @apply border-[var(--color-primary)] text-[var(--color-primary)];
+    }
 
-.search-input {
-    @apply flex-1 flex items-center px-4 bg-gray-50 rounded-[15px];
-}
-.search-input-icon {
-    @apply text-(--primary-color) mr-3 text-lg;
-}
-.search-input-input {
-    @apply w-full py-4 bg-transparent outline-none text-gray-700 font-medium;
-}
-.gym-type-label {
-    @apply flex items-center gap-3 cursor-pointer  p-2  rounded-lg transition-colors;
-    &:hover {
-        @apply bg-gray-50;
+    .btn-ghost {
+        @apply text-[var(--color-ink-700)] hover:text-[var(--color-primary)];
+    }
+
+    .btn-soft {
+        @apply bg-[var(--color-brand-50)] text-[var(--color-primary)] hover:bg-[var(--color-brand-100)];
+    }
+
+    /* ---------- Pills & eyebrows ---------- */
+    .eyebrow {
+        @apply inline-flex items-center gap-2 rounded-full bg-[var(--color-brand-50)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.08em] text-[var(--color-primary)];
+    }
+
+
+    /* =============================================================
+     *  HEADER
+     * ============================================================= */
+    .site-header {
+        @apply sticky top-0 z-50 w-full border-b border-transparent bg-white/85 backdrop-blur-xl transition-all duration-300;
+    }
+    .site-header--scrolled {
+        @apply border-[var(--color-ink-100)] bg-white/95;
+        box-shadow: 0 4px 24px rgba(0, 109, 119, 0.06);
+    }
+
+    .site-header__inner {
+        @apply flex items-center justify-between gap-6;
+        height: var(--header-height);
+    }
+
+    .site-logo img {
+        @apply h-11 w-auto object-contain transition-transform duration-200;
+    }
+    .site-logo:hover img {
+        @apply scale-[1.02];
+    }
+
+    /* Desktop nav */
+    .site-nav {
+        @apply hidden items-center gap-1 lg:flex;
+    }
+    .site-nav-link {
+        @apply relative rounded-full px-4 py-2 text-[15px] font-medium text-[var(--color-ink-700)] transition-colors duration-200 hover:text-[var(--color-primary)];
+    }
+    .site-nav-link::after {
+        content: '';
+        @apply absolute left-1/2 bottom-1 h-[3px] w-0 -translate-x-1/2 rounded-full bg-[var(--color-primary)] transition-all duration-300;
+    }
+    .site-nav-link:hover::after,
+    .site-nav-link.is-active::after {
+        @apply w-5;
+    }
+    .site-nav-link.is-active {
+        @apply text-[var(--color-primary)];
+    }
+
+    /* Hamburger */
+    .site-hamburger {
+        @apply inline-flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-ink-100)] bg-white text-[var(--color-ink-900)] transition-all duration-200 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] lg:hidden;
+    }
+
+    /* Avatar (logged-in desktop) */
+    .site-avatar {
+        @apply inline-flex h-11 w-11 items-center justify-center rounded-full bg-[var(--color-primary)] text-sm font-semibold uppercase text-white ring-2 ring-white transition-all duration-200;
+        box-shadow: var(--shadow-sm);
+    }
+    .site-avatar:hover {
+        @apply ring-[var(--color-primary-soft)];
+    }
+
+
+    /* =============================================================
+     *  MOBILE DRAWER
+     * ============================================================= */
+    .mobile-drawer {
+        @apply fixed inset-0 z-[60] invisible opacity-0 transition-[opacity,visibility] duration-300 lg:hidden;
+    }
+    .mobile-drawer.is-open {
+        @apply visible opacity-100;
+    }
+    .mobile-drawer__backdrop {
+        @apply absolute inset-0 bg-[rgba(10,31,35,0.45)];
+    }
+    .mobile-drawer__panel {
+        @apply absolute right-0 top-0 flex h-full w-[86%] max-w-[380px] translate-x-full flex-col bg-white transition-transform duration-300;
+        box-shadow: -24px 0 48px rgba(0, 109, 119, 0.14);
+    }
+    .mobile-drawer.is-open .mobile-drawer__panel {
+        @apply translate-x-0;
+    }
+
+    .mobile-nav-link {
+        @apply flex items-center justify-between rounded-2xl px-4 py-3 text-[16px] font-medium text-[var(--color-ink-900)] transition-colors duration-200 hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)];
+    }
+    .mobile-nav-link.is-active {
+        @apply bg-[var(--color-brand-50)] text-[var(--color-primary)];
+    }
+
+
+    /* =============================================================
+     *  INNER PAGE BANNER (shared across How It Works, About, Blog, etc.)
+     * ============================================================= */
+    .inner-banner {
+        @apply relative overflow-hidden rounded-[28px] sm:rounded-[36px];
+    }
+    .inner-banner__content {
+        @apply relative z-10 mx-auto max-w-3xl px-6 py-20 text-center sm:px-10 sm:py-24 lg:py-28;
+    }
+    .inner-banner__eyebrow {
+        @apply inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[12px] font-semibold uppercase tracking-[0.08em] text-white backdrop-blur-sm;
+    }
+    .inner-banner__title {
+        @apply mt-5 font-bold leading-[1.05] tracking-tight text-white;
+        font-size: clamp(2rem, 4vw, 3rem);
+    }
+    .inner-banner__subtitle {
+        @apply mx-auto mt-5 max-w-2xl text-[17px] leading-relaxed text-white/90 sm:text-[18px];
+    }
+
+    /* Section heading helper (centered title + subtitle + eyebrow) */
+    .section-head {
+        @apply mx-auto mb-14 max-w-2xl text-center;
+    }
+    .section-head__title {
+        @apply mt-4 font-bold leading-[1.1] text-[var(--color-ink-900)];
+        font-size: var(--text-h1);
+    }
+    .section-head__subtitle {
+        @apply mt-4 text-[16px] text-[var(--color-ink-500)];
+    }
+
+
+    /* =============================================================
+     *  FOOTER
+     * ============================================================= */
+    .site-footer {
+        @apply relative mt-24 bg-[var(--color-brand-50)];
+    }
+    .site-footer__card {
+        @apply overflow-hidden rounded-[32px] bg-white;
+        box-shadow: 0 12px 40px rgba(0, 109, 119, 0.06);
+    }
+
+    .footer-brand-tagline {
+        @apply mt-6 max-w-sm text-[15px] leading-relaxed text-[var(--color-ink-700)];
+    }
+
+    .footer-heading {
+        @apply text-[13px] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink-900)];
+    }
+
+    .footer-link {
+        @apply text-[15px] font-normal text-[var(--color-ink-700)] transition-colors duration-200 hover:text-[var(--color-primary)];
+    }
+
+    .footer-social {
+        @apply inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--color-ink-100)] bg-white text-[var(--color-primary)] transition-all duration-200;
+    }
+    .footer-social:hover {
+        @apply -translate-y-0.5 border-[var(--color-primary)] bg-[var(--color-primary)] text-white;
+        box-shadow: var(--shadow-md);
+    }
+
+    .footer-bar {
+        @apply flex flex-col items-center justify-between gap-3 border-t border-[var(--color-ink-100)] px-6 py-5 text-[14px] text-[var(--color-ink-500)] sm:flex-row sm:px-10;
+    }
+    .footer-bar-link {
+        @apply text-[14px] text-[var(--color-ink-500)] transition-colors duration-200 hover:text-[var(--color-primary)];
     }
 }
-.type-checkbox {
-    @apply w-5 h-5 rounded border-gray-300 text-(--primary-color) focus:ring-(--primary-color);
-}
-.type-checkbox-label {
-    @apply text-gray-600 font-medium group-hover:text-(--text-color);
-}
-
-.sidebar-title {
-    @apply font-bold mb-4 text-(--text-color) flex items-center gap-2;
-}
-.amenities-label {
-    @apply flex items-center gap-2 cursor-pointer  text-sm;
-}
-.amenities-checkbox {
-    @apply w-4 h-4 rounded border-gray-300 text-(--primary-color) focus:ring-(--primary-color);
-}
-.apply-filters-btn {
-    @apply w-full py-4 bg-[#F3F4F6] text-(--text-color) font-bold rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center gap-2;
-}
-.sort-bar {
-    @apply bg-white rounded-[20px] p-6 mb-8 border border-gray-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4;
-}
-
-.benefit-card {
-    @apply  p-8 rounded-[30px] transition-all duration-500 border border-transparent hover:border-gray-50;
-    &:hover {
-        @apply bg-white shadow-2xl shadow-blue-500/5;
-    }
-}
-
-.benefit-icon {
-    @apply w-20 h-20 bg-[#EBF1F6] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-(--primary-color) transition-colors duration-500;
-}
-.step-number {
-    @apply shrink-0 w-12 h-12 bg-(--primary-color) text-white rounded-full flex items-center justify-center font-bold text-xl;
-}
-
-.step-title {
-    @apply text-xl font-bold mb-2;;
-}
-.value-card {
-    @apply bg-white p-10 rounded-[30px] shadow-sm hover:shadow-xl transition-all duration-300;
-}
-.value-icon {
-    @apply w-16 h-16 bg-(--primary-color)/10 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-(--primary-color) transition-colors;
-}   
-.vission-title {
-    @apply text-2xl font-bold mb-4 text-(--text-color);
-}
-
-.contact-icon {
-    @apply w-16 h-16 bg-(--primary-color)/10 rounded-[20px] flex items-center justify-center group-hover:bg-(--primary-color) transition-colors duration-300;
-}   
-
-.email-title {
-    @apply text-[20px] font-bold mb-2 text-(--text-color);
-}   
-
-.contact-social-icon {
-    @apply w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:bg-(--primary-color) hover:border-(--primary-color) hover:text-white transition-all;
-}       
-
-.contact-form-label {
-    @apply text-[18px] font-bold text-[var(--text-color)] ml-1;
-}   
-
-.contact-input {
-    @apply w-full px-6 py-4 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-(--primary-color) outline-none transition-all;
-}
-
-.faq-item {
-    @apply  bg-white rounded-[20px] p-6 shadow-sm cursor-pointer hover:shadow-md transition-all;
-}
-.faq-header {
-    @apply flex justify-between items-center;
-}
-
-.faq-question {
-    @apply font-bold text-lg text-(--text-color) group-hover:text-(--primary-color) transition-colors;
-}
-.faq-icon {
-    @apply text-gray-400 transition-transform duration-300;
-}
 
 
-.header-dropdown-user {
-    @apply bg-[var(--primary-color)] w-[50px] h-[50px] flex items-center justify-center rounded-full text-white font-bold;
-}
-.header-dropdown-list-wrapper {
-    @apply  bg-white shadow-2xl shadow-emerald-100 ring-1 ring-[var(--primary-color)] min-w-[200px] rounded-2xl min-h-[50px]; 
-}
-.header-dropdown-item {
-    @apply py-[10px] px-[10px];
-}
-.header-dropdown-link {
-    @apply text-[18px] font-medium;
-}
+/* ==========================================================================
+ * 5 · LEGACY COMPONENT CLASSES
+ * --------------------------------------------------------------------------
+ * These are referenced by home/about/find-a-gym/… pages that are NOT yet
+ * redesigned. They now pull colours from the new tokens, so the palette
+ * flips to teal automatically. Each class will be removed as the matching
+ * section/page is rebuilt.
+ * ========================================================================== */
+.heading                 { @apply text-[30px] sm:text-[40px] font-bold text-[var(--text-color)] mb-4 leading-[1.1]; }
+.spotmee-main            { @apply overflow-hidden; }
+.md-title                { @apply text-[20px] sm:text-[28px] font-bold text-[var(--text-color)]; }
+.md-para                 { @apply text-[18px] font-normal text-[var(--text-color)]; }
+.md-para-slider          { @apply text-[18px] font-normal text-[#999999]; }
+.step                    { @apply inline-block bg-[var(--color-brand-50)] text-[var(--text-color)] rounded-full px-4 py-1 mb-2 text-sm font-semibold; }
+.spotmee-card-img        { @apply w-full h-[400px] object-cover rounded-[20px] shadow-sm; }
+.rating                  { @apply text-sm font-semibold text-[var(--text-color)]; }
+.price                   { @apply font-bold text-[var(--text-color)] text-[20px]; }
+.gym-card                { @apply px-3 py-2; }
+.gym-card-img            { @apply w-full h-full object-cover rounded-[24px]; }
+.spotmee-card            { @apply flex flex-col items-center; }
+.spotmee-card-icon       { @apply bg-[var(--color-brand-50)] rounded-full w-24 h-24 flex items-center justify-center mb-6; }
+.md-para-spotmee         { @apply text-[var(--text-color)] text-[18px] leading-[1.2] max-w-[270px]; }
+.spotmee-card-span       { @apply inline-block bg-[var(--color-brand-50)] border border-[var(--color-ink-100)] shadow-sm text-[var(--color-ink-700)] text-xs font-semibold px-4 py-1.5 rounded-full; }
+.list-span               { @apply text-[var(--text-color)] text-[20px] font-semibold; }
+.list-div                { @apply flex-shrink-0 w-5 h-5 rounded-full bg-[var(--primary-color)] flex items-center justify-center text-white text-xs; }
+.community-img           { @apply w-full h-full object-cover rounded-[20px]; }
 
+.cta-btn                 { @apply inline-block bg-[var(--primary-color)] text-white font-normal text-[20px] px-8 py-3 rounded-full shadow-lg transition-all duration-300; }
+.cta-btn:hover           { @apply -translate-y-0.5; background-color: var(--color-primary-hover); }
+.sign-up-btn             { @apply inline-block bg-[var(--primary-color)] text-white font-normal text-[20px] px-8 py-3 rounded-full shadow-lg transition-all duration-300; }
+.sign-up-btn:hover       { @apply -translate-y-0.5; background-color: var(--color-primary-hover); }
 
+/* Auth pages */
+.auth-container-new      { @apply relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-center; }
+.auth-title              { @apply text-[30px] md:text-[40px] font-bold text-[var(--text-color)] mb-2; }
+.auth-subtitle           { @apply text-[18px] md:text-[20px] text-[var(--color-ink-500)] font-normal mb-2; }
+.auth-label              { @apply block text-[18px] md:text-[20px] font-normal mb-2 text-[var(--text-color)]; }
+.auth-input              { @apply w-full bg-[var(--color-ink-50)] rounded-lg px-5 py-4 outline-none focus:ring-2 focus:ring-[var(--color-primary)] text-[18px] text-[var(--text-color)]; }
+.auth-link               { @apply text-[var(--color-primary)] font-bold hover:underline; }
+.auth-divider-text       { @apply text-[16px] text-[var(--color-ink-500)]; }
+.auth-terms-text         { @apply text-[14px] text-[var(--color-ink-500)]; }
+
+/* Inner pages */
+.inner-heading           { @apply text-white text-[30px] md:text-[40px] font-bold mb-8 leading-tight; }
+
+/* How it works */
+.how-it-works-banner     { @apply relative w-full py-20 bg-cover bg-center rounded-[15px] flex items-center justify-center overflow-hidden; }
+.seeker-icon             { @apply w-24 h-24 bg-[var(--color-brand-50)] rounded-full flex items-center justify-center mb-6 group-hover:bg-[var(--color-primary)] transition-all duration-300; }
+.seeker-card             { @apply flex flex-col items-center text-center; }
+.feature-card            { @apply bg-white p-8 rounded-[24px] border border-[var(--color-ink-100)] shadow-sm hover:shadow-md transition-shadow; }
+.feature-icon            { @apply w-16 h-16 bg-[var(--color-brand-50)] rounded-2xl flex items-center justify-center mb-6; }
+.feature-title           { @apply text-[22px] font-bold mb-3; }
+.host-title              { @apply font-bold text-[20px] text-[var(--text-color)]; }
+.cta-section             { @apply relative w-full h-[450px] bg-cover bg-center rounded-[30px] overflow-hidden flex items-center justify-center; }
+
+/* Find a gym */
+.find-a-gym              { @apply bg-[var(--color-ink-50)] rounded-[24px] p-8 md:p-12 relative overflow-hidden; }
+.find-a-gym-search       { @apply bg-white p-3 rounded-[20px] shadow-2xl flex flex-col md:flex-row gap-3; }
+.search-input            { @apply flex-1 flex items-center px-4 bg-[var(--color-ink-50)] rounded-[15px]; }
+.search-input-icon       { @apply text-[var(--primary-color)] mr-3 text-lg; }
+.search-input-input      { @apply w-full py-4 bg-transparent outline-none text-[var(--color-ink-700)] font-medium; }
+.gym-type-label          { @apply flex items-center gap-3 cursor-pointer p-2 rounded-lg transition-colors; }
+.gym-type-label:hover    { @apply bg-[var(--color-ink-50)]; }
+.type-checkbox           { @apply w-5 h-5 rounded border-[var(--color-ink-300)] text-[var(--primary-color)] focus:ring-[var(--primary-color)]; }
+.type-checkbox-label     { @apply text-[var(--color-ink-500)] font-medium group-hover:text-[var(--text-color)]; }
+.sidebar-title           { @apply font-bold mb-4 text-[var(--text-color)] flex items-center gap-2; }
+.amenities-label         { @apply flex items-center gap-2 cursor-pointer text-sm; }
+.amenities-checkbox      { @apply w-4 h-4 rounded border-[var(--color-ink-300)] text-[var(--primary-color)] focus:ring-[var(--primary-color)]; }
+.apply-filters-btn       { @apply w-full py-4 bg-[var(--color-ink-50)] text-[var(--text-color)] font-bold rounded-xl hover:bg-[var(--color-ink-100)] transition-colors flex items-center justify-center gap-2; }
+.sort-bar                { @apply bg-white rounded-[20px] p-6 mb-8 border border-[var(--color-ink-100)] shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4; }
+
+/* Become-a-host */
+.benefit-card            { @apply p-8 rounded-[30px] transition-all duration-500 border border-transparent hover:border-[var(--color-ink-50)]; }
+.benefit-card:hover      { @apply bg-white shadow-2xl; }
+.benefit-icon            { @apply w-20 h-20 bg-[var(--color-brand-50)] rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[var(--color-primary)] transition-colors duration-500; }
+.step-number             { @apply shrink-0 w-12 h-12 bg-[var(--primary-color)] text-white rounded-full flex items-center justify-center font-bold text-xl; }
+.step-title              { @apply text-xl font-bold mb-2; }
+
+/* About */
+.value-card              { @apply bg-white p-10 rounded-[30px] shadow-sm hover:shadow-xl transition-all duration-300; }
+.value-icon              { @apply w-16 h-16 rounded-2xl flex items-center justify-center mb-8 bg-[var(--color-brand-50)] group-hover:bg-[var(--color-primary)] transition-colors; }
+.vission-title           { @apply text-2xl font-bold mb-4 text-[var(--text-color)]; }
+
+/* Contact */
+.contact-icon            { @apply w-16 h-16 rounded-[20px] flex items-center justify-center bg-[var(--color-brand-50)] group-hover:bg-[var(--color-primary)] transition-colors duration-300; }
+.email-title             { @apply text-[20px] font-bold mb-2 text-[var(--text-color)]; }
+.contact-social-icon     { @apply w-12 h-12 rounded-full border border-[var(--color-ink-100)] flex items-center justify-center text-[var(--color-ink-300)] hover:bg-[var(--primary-color)] hover:border-[var(--primary-color)] hover:text-white transition-all; }
+.contact-form-label      { @apply text-[18px] font-bold text-[var(--text-color)] ml-1; }
+.contact-input           { @apply w-full px-6 py-4 rounded-2xl bg-[var(--color-ink-50)] border border-transparent focus:bg-white focus:border-[var(--primary-color)] outline-none transition-all; }
+
+/* FAQ */
+.faq-item                { @apply bg-white rounded-[20px] p-6 shadow-sm cursor-pointer hover:shadow-md transition-all; }
+.faq-header              { @apply flex justify-between items-center; }
+.faq-question            { @apply font-bold text-lg text-[var(--text-color)] group-hover:text-[var(--primary-color)] transition-colors; }
+.faq-icon                { @apply text-[var(--color-ink-300)] transition-transform duration-300; }
+
+/* Header legacy dropdown (still used by some admin-adjacent views) */
+.header-dropdown-user            { @apply bg-[var(--primary-color)] w-[50px] h-[50px] flex items-center justify-center rounded-full text-white font-bold; }
+.header-dropdown-list-wrapper    { @apply bg-white shadow-2xl ring-1 ring-[var(--primary-color)] min-w-[200px] rounded-2xl min-h-[50px]; }
+.header-dropdown-item            { @apply py-[10px] px-[10px]; }
+.header-dropdown-link            { @apply text-[18px] font-medium; }
+
+/* Hero (home) */
+.hero-banner             { @apply relative w-full pt-[100px] pb-[371px] bg-cover bg-center overflow-hidden flex items-center rounded-[15px]; }
+.form-wrapper            { @apply w-full bg-white/80 backdrop-blur-md rounded-2xl mt-[100px] sm:p-8 shadow-2xl; }
+.social-icon             { @apply w-10 h-10 flex items-center justify-center rounded-full text-[var(--primary-color)] hover:bg-[var(--primary-color)] hover:text-white transition-all; }
 
 @media (max-width: 768px) {
-    .form-wrapper {
-        @apply py-[30px] px-[20px] mt-[0px];
-    }
+    .form-wrapper        { @apply py-[30px] px-[20px] mt-[0px]; }
 }

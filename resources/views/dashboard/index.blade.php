@@ -23,6 +23,19 @@
 @endsection
 
 @section('content')
+    @if (session('status'))
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            {{ session('status') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Close') }}"></button>
+        </div>
+    @endif
+    @if (session('error'))
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ session('error') }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ __('Close') }}"></button>
+        </div>
+    @endif
+
     @isset($adminStats)
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-xl-3">
@@ -94,6 +107,55 @@
                             </div>
                         </div>
                         <a class="btn btn-light btn-sm mt-3" href="{{ route('admin.gym-bookings.index') }}">{{ __('Booking listing') }}</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        @php
+            $recentNotes = $adminStats['recent_notifications'] ?? collect();
+        @endphp
+        <div class="row g-3 mb-4">
+            <div class="col-12">
+                <div class="card h-100">
+                    <div class="card-header border-bottom pb-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <h5 class="mb-0">{{ __('Recent notifications') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">{{ __('Includes new host registrations and other alerts for your administrator account.') }}</p>
+                        </div>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.notifications.index') }}">{{ __('View all') }}</a>
+                    </div>
+                    <div class="card-body p-0">
+                        @if ($recentNotes->isEmpty())
+                            <p class="text-muted mb-0 px-3 py-4">{{ __('No notifications yet.') }}</p>
+                        @else
+                            <ul class="list-group list-group-flush">
+                                @foreach ($recentNotes as $notification)
+                                    @php
+                                        $ndata = is_array($notification->data) ? $notification->data : [];
+                                        $nTitle = (string) ($ndata['title'] ?? __('Notification'));
+                                        $nBody = (string) ($ndata['body'] ?? '');
+                                        $nUrl = isset($ndata['url']) && is_string($ndata['url']) && $ndata['url'] !== '' ? $ndata['url'] : null;
+                                        $unread = $notification->read_at === null;
+                                    @endphp
+                                    <li class="list-group-item d-flex flex-wrap align-items-start justify-content-between gap-2 px-3 py-3">
+                                        <div class="flex-grow-1" style="min-width: 12rem;">
+                                            @if ($unread)
+                                                <span class="badge badge-light-primary rounded-pill me-1">{{ __('New') }}</span>
+                                            @endif
+                                            <span class="fw-semibold">{{ $nTitle }}</span>
+                                            @if ($nBody !== '')
+                                                <div class="text-muted small mt-1">{{ $nBody }}</div>
+                                            @endif
+                                            <div class="text-muted small mt-1">{{ $notification->created_at?->diffForHumans() }}</div>
+                                        </div>
+                                        @if ($nUrl)
+                                            <a class="btn btn-light btn-sm flex-shrink-0" href="{{ $nUrl }}">{{ __('Open') }}</a>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -223,7 +285,123 @@
         </div>
     @endisset
 
-    @if (! isset($adminStats) && ! isset($hostStats))
+    @isset($subscriberBookings)
+        <div id="subscriber-gym-bookings" class="mb-4">
+            <div class="card mb-4">
+                <div class="card-header border-bottom pb-3">
+                    <h5 class="mb-0">{{ __('My gym bookings') }}</h5>
+                    <p class="text-muted small mb-0 mt-1">{{ __('Upcoming sessions and your booking history. You can cancel future bookings here when allowed.') }}</p>
+                </div>
+                <div class="card-body">
+                    <h6 class="text-muted text-uppercase f-12 mb-3">{{ __('Upcoming & current') }}</h6>
+                    @if ($subscriberBookings['upcoming']->isEmpty())
+                        <p class="text-muted mb-4">{{ __('You have no upcoming gym bookings.') }}</p>
+                    @else
+                        <div class="table-responsive mb-4">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('Gym') }}</th>
+                                        <th>{{ __('Date') }}</th>
+                                        <th>{{ __('Time') }}</th>
+                                        <th>{{ __('Guests') }}</th>
+                                        <th>{{ __('Total') }}</th>
+                                        <th>{{ __('Code') }}</th>
+                                        <th class="text-end">{{ __('Actions') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($subscriberBookings['upcoming'] as $booking)
+                                        @php
+                                            $listing = $booking->gymListing;
+                                            $start = \Illuminate\Support\Carbon::parse($booking->start_time)->format('g:i A');
+                                            $end = \Illuminate\Support\Carbon::parse($booking->end_time)->format('g:i A');
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                @if ($listing)
+                                                    <a href="{{ route('gym.show', $listing->slug) }}">{{ $listing->name }}</a>
+                                                    <div class="small text-muted">{{ $listing->city }}, {{ $listing->state }}</div>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>{{ $booking->booking_date?->format('M j, Y') }}</td>
+                                            <td>{{ $start }} – {{ $end }}</td>
+                                            <td>{{ $booking->number_of_persons }}</td>
+                                            <td>${{ number_format((float) $booking->total_price, 2) }}</td>
+                                            <td><code class="small">{{ $booking->confirmation_code }}</code></td>
+                                            <td class="text-end">
+                                                @if ($booking->isCancellable())
+                                                    <form method="post" action="{{ route('subscriber.gym-bookings.cancel', $booking) }}" class="d-inline" onsubmit="return confirm(@json(__('Cancel this booking? Refunds follow your payment method and gym policy.')));">
+                                                        @csrf
+                                                        <button type="submit" class="btn btn-outline-danger btn-sm">{{ __('Cancel booking') }}</button>
+                                                    </form>
+                                                @else
+                                                    <span class="text-muted small">{{ __('Cancellation closed') }}</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+
+                    <h6 class="text-muted text-uppercase f-12 mb-3">{{ __('History') }}</h6>
+                    @if ($subscriberBookings['history']->isEmpty())
+                        <p class="text-muted mb-0">{{ __('No past or cancelled bookings yet.') }}</p>
+                    @else
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>{{ __('Gym') }}</th>
+                                        <th>{{ __('Date') }}</th>
+                                        <th>{{ __('Time') }}</th>
+                                        <th>{{ __('Status') }}</th>
+                                        <th>{{ __('Total') }}</th>
+                                        <th>{{ __('Code') }}</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($subscriberBookings['history'] as $booking)
+                                        @php
+                                            $listing = $booking->gymListing;
+                                            $start = \Illuminate\Support\Carbon::parse($booking->start_time)->format('g:i A');
+                                            $end = \Illuminate\Support\Carbon::parse($booking->end_time)->format('g:i A');
+                                        @endphp
+                                        <tr>
+                                            <td>
+                                                @if ($listing)
+                                                    <a href="{{ route('gym.show', $listing->slug) }}">{{ $listing->name }}</a>
+                                                @else
+                                                    —
+                                                @endif
+                                            </td>
+                                            <td>{{ $booking->booking_date?->format('M j, Y') }}</td>
+                                            <td>{{ $start }} – {{ $end }}</td>
+                                            <td>
+                                                @if (($booking->status ?? '') === 'cancelled')
+                                                    <span class="badge badge-light-secondary">{{ __('Cancelled') }}</span>
+                                                @else
+                                                    <span class="badge badge-light-primary">{{ __('Past') }}</span>
+                                                @endif
+                                            </td>
+                                            <td>${{ number_format((float) $booking->total_price, 2) }}</td>
+                                            <td><code class="small">{{ $booking->confirmation_code }}</code></td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    @endisset
+
+    @if (! isset($adminStats) && ! isset($hostStats) && ! isset($subscriberBookings))
         <div class="row starter-main">
             <div class="col-sm-12">
                 <div class="card">

@@ -41,12 +41,14 @@
                         <h5 class="mb-0">{{ $application->full_name }}</h5>
                         @if ($application->isApproved())
                             <span class="badge badge-light-success">{{ __('Approved') }}</span>
+                        @elseif ($application->isRejected())
+                            <span class="badge badge-light-danger">{{ __('Rejected') }}</span>
                         @else
                             <span class="badge badge-light-warning">{{ __('Pending') }}</span>
                         @endif
                     </div>
                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                        @if (! $application->isApproved())
+                        @if ($application->isPending())
                             <form class="d-inline mb-0" method="post" action="{{ route('admin.host-applications.approve', $application) }}">
                                 @csrf
                                 <button class="btn btn-success btn-sm" type="submit">{{ __('Approve') }}</button>
@@ -68,6 +70,14 @@
                                         @endif
                                         @if ($application->approvedBy)
                                             <span class="text-muted small d-block">{{ __('By :name', ['name' => $application->approvedBy->name]) }}</span>
+                                        @endif
+                                    @elseif ($application->isRejected())
+                                        {{ __('Rejected') }}
+                                        @if ($application->rejected_at)
+                                            <span class="text-muted small">— {{ $application->rejected_at->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</span>
+                                        @endif
+                                        @if (filled($application->rejection_message))
+                                            <span class="text-muted small d-block">{{ __('Message: :msg', ['msg' => $application->rejection_message]) }}</span>
                                         @endif
                                     @else
                                         {{ __('Pending') }}
@@ -122,6 +132,31 @@
                             <p class="text-muted small mb-2">{{ __('Description / about') }}</p>
                             <div class="border rounded p-3 bg-light mb-0">{{ $application->description !== null && $application->description !== '' ? $application->description : '—' }}</div>
                         </div>
+                        @if ($application->isPending())
+                            <div class="col-12 mt-4">
+                                <h6 class="fw-semibold mb-2">{{ __('Reject application') }}</h6>
+                                <form class="border rounded p-3 bg-light" method="post" action="{{ route('admin.host-applications.reject', $application) }}">
+                                    @csrf
+                                    <div class="mb-2">
+                                        <label class="form-label small" for="rejection_message">{{ __('Optional message to include in the applicant email') }}</label>
+                                        <textarea
+                                            class="form-control form-control-sm @error('rejection_message') is-invalid @enderror"
+                                            id="rejection_message"
+                                            name="rejection_message"
+                                            rows="3"
+                                            maxlength="5000"
+                                            placeholder="{{ __('Reason (optional)') }}"
+                                        >{{ old('rejection_message') }}</textarea>
+                                        @error('rejection_message')
+                                            <div class="invalid-feedback">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <button class="btn btn-outline-danger btn-sm" type="submit" data-confirm="{{ __('Reject this application and email the applicant?') }}" onclick="return confirm(this.dataset.confirm)">
+                                        {{ __('Reject') }}
+                                    </button>
+                                </form>
+                            </div>
+                        @endif
                     </div>
                 </div>
             </div>
