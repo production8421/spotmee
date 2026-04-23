@@ -50,6 +50,9 @@
 @endpush
 
 @section('content')
+    @php
+        $autoApproveEnabled = (bool) ($applicationSetting?->host_registration_auto_approve ?? false);
+    @endphp
     <div class="container-fluid px-2 px-sm-3">
         <div class="login-card login-dark host-apply-intro">
             <div class="w-100 d-flex justify-content-center">
@@ -83,11 +86,19 @@
                                             </li>
                                             <li class="list-group-item d-flex align-items-start border-0 border-bottom py-2 py-md-3">
                                                 <i class="fa-solid fa-circle-check text-primary me-3 mt-1 flex-shrink-0" aria-hidden="true"></i>
-                                                <span>{{ __('2. Admin approves your account and listing') }}</span>
+                                                <span>
+                                                    {{ $autoApproveEnabled
+                                                        ? __('2. Your host account is automatically approved')
+                                                        : __('2. Admin approves your account and listing') }}
+                                                </span>
                                             </li>
                                             <li class="list-group-item d-flex align-items-start border-0 py-2 py-md-3">
                                                 <i class="fa-solid fa-circle-check text-primary me-3 mt-1 flex-shrink-0" aria-hidden="true"></i>
-                                                <span>{{ __('3. Your listing is live and you reach more people on :app', ['app' => config('app.name')]) }}</span>
+                                                <span>
+                                                    {{ $autoApproveEnabled
+                                                        ? __('3. Your listing is live immediately and you reach more people on :app', ['app' => config('app.name')])
+                                                        : __('3. Your listing is live and you reach more people on :app', ['app' => config('app.name')]) }}
+                                                </span>
                                             </li>
                                         </ul>
                                     </div>

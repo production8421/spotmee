@@ -118,9 +118,20 @@
                     <h1 class="mt-3 text-[28px] font-bold leading-tight text-[var(--color-ink-900)] sm:text-[36px]">
                         {{ $listing->name }}
                     </h1>
-                    <div class="mt-2 flex items-center gap-2 text-[15px] text-[var(--color-ink-500)]">
-                        <i class="fa-solid fa-location-dot text-[var(--color-primary)]"></i>
-                        <span class="truncate">{{ $fullAddress !== '' ? $fullAddress : ($listing->city.', '.$stateCode) }}</span>
+                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-[15px] text-[var(--color-ink-500)]">
+                        <span class="flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-[var(--color-primary)]"></i>
+                            <span class="truncate">{{ $fullAddress !== '' ? $fullAddress : ($listing->city.', '.$stateCode) }}</span>
+                        </span>
+                        @if ($reviewsCount > 0)
+                            <a href="#gym-reviews" class="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-[13px] font-bold text-amber-700 hover:bg-amber-100">
+                                <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
+                                {{ number_format($reviewsAvg, 1) }}
+                                <span class="text-[12px] font-semibold text-amber-600">
+                                    ({{ trans_choice('{1} 1 review|[2,*] :count reviews', $reviewsCount, ['count' => $reviewsCount]) }})
+                                </span>
+                            </a>
+                        @endif
                     </div>
                 </div>
 
@@ -492,6 +503,214 @@
 
 
         {{-- ============================================================
+             3.5 · REVIEWS · Star-rating + comments
+             ============================================================ --}}
+        <section id="gym-reviews" class="site-container pb-16 sm:pb-20">
+            <div class="overflow-hidden rounded-[28px] border border-[var(--color-brand-100)] bg-white shadow-[var(--shadow-sm)]" data-aos="fade-up">
+
+                {{-- Header with aggregate rating --}}
+                <div class="border-b border-[var(--color-brand-100)] bg-gradient-to-br from-[var(--color-brand-50)] to-white px-6 py-7 sm:px-8">
+                    <div class="flex flex-col items-start justify-between gap-5 sm:flex-row sm:items-center">
+                        <div class="min-w-0">
+                            <p class="text-[12px] font-bold uppercase tracking-wide text-[var(--color-primary)]">{{ __('Guest reviews') }}</p>
+                            <h2 class="mt-1 text-[22px] font-bold text-[var(--color-ink-900)] sm:text-[26px]">
+                                {{ __('What guests are saying') }}
+                            </h2>
+                            <p class="mt-1 text-[14px] text-[var(--color-ink-500)]">
+                                {{ __('Verified reviews from subscribers who booked this gym.') }}
+                            </p>
+                        </div>
+
+                        @if ($reviewsCount > 0)
+                            <div class="flex shrink-0 items-center gap-4 rounded-2xl border border-[var(--color-brand-100)] bg-white px-5 py-4 shadow-[var(--shadow-sm)]">
+                                <div class="text-center">
+                                    <p class="text-[32px] font-bold leading-none text-[var(--color-primary)]">
+                                        {{ number_format($reviewsAvg, 1) }}
+                                    </p>
+                                    <p class="mt-1 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-500)]">
+                                        {{ __('of 5') }}
+                                    </p>
+                                </div>
+                                <div class="h-10 w-px bg-[var(--color-brand-100)]"></div>
+                                <div>
+                                    <div class="flex items-center gap-0.5 text-[18px] text-amber-400">
+                                        @for ($i = 1; $i <= 5; $i++)
+                                            <i class="{{ $i <= round($reviewsAvg) ? 'fa-solid' : 'fa-regular' }} fa-star"></i>
+                                        @endfor
+                                    </div>
+                                    <p class="mt-1 text-[12px] font-semibold text-[var(--color-ink-500)]">
+                                        {{ trans_choice('{0} No reviews|{1} 1 review|[2,*] :count reviews', $reviewsCount, ['count' => $reviewsCount]) }}
+                                    </p>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-0 lg:grid-cols-3">
+
+                    {{-- LEFT · Reviews list --}}
+                    <div class="lg:col-span-2 lg:border-r lg:border-[var(--color-brand-100)]">
+                        <div class="px-6 py-6 sm:px-8 sm:py-8">
+                            @if ($reviewsCount === 0)
+                                <div class="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-[var(--color-brand-200)] bg-[var(--color-brand-50)]/40 px-6 py-12 text-center">
+                                    <span class="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[var(--color-primary)] shadow-[var(--shadow-sm)]">
+                                        <i class="fa-solid fa-comments text-[20px]"></i>
+                                    </span>
+                                    <p class="text-[16px] font-bold text-[var(--color-ink-900)]">{{ __('No reviews yet') }}</p>
+                                    <p class="max-w-sm text-[14px] text-[var(--color-ink-500)]">
+                                        {{ __('Be the first to review this gym after you book and train here.') }}
+                                    </p>
+                                </div>
+                            @else
+                                <ul class="space-y-5">
+                                    @foreach ($reviews as $review)
+                                        @php
+                                            $reviewerName = $review->user?->name ?: __('Guest');
+                                            $reviewerInitial = strtoupper(mb_substr($reviewerName, 0, 1));
+                                            $ratingInt = (int) $review->rating;
+                                        @endphp
+                                        <li class="rounded-2xl border border-[var(--color-brand-100)] bg-white p-5 transition-shadow hover:shadow-[var(--shadow-sm)]">
+                                            <div class="flex items-start gap-4">
+                                                <span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-50)] text-[15px] font-bold text-[var(--color-primary)]">
+                                                    {{ $reviewerInitial }}
+                                                </span>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                                        <p class="text-[15px] font-bold text-[var(--color-ink-900)]">{{ $reviewerName }}</p>
+                                                        <p class="text-[12px] font-medium text-[var(--color-ink-500)]">
+                                                            {{ $review->created_at?->diffForHumans() }}
+                                                        </p>
+                                                    </div>
+                                                    <div class="mt-1 flex items-center gap-0.5 text-[14px] text-amber-400">
+                                                        @for ($i = 1; $i <= 5; $i++)
+                                                            <i class="{{ $i <= $ratingInt ? 'fa-solid' : 'fa-regular' }} fa-star"></i>
+                                                        @endfor
+                                                        <span class="ml-2 text-[12px] font-semibold text-[var(--color-ink-500)]">{{ $ratingInt }}/5</span>
+                                                    </div>
+                                                    <p class="mt-3 whitespace-pre-line text-[14px] leading-relaxed text-[var(--color-ink-700)]">
+                                                        {{ $review->comment }}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    </div>
+
+                    {{-- RIGHT · Leave a review form / gating messages --}}
+                    <div class="bg-[var(--color-brand-50)]/40 px-6 py-6 sm:px-8 sm:py-8">
+                        <div class="sticky top-28">
+                            <h3 class="flex items-center gap-2 text-[16px] font-bold text-[var(--color-ink-900)]">
+                                <i class="fa-solid fa-pen-to-square text-[var(--color-primary)]"></i>
+                                {{ $userExistingReview ? __('Update your review') : __('Leave a review') }}
+                            </h3>
+
+                            @if (session('status'))
+                                <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[13px] font-semibold text-emerald-700">
+                                    <i class="fa-solid fa-circle-check mr-1"></i>
+                                    {{ session('status') }}
+                                </div>
+                            @endif
+
+                            @if (! $isLoggedIn)
+                                {{-- Not logged in --}}
+                                <p class="mt-3 text-[14px] text-[var(--color-ink-500)]">
+                                    {{ __('Sign in as a subscriber to share your experience at this gym.') }}
+                                </p>
+                                <div class="mt-5 flex flex-wrap gap-2">
+                                    <a href="{{ route('login') }}" class="btn btn-primary">
+                                        <i class="fa-solid fa-right-to-bracket text-[12px]"></i>
+                                        {{ __('Log in') }}
+                                    </a>
+                                    @if (Route::has('register'))
+                                        <a href="{{ route('register') }}" class="btn btn-outline">
+                                            {{ __('Create account') }}
+                                        </a>
+                                    @endif
+                                </div>
+                            @elseif (! $isSubscriber)
+                                {{-- Logged in but not a subscriber (host / admin) --}}
+                                <p class="mt-3 text-[14px] text-[var(--color-ink-500)]">
+                                    {{ __('Only subscriber accounts can post reviews. Hosts and administrators are not eligible.') }}
+                                </p>
+                            @elseif (! $hasBookedHere)
+                                {{-- Subscriber, but has never booked this gym --}}
+                                <p class="mt-3 text-[14px] text-[var(--color-ink-500)]">
+                                    {{ __('You can leave a review after you book and complete a session at this gym.') }}
+                                </p>
+                                <div class="mt-5">
+                                    <button type="button" onclick="openBookingModal()" class="btn btn-primary">
+                                        <i class="fa-solid fa-calendar-check text-[12px]"></i>
+                                        {{ __('Book your first session') }}
+                                    </button>
+                                </div>
+                            @else
+                                {{-- Eligible: show the form --}}
+                                <p class="mt-2 text-[13px] text-[var(--color-ink-500)]">
+                                    {{ __('Your honest feedback helps other guests.') }}
+                                </p>
+
+                                <form action="{{ route('gym.reviews.store', ['slug' => $listing->slug]) }}" method="POST" class="mt-5 space-y-4" id="gym-review-form">
+                                    @csrf
+
+                                    {{-- Star rating --}}
+                                    <div>
+                                        <label class="mb-2 block text-[12px] font-bold uppercase tracking-wide text-[var(--color-ink-700)]">
+                                            {{ __('Your rating') }}
+                                        </label>
+                                        <div class="flex items-center gap-1" id="gym-review-stars" role="radiogroup" aria-label="{{ __('Your rating') }}">
+                                            @for ($i = 1; $i <= 5; $i++)
+                                                <button type="button" data-value="{{ $i }}" aria-label="{{ $i }} {{ trans_choice('star|stars', $i) }}"
+                                                        class="gym-review-star flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--color-brand-100)] bg-white text-[20px] text-[var(--color-ink-300)] transition-colors hover:border-amber-300 hover:text-amber-400">
+                                                    <i class="fa-solid fa-star"></i>
+                                                </button>
+                                            @endfor
+                                            <span id="gym-review-rating-label" class="ml-3 text-[12px] font-semibold text-[var(--color-ink-500)]">
+                                                {{ __('Tap a star') }}
+                                            </span>
+                                        </div>
+                                        <input type="hidden" name="rating" id="gym-review-rating-input"
+                                               value="{{ old('rating', $userExistingReview?->rating ?? '') }}">
+                                        @error('rating')
+                                            <p class="mt-2 text-[12px] font-semibold text-rose-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    {{-- Comment --}}
+                                    <div>
+                                        <label for="gym-review-comment" class="mb-2 block text-[12px] font-bold uppercase tracking-wide text-[var(--color-ink-700)]">
+                                            {{ __('Your review') }}
+                                        </label>
+                                        <textarea id="gym-review-comment" name="comment" rows="5" maxlength="2000"
+                                                  placeholder="{{ __('Share what you liked, the vibe, equipment, cleanliness, communication…') }}"
+                                                  class="w-full rounded-xl border border-[var(--color-brand-100)] bg-white px-4 py-3 text-[14px] text-[var(--color-ink-900)] placeholder:text-[var(--color-ink-400)] focus:border-[var(--color-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/15"
+                                                  required>{{ old('comment', $userExistingReview?->comment ?? '') }}</textarea>
+                                        <p class="mt-1 text-[11px] text-[var(--color-ink-400)]">
+                                            {{ __('10–2000 characters.') }}
+                                        </p>
+                                        @error('comment')
+                                            <p class="mt-2 text-[12px] font-semibold text-rose-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary w-full justify-center">
+                                        <i class="fa-solid fa-paper-plane text-[12px]"></i>
+                                        {{ $userExistingReview ? __('Update review') : __('Post review') }}
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+
+        {{-- ============================================================
              4 · BOOKING FORM (React) · RENDERED INSIDE A MODAL
              ============================================================ --}}
         <div id="spotmee-booking-modal"
@@ -613,6 +832,10 @@
             modal.setAttribute('aria-hidden', 'false');
             document.body.style.overflow = 'hidden';
 
+            // Ensure React booking form mount gets retried if initial page-load
+            // timing prevented the first mount.
+            window.dispatchEvent(new Event('spotmee:booking-modal-open'));
+
             // Let React/flatpickr recompute layout once the modal is visible
             window.dispatchEvent(new Event('resize'));
         }
@@ -636,6 +859,84 @@
         if (window.location.hash === '#book') {
             window.addEventListener('DOMContentLoaded', openBookingModal);
         }
+
+        // ---------------------------------------------------------------
+        // Star-rating widget (gym review form)
+        // ---------------------------------------------------------------
+        (function () {
+            const starGroup = document.getElementById('gym-review-stars');
+            const hiddenInput = document.getElementById('gym-review-rating-input');
+            const label = document.getElementById('gym-review-rating-label');
+            if (!starGroup || !hiddenInput) return;
+
+            const buttons = Array.from(starGroup.querySelectorAll('.gym-review-star'));
+            const LABELS = {
+                '1': @json(__('Poor')),
+                '2': @json(__('Fair')),
+                '3': @json(__('Good')),
+                '4': @json(__('Great')),
+                '5': @json(__('Excellent')),
+            };
+
+            function paint(value) {
+                buttons.forEach(function (btn) {
+                    const v = parseInt(btn.dataset.value, 10);
+                    if (v <= value) {
+                        btn.classList.add('is-active');
+                        btn.style.background = '#fffbeb';
+                        btn.style.borderColor = '#fcd34d';
+                        btn.style.color = '#f59e0b';
+                    } else {
+                        btn.classList.remove('is-active');
+                        btn.style.background = '';
+                        btn.style.borderColor = '';
+                        btn.style.color = '';
+                    }
+                });
+                if (label) {
+                    label.textContent = value >= 1 && value <= 5
+                        ? (value + '/5 · ' + (LABELS[String(value)] || ''))
+                        : @json(__('Tap a star'));
+                }
+            }
+
+            buttons.forEach(function (btn) {
+                btn.addEventListener('mouseenter', function () {
+                    paint(parseInt(btn.dataset.value, 10));
+                });
+                btn.addEventListener('click', function () {
+                    const val = parseInt(btn.dataset.value, 10);
+                    hiddenInput.value = String(val);
+                    paint(val);
+                });
+            });
+
+            starGroup.addEventListener('mouseleave', function () {
+                const current = parseInt(hiddenInput.value, 10);
+                paint(Number.isFinite(current) ? current : 0);
+            });
+
+            const initial = parseInt(hiddenInput.value, 10);
+            if (Number.isFinite(initial) && initial > 0) {
+                paint(initial);
+            }
+
+            // Block submit when no rating picked.
+            const form = document.getElementById('gym-review-form');
+            if (form) {
+                form.addEventListener('submit', function (e) {
+                    const val = parseInt(hiddenInput.value, 10);
+                    if (!Number.isFinite(val) || val < 1 || val > 5) {
+                        e.preventDefault();
+                        if (label) {
+                            label.textContent = @json(__('Please pick a rating'));
+                            label.style.color = '#e11d48';
+                        }
+                        starGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                });
+            }
+        })();
     </script>
 @endpush
 

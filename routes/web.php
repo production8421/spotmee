@@ -18,6 +18,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PublicGymBookingCancellationController;
 use App\Http\Controllers\PublicGymBookingController;
 use App\Http\Controllers\PublicGymController;
+use App\Http\Controllers\PublicGymReviewController;
 use App\Http\Controllers\SubscriberGymBookingController;
 use App\Http\Controllers\WebContactController;
 use App\Models\ApplicationSetting;
@@ -127,7 +128,11 @@ Route::get(
             'selectedService' => $selectedService,
             'searchBy' => $searchBy,
             'searchCity' => $city,
-            'listings' => $query->orderByDesc('id')->paginate(12)->withQueryString(),
+            'listings' => $query
+                ->withReviewAggregates()
+                ->orderByDesc('id')
+                ->paginate(12)
+                ->withQueryString(),
         ]);
     }
 )->name('find-a-gym');
@@ -205,7 +210,11 @@ Route::get(
             'selectedService' => $selectedService,
             'searchBy' => $searchBy,
             'searchCity' => $city,
-            'listings' => $query->orderByDesc('id')->paginate(12)->withQueryString(),
+            'listings' => $query
+                ->withReviewAggregates()
+                ->orderByDesc('id')
+                ->paginate(12)
+                ->withQueryString(),
         ]);
     }
 )->where('state', '[A-Za-z]{2}')->name('find-a-gym.state');
@@ -213,6 +222,11 @@ Route::get(
 Route::get('/gyms/{slug}', [PublicGymController::class, 'show'])
     ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
     ->name('gym.show');
+
+Route::post('/gyms/{slug}/reviews', [PublicGymReviewController::class, 'store'])
+    ->middleware(['auth', 'throttle:10,1'])
+    ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
+    ->name('gym.reviews.store');
 
 Route::get('/gyms/{slug}/bookings/blocked', [PublicGymBookingController::class, 'blockedTimes'])
     ->middleware('throttle:120,1')

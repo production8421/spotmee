@@ -7,6 +7,11 @@
 <div
     id="spotmee-gym-booking-react"
     class="spotmee-gym-booking-react-root"
-></div>
+    data-booking-mounted="false"
+>
+    <div class="rounded-xl border border-[var(--color-brand-100)] bg-[var(--color-brand-50)]/40 px-4 py-6 text-center text-[14px] text-[var(--color-ink-500)]">
+        {{ __('Loading booking form…') }}
+    </div>
+</div>
 
 <script type="application/json" id="spotmee-booking-bootstrap">@json($bookingBootstrap)</script>

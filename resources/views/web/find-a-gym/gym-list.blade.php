@@ -191,6 +191,9 @@
                             $tierKey   = method_exists($listing, 'hostTierKey') ? $listing->hostTierKey() : 'silver';
                             $tierRates = $settings?->publicGuestTierRates($tierKey) ?? [];
                             $rate1hr   = $tierRates['rate_1hr'] ?? null;
+
+                            $reviewsCount = (int) ($listing->reviews_count ?? 0);
+                            $reviewsAvg   = $reviewsCount > 0 ? round((float) $listing->reviews_avg_rating, 1) : 0.0;
                         @endphp
 
                         <article class="group flex h-full flex-col overflow-hidden rounded-[24px] border border-[var(--color-brand-100)] bg-white shadow-[var(--shadow-sm)] transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-brand-200)] hover:shadow-[var(--shadow-lg)]"
@@ -217,12 +220,21 @@
                                         </span>
                                     @endif
 
-                                    <button type="button"
-                                            onclick="event.preventDefault(); event.stopPropagation();"
-                                            class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[var(--color-ink-400)] shadow-[var(--shadow-sm)] backdrop-blur transition-all hover:bg-white hover:text-rose-500"
-                                            aria-label="{{ __('Save to favorites') }}">
-                                        <i class="fa-solid fa-heart text-[13px]"></i>
-                                    </button>
+                                    <div class="absolute right-4 top-4 flex items-center gap-2">
+                                        @if ($reviewsCount > 0)
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-white/95 px-2.5 py-1.5 text-[12px] font-bold text-[var(--color-ink-900)] shadow-[var(--shadow-sm)] backdrop-blur">
+                                                <i class="fa-solid fa-star text-amber-400 text-[11px]"></i>
+                                                {{ number_format($reviewsAvg, 1) }}
+                                                <span class="font-semibold text-[var(--color-ink-500)]">({{ $reviewsCount }})</span>
+                                            </span>
+                                        @endif
+                                        <button type="button"
+                                                onclick="event.preventDefault(); event.stopPropagation();"
+                                                class="flex h-9 w-9 items-center justify-center rounded-full bg-white/95 text-[var(--color-ink-400)] shadow-[var(--shadow-sm)] backdrop-blur transition-all hover:bg-white hover:text-rose-500"
+                                                aria-label="{{ __('Save to favorites') }}">
+                                            <i class="fa-solid fa-heart text-[13px]"></i>
+                                        </button>
+                                    </div>
 
                                     @if (! empty($rate1hr) && (float) $rate1hr > 0)
                                         <span class="absolute bottom-4 left-4 inline-flex items-center gap-1 rounded-full bg-[var(--color-primary)] px-3 py-1.5 text-[13px] font-bold text-white shadow-[var(--shadow-md)]">

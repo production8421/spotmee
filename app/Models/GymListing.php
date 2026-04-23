@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -97,6 +98,55 @@ class GymListing extends Model
     public function bookings(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(GymBooking::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<GymReview, $this>
+     */
+    public function reviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(GymReview::class);
+    }
+
+    /**
+     * Has the given user completed (or at least paid for) a booking at this listing?
+     * Used to gate who can post a review.
+     */
+    public function hasBookingByUser(?User $user): bool
+    {
+        if (! $user instanceof User) {
+            return false;
+        }
+
+        if (! Schema::hasTable('gym_bookings')) {
+            return false;
+        }
+
+        return $this->bookings()
+            ->where('user_id', $user->id)
+            ->whereIn('status', ['confirmed', 'completed'])
+            ->exists();
+    }
+
+    /**
+     * Eager-load aggregates (`reviews_count`, `reviews_avg_rating`) so list
+     * views can render rating badges without N+1 queries. Safe when the
+     * `gym_reviews` table has not been migrated yet.
+     *
+     * @param  Builder<GymListing>  $query
+     * @return Builder<GymListing>
+     */
+    public function scopeWithReviewAggregates(Builder $query): Builder
+    {
+        if (! Schema::hasTable('gym_reviews')) {
+            return $query;
+        }
+
+        return $query
+            ->withCount(['reviews as reviews_count' => fn (Builder $q) => $q->whereNotNull('approved_at')])
+            ->withAvg([
+                'reviews as reviews_avg_rating' => fn (Builder $q) => $q->whereNotNull('approved_at'),
+            ], 'rating');
     }
 
     public function pendingHostApproval(): bool

@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Enums\UserRole;
 use App\Models\ApplicationSetting;
 use App\Models\GymListing;
+use App\Models\GymReview;
 use App\Models\User;
 use App\Support\RyjGymSchedule;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class PublicGymController extends Controller
 {
@@ -67,6 +69,36 @@ class PublicGymController extends Controller
             'userEmail' => Auth::user() instanceof User ? (string) Auth::user()->email : '',
         ];
 
+        /** @var User|null $authUser */
+        $authUser = Auth::user();
+
+        // Review aggregates + list (table may not exist yet in dev if migrations
+        // haven't run — guard so the page keeps working either way).
+        $reviewsTableExists = Schema::hasTable('gym_reviews');
+        $reviewsQuery = $reviewsTableExists
+            ? GymReview::query()
+                ->with('user:id,name')
+                ->where('gym_listing_id', $listing->id)
+                ->whereNotNull('approved_at')
+                ->latest()
+            : null;
+
+        $reviews = $reviewsQuery ? $reviewsQuery->get() : collect();
+        $reviewsCount = $reviews->count();
+        $reviewsAvg = $reviewsCount > 0 ? round((float) $reviews->avg('rating'), 1) : 0.0;
+
+        $isSubscriber = $authUser instanceof User && $authUser->hasRole(UserRole::Subscriber->value);
+        $hasBookedHere = $listing->hasBookingByUser($authUser);
+        $canReview = $authUser instanceof User && $isSubscriber && $hasBookedHere;
+
+        $userExistingReview = null;
+        if ($reviewsTableExists && $authUser instanceof User) {
+            $userExistingReview = GymReview::query()
+                ->where('gym_listing_id', $listing->id)
+                ->where('user_id', $authUser->id)
+                ->first();
+        }
+
         return view('web.find-a-gym.gym-main-page', [
             'listing' => $listing,
             'photos' => $photos,
@@ -74,6 +106,14 @@ class PublicGymController extends Controller
             'pricing' => $pricing,
             'stateLabel' => config('gym_listing.states.'.strtoupper((string) $listing->state), (string) $listing->state),
             'bookingBootstrap' => $bookingBootstrap,
+            'reviews' => $reviews,
+            'reviewsCount' => $reviewsCount,
+            'reviewsAvg' => $reviewsAvg,
+            'isLoggedIn' => $authUser instanceof User,
+            'isSubscriber' => $isSubscriber,
+            'hasBookedHere' => $hasBookedHere,
+            'canReview' => $canReview,
+            'userExistingReview' => $userExistingReview,
         ]);
     }
 }

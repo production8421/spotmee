@@ -370,7 +370,7 @@
 
                         <hr class="my-4">
 
-                        <h6 class="mb-2">{{ __('Host registration') }}</h6>
+                        <h6 class="mb-2">{{ __('Host approval option') }}</h6>
                         <p class="text-muted small mb-3">
                             {{ __('When enabled, new “Become a Host” applications skip manual approval: a host account is created immediately, login details are emailed to the applicant, and administrators receive a dashboard notification.') }}
                         </p>
@@ -383,7 +383,7 @@
                                 value="1"
                                 {{ old('host_registration_auto_approve', $settings->host_registration_auto_approve ? '1' : '') === '1' ? 'checked' : '' }}
                             >
-                            <label class="form-check-label fw-semibold" for="host_registration_auto_approve">{{ __('Automatically approve host registrations (no admin review)') }}</label>
+                            <label class="form-check-label fw-semibold" for="host_registration_auto_approve">{{ __('Host approval option (auto-approve registrations, no admin review)') }}</label>
                         </div>
                         @error('host_registration_auto_approve')
                             <div class="invalid-feedback d-block">{{ $message }}</div>

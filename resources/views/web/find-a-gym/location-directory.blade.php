@@ -59,25 +59,22 @@
                 </p>
 
                 <form action="{{ route('find-a-gym') }}" method="GET"
-                      class="mx-auto mt-8 flex w-full max-w-3xl flex-col gap-3 rounded-2xl bg-white/95 p-3 shadow-[var(--shadow-lg)] backdrop-blur sm:flex-row sm:items-center"
+                      class="mx-auto mt-8 flex w-full max-w-2xl flex-col gap-3 rounded-2xl bg-white/95 p-3 shadow-[var(--shadow-lg)] backdrop-blur sm:flex-row sm:items-center"
                       data-aos="fade-up" data-aos-delay="300">
                     <label class="flex flex-1 items-center gap-3 rounded-xl bg-[var(--color-brand-50)] px-4 py-3">
                         <i class="fa-solid fa-location-dot text-[var(--color-primary)]"></i>
-                        <input type="text" name="searchby"
-                               placeholder="{{ __('Location (e.g., Dallas, TX)') }}"
+                        <input type="text" name="city" value="{{ request('city', '') }}"
+                               placeholder="{{ __('Enter city, neighbourhood or ZIP') }}"
                                class="w-full border-0 bg-transparent p-0 text-[15px] text-[var(--color-ink-900)] placeholder:text-[var(--color-ink-400)] focus:outline-none focus:ring-0">
-                    </label>
-                    <label class="flex flex-1 items-center gap-3 rounded-xl bg-[var(--color-brand-50)] px-4 py-3">
-                        <i class="fa-solid fa-calendar-days text-[var(--color-primary)]"></i>
-                        <input type="text" id="datetime-picker"
-                               placeholder="{{ __('Select Date & Time') }}"
-                               class="w-full cursor-pointer border-0 bg-transparent p-0 text-[15px] text-[var(--color-ink-900)] placeholder:text-[var(--color-ink-400)] focus:outline-none focus:ring-0">
                     </label>
                     <button type="submit" class="btn btn-primary btn-lg justify-center sm:w-auto">
                         <i class="fa-solid fa-magnifying-glass text-[13px]"></i>
-                        {{ __('Search') }}
+                        {{ __('Find Gyms') }}
                     </button>
                 </form>
+                <p class="mt-4 text-[14px] text-white/85" data-aos="fade-up" data-aos-delay="350">
+                    {{ __('Private gyms near you. No memberships. No waiting.') }}
+                </p>
             </div>
         </div>
     </section>
@@ -305,7 +302,6 @@
 @endsection
 
 @push('scripts')
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.css">
 <style>
     .noUi-target {
@@ -333,18 +329,8 @@
     .noUi-handle:active { cursor: grabbing; transform: scale(1.08); }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.0/nouislider.min.js"></script>
 <script>
-    flatpickr("#datetime-picker", {
-        enableTime: true,
-        dateFormat: "F j, Y - h:i K",
-        minDate: "today",
-        time_24hr: false,
-        disableMobile: "true",
-        theme: "light"
-    });
-
     (function () {
         var slider = document.getElementById('price-slider');
         if (!slider) return;

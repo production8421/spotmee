@@ -5,6 +5,7 @@
 @php
     $hostTerms   = $applicationSetting?->legal_host_terms_url;
     $hostPrivacy = $applicationSetting?->legal_host_privacy_url;
+    $autoApproveEnabled = (bool) ($applicationSetting?->host_registration_auto_approve ?? false);
 @endphp
 
 @section('content')
@@ -88,7 +89,10 @@
                                         <i class="fa-solid fa-check text-[11px]"></i>
                                     </span>
                                     <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
-                                        <span class="font-semibold">2.</span> {{ __('Admin approves your account and listing') }}
+                                        <span class="font-semibold">2.</span>
+                                        {{ $autoApproveEnabled
+                                            ? __('Your host account is automatically approved')
+                                            : __('Admin approves your account and listing') }}
                                     </span>
                                 </li>
                                 <li class="flex items-start gap-3 py-3">
@@ -97,7 +101,9 @@
                                     </span>
                                     <span class="text-[14px] leading-snug text-[var(--color-ink-900)]">
                                         <span class="font-semibold">3.</span>
-                                        {{ __('Your listing goes live and you start reaching guests near you') }}
+                                        {{ $autoApproveEnabled
+                                            ? __('Your listing goes live immediately and you start reaching guests near you')
+                                            : __('Your listing goes live and you start reaching guests near you') }}
                                     </span>
                                 </li>
                             </ul>

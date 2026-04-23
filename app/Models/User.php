@@ -43,6 +43,14 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany<GymReview, $this>
+     */
+    public function gymReviews(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(GymReview::class);
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>

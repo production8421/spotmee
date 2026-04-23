@@ -3,6 +3,9 @@
 @section('title', __('Registration Submitted').' — '.config('app.name'))
 
 @section('content')
+    @php
+        $autoApproveEnabled = (bool) (\App\Models\ApplicationSetting::instance()->host_registration_auto_approve ?? false);
+    @endphp
     <div class="container-fluid p-0">
         <div class="row m-0 justify-content-center">
             <div class="col-12 col-lg-8 col-xl-6 p-0">
@@ -26,11 +29,17 @@
                                 <div class="card border border-2 border-primary rounded-3 mb-4 text-center shadow-none" style="background-color: rgba(13, 110, 253, 0.06);">
                                     <div class="card-body p-4">
                                         <i class="fa-solid fa-stopwatch text-primary fa-2x mb-3" aria-hidden="true"></i>
-                                        <h5 class="text-primary mb-3">{{ __('Waiting for Admin Approval') }}</h5>
+                                        <h5 class="text-primary mb-3">
+                                            {{ $autoApproveEnabled ? __('Auto-approval enabled') : __('Waiting for Admin Approval') }}
+                                        </h5>
                                         <p class="text-muted mb-0 small text-start">
-                                            {{ __('Your account is pending approval. Please allow up to') }}
-                                            <strong>{{ __('24 hours') }}</strong>
-                                            {{ __('for our team to review your application. Once approved, you will receive an email with your login credentials.') }}
+                                            @if ($autoApproveEnabled)
+                                                {{ __('Auto approval is enabled. Your account and listing are processed immediately, and login credentials are sent to your email.') }}
+                                            @else
+                                                {{ __('Your account is pending approval. Please allow up to') }}
+                                                <strong>{{ __('24 hours') }}</strong>
+                                                {{ __('for our team to review your application. Once approved, you will receive an email with your login credentials.') }}
+                                            @endif
                                         </p>
                                     </div>
                                 </div>
@@ -44,15 +53,27 @@
                                         </li>
                                         <li class="d-flex align-items-start mb-3">
                                             <i class="fa-solid fa-clipboard-check text-primary me-2 mt-1" aria-hidden="true"></i>
-                                            <span>{{ __('An administrator will review your application') }}</span>
+                                            <span>
+                                                {{ $autoApproveEnabled
+                                                    ? __('Your application is auto-approved based on current settings')
+                                                    : __('An administrator will review your application') }}
+                                            </span>
                                         </li>
                                         <li class="d-flex align-items-start mb-3">
                                             <i class="fa-solid fa-key text-primary me-2 mt-1" aria-hidden="true"></i>
-                                            <span>{{ __('You will receive login credentials once approved') }}</span>
+                                            <span>
+                                                {{ $autoApproveEnabled
+                                                    ? __('Login credentials are sent to your email right away')
+                                                    : __('You will receive login credentials once approved') }}
+                                            </span>
                                         </li>
                                         <li class="d-flex align-items-start mb-0">
                                             <i class="fa-solid fa-house text-primary me-2 mt-1" aria-hidden="true"></i>
-                                            <span>{{ __('You can start hosting on :app after approval', ['app' => config('app.name')]) }}</span>
+                                            <span>
+                                                {{ $autoApproveEnabled
+                                                    ? __('You can start hosting on :app immediately', ['app' => config('app.name')])
+                                                    : __('You can start hosting on :app after approval', ['app' => config('app.name')]) }}
+                                            </span>
                                         </li>
                                     </ul>
                                 </div>
