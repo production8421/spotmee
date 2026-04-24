@@ -6,7 +6,7 @@
      * moved to a dedicated admin screen later without touching the markup.
      */
     $settings      = $settings ?? \App\Models\ApplicationSetting::instance();
-    $footerLogoUrl = $settings->footerLogoUrl() ?? $settings->headerLogoUrl() ?? asset('images/header-logo.png');
+    $footerLogoUrl = $settings->displayFooterLogoUrl();
     $socialLinks   = collect($settings->footerSocialLinksForPublic())->keyBy('platform');
 
     $socialIconMap = [
@@ -33,11 +33,8 @@
         [
             'heading' => __('Support'),
             'links'   => [
-                ['label' => __('Help Center'),        'href' => '#'],
-                ['label' => __('Contact Us'),         'href' => route('contact')],
-                ['label' => __('Safety Guidelines'),  'href' => '#'],
-                ['label' => __('FAQs'),               'href' => route('faq')],
-                ['label' => __('Hosting Tips'),       'href' => '#'],
+                ['label' => __('Contact Us'), 'href' => route('contact')],
+                ['label' => __('FAQs'),       'href' => route('faq')],
             ],
         ],
         [
@@ -46,8 +43,6 @@
                 ['label' => __('Waiver of Liability (Host)'), 'href' => route('legal.waiver-host')],
                 ['label' => __('Waiver of Liability (User)'), 'href' => route('legal.waiver-user')],
                 ['label' => __('Cancellation Policy'),        'href' => route('legal.cancellation-policy')],
-                ['label' => __('Terms & Conditions'),         'href' => '#'],
-                ['label' => __('Privacy Policy'),             'href' => '#'],
             ],
         ],
     ];
@@ -64,7 +59,7 @@
                     <a href="{{ route('home') }}" class="inline-block" aria-label="{{ config('app.name') }}">
                         <img src="{{ $footerLogoUrl }}"
                              alt="{{ config('app.name') }}"
-                             class="h-16 w-auto object-contain">
+                             class="site-footer-logo">
                     </a>
                     <p class="footer-brand-tagline">
                         {{ __('Connecting you to private, high-quality home gyms anytime, anywhere.') }}
@@ -111,8 +106,6 @@
             <div class="footer-bar">
                 <p>&copy; {{ now()->year }} SPOTMEE. {{ __('All rights reserved.') }}</p>
                 <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                    <a href="#" class="footer-bar-link">{{ __('Privacy') }}</a>
-                    <a href="#" class="footer-bar-link">{{ __('Terms') }}</a>
                     <a href="#" class="footer-bar-link">{{ __('Cookies') }}</a>
                 </div>
             </div>

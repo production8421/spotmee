@@ -62,25 +62,27 @@
 
                     <section class="legal-section" id="user">
                         <h2 class="legal-section__heading"><span class="legal-section__num">2</span> {{ __('User cancellations') }}</h2>
-                        <p>{{ __('If you need to cancel a booking, the following rules apply:') }}</p>
+                        <p>
+                            {{ __('At SPOTMEE, each appointment is reserved exclusively for you. We ask for at least 24 hours\' notice for cancellations. If you need to cancel a booking, the following rules apply:') }}
+                        </p>
 
-                        <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+                        <div class="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
                             <div class="rounded-2xl border border-[var(--color-brand-100)] bg-[color-mix(in_srgb,var(--color-brand-50)_40%,#ffffff)] p-4">
-                                <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">{{ __('More than 24 hours before') }}</p>
+                                <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--color-primary)]">{{ __('At least 24 hours before start') }}</p>
                                 <p class="mt-2 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('Full refund') }}</p>
-                                <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('100% of the session price is refunded to your original payment method.') }}</p>
-                            </div>
-                            <div class="rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
-                                <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-amber-700">{{ __('Between 2 and 24 hours before') }}</p>
-                                <p class="mt-2 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('50% refund') }}</p>
-                                <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('Half of the session price is refunded; the remaining balance is paid to the Host.') }}</p>
+                                <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('100% of the session price is refunded to your original payment method when you cancel with at least 24 hours\' notice before the scheduled start time.') }}</p>
                             </div>
                             <div class="rounded-2xl border border-red-200 bg-red-50/40 p-4">
-                                <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-red-600">{{ __('Less than 2 hours before') }}</p>
-                                <p class="mt-2 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('No refund') }}</p>
-                                <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('The session is considered confirmed and the Host will be paid in full.') }}</p>
+                                <p class="text-[11px] font-bold uppercase tracking-[0.12em] text-red-600">{{ __('Within 24 hours of start') }}</p>
+                                <p class="mt-2 text-[15px] font-bold text-[var(--color-ink-900)]">{{ __('Non-refundable') }}</p>
+                                <p class="mt-1 text-[13px] text-[var(--color-ink-500)]">{{ __('Appointments cancelled within 24 hours of the scheduled time are non-refundable. Cancellations made after the cutoff are considered late cancellations.') }}</p>
                             </div>
                         </div>
+
+                        <p class="mt-4 rounded-2xl border border-[var(--color-brand-100)] bg-[var(--color-brand-50)]/60 p-4 text-[14px] text-[var(--color-ink-700)]">
+                            <strong class="text-[var(--color-ink-900)]">{{ __('Example:') }}</strong>
+                            {{ __('If your appointment is at 3:00 PM on Friday, cancellation must be completed before 3:00 PM on Thursday to receive a refund.') }}
+                        </p>
 
                         <p class="mt-4">
                             {{ __('You can cancel an upcoming booking at any time from your account dashboard under "My bookings".') }}
@@ -169,7 +171,6 @@
 
     @include('web.legal.partials.styles')
 @endsection
-
 @push('scripts')
     <script>
         (function () {
@@ -193,3 +194,4 @@
         })();
     </script>
 @endpush
+

@@ -6,7 +6,7 @@
      * so colour / font / radius tweaks happen in one place.
      */
     $settings      = $settings ?? \App\Models\ApplicationSetting::instance();
-    $headerLogoUrl = $settings->headerLogoUrl() ?? asset('images/header-logo.png');
+    $headerLogoUrl = $settings->displayHeaderLogoUrl();
     $user          = auth()->user();
     $current       = \Illuminate\Support\Facades\Route::currentRouteName();
 
@@ -31,7 +31,7 @@
         <div class="site-header__inner">
 
             {{-- Logo --}}
-            <a href="{{ route('home') }}" class="site-logo shrink-0" aria-label="{{ config('app.name') }} home">
+            <a href="{{ route('home') }}" class="site-logo inline-flex shrink-0 items-center" aria-label="{{ config('app.name') }} home">
                 <img src="{{ $headerLogoUrl }}" alt="{{ config('app.name') }}">
             </a>
 
@@ -87,17 +87,18 @@
             </button>
         </div>
     </div>
+</header>
 
-    {{-- Mobile drawer --}}
-    <div id="mobileDrawer" class="mobile-drawer" aria-hidden="true" role="dialog" aria-modal="true">
+{{-- Drawer outside <header>: fixed overlay must stack vs <main>, not inside the header z-50 subtree --}}
+<div id="mobileDrawer" class="mobile-drawer" aria-hidden="true" role="dialog" aria-modal="true">
         <div class="mobile-drawer__backdrop" data-drawer-close></div>
 
         <aside class="mobile-drawer__panel">
-            <div class="flex items-center justify-between border-b border-[var(--color-ink-100)] px-5 py-4">
-                <a href="{{ route('home') }}" class="site-logo" aria-label="{{ config('app.name') }}">
-                    <img src="{{ $headerLogoUrl }}" alt="{{ config('app.name') }}" class="h-9 w-auto object-contain">
+            <div class="flex min-w-0 items-center justify-between gap-3 border-b border-[var(--color-ink-100)] px-4 py-3 sm:px-5 sm:py-4">
+                <a href="{{ route('home') }}" class="site-logo inline-flex min-w-0 items-center" aria-label="{{ config('app.name') }}">
+                    <img src="{{ $headerLogoUrl }}" alt="{{ config('app.name') }}">
                 </a>
-                <button type="button" class="site-hamburger" data-drawer-close aria-label="{{ __('Close menu') }}">
+                <button type="button" class="site-hamburger shrink-0" data-drawer-close aria-label="{{ __('Close menu') }}">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                          class="h-5 w-5">
@@ -107,7 +108,7 @@
                 </button>
             </div>
 
-            <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4" aria-label="Mobile">
+            <nav class="flex-1 min-w-0 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-4" aria-label="Mobile">
                 @foreach ($navLinks as $link)
                     <a href="{{ $link['href'] }}"
                        class="mobile-nav-link {{ $link['active'] ? 'is-active' : '' }}">
@@ -119,9 +120,9 @@
                 @endforeach
             </nav>
 
-            <div class="space-y-2 border-t border-[var(--color-ink-100)] p-4">
+            <div class="min-w-0 shrink-0 space-y-2 border-t border-[var(--color-ink-100)] p-4 box-border">
                 @if ($user)
-                    <div class="mb-2 flex items-center gap-3 rounded-2xl bg-[var(--color-brand-50)] p-3">
+                    <div class="mb-2 flex min-w-0 items-center gap-3 rounded-2xl bg-[var(--color-brand-50)] p-3">
                         <span class="site-avatar">{{ $userInitial }}</span>
                         <div class="min-w-0">
                             <p class="truncate text-[14px] font-semibold text-[var(--color-ink-900)]">
@@ -133,7 +134,7 @@
                     <a href="{{ route('dashboard') }}" class="btn btn-outline w-full">
                         <i class="fa-solid fa-gauge-high text-[12px]"></i> {{ __('Dashboard') }}
                     </a>
-                    <form method="POST" action="{{ route('logout') }}" class="w-full">
+                    <form method="POST" action="{{ route('logout') }}" class="w-full min-w-0">
                         @csrf
                         <button type="submit" class="btn btn-soft w-full">{{ __('Logout') }}</button>
                     </form>
@@ -146,8 +147,7 @@
                 @endif
             </div>
         </aside>
-    </div>
-</header>
+</div>
 
 <script>
     (function () {

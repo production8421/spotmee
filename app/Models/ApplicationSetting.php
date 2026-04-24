@@ -118,6 +118,45 @@ class ApplicationSetting extends Model
             : null;
     }
 
+    /**
+     * Public URL for the built-in logo when no custom header file is stored.
+     * Uses config/branding.php so production can swap files or env without code changes.
+     */
+    public static function fallbackHeaderLogoPublicUrl(): string
+    {
+        $path = trim((string) config('branding.fallback_header_logo', 'images/branding/spotmee-default.svg'));
+        if ($path === '') {
+            $path = 'images/branding/spotmee-default.svg';
+        }
+
+        return asset($path);
+    }
+
+    /**
+     * Optional separate footer fallback; otherwise matches header fallback chain in {@see displayFooterLogoUrl()}.
+     */
+    public static function fallbackFooterLogoPublicUrl(): string
+    {
+        $path = trim((string) config('branding.fallback_footer_logo', ''));
+        if ($path !== '') {
+            return asset($path);
+        }
+
+        return self::fallbackHeaderLogoPublicUrl();
+    }
+
+    public function displayHeaderLogoUrl(): string
+    {
+        return $this->headerLogoUrl() ?? self::fallbackHeaderLogoPublicUrl();
+    }
+
+    public function displayFooterLogoUrl(): string
+    {
+        return $this->footerLogoUrl()
+            ?? $this->headerLogoUrl()
+            ?? self::fallbackFooterLogoPublicUrl();
+    }
+
     public function homeHeroBackgroundPublicUrl(): ?string
     {
         return filled($this->home_hero_background_path)
@@ -260,9 +299,17 @@ class ApplicationSetting extends Model
             'linkedin' => __('LinkedIn'),
             'tiktok' => __('TikTok'),
         ];
+        $defaults = config('branding.default_social_urls', []);
+        if (! is_array($defaults)) {
+            $defaults = [];
+        }
         $m = self::normalizeFooterSocialUrlsForForm($this->footer_social_urls);
         $items = [];
         foreach ($m as $platform => $url) {
+            $url = trim((string) $url);
+            if ($url === '' && isset($defaults[$platform])) {
+                $url = trim((string) $defaults[$platform]);
+            }
             if ($url === '') {
                 continue;
             }

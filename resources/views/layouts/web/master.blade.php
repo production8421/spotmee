@@ -7,6 +7,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <x-site-favicon />
+
     <title>@yield('title', 'SPOTMEE')</title>
 
     {{--  Fonts · single family for easy swap (change in one place)  --}}

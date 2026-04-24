@@ -6,9 +6,23 @@
     <meta name="keywords" content="admin template, Cuba admin template, dashboard template, flat admin template, responsive admin template, web app">
     <meta name="author" content="pixelstrap">
     @php
-        $faviconHref = $_brandHeaderIcon ?? $cubaAsset('images/logo/logo-icon.png');
+        $faviconHref = $applicationSetting->displayHeaderLogoUrl();
+        $faviconPath = parse_url($faviconHref, PHP_URL_PATH) ?? '';
+        $faviconExt = strtolower(pathinfo($faviconPath, PATHINFO_EXTENSION));
+        $faviconType = match ($faviconExt) {
+            'svg' => 'image/svg+xml',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'jpg', 'jpeg' => 'image/jpeg',
+            default => null,
+        };
     @endphp
-    <link rel="icon" href="{{ $faviconHref }}" sizes="32x32">
+    @if ($faviconType)
+        <link rel="icon" type="{{ $faviconType }}" href="{{ $faviconHref }}" sizes="any">
+    @else
+        <link rel="icon" href="{{ $faviconHref }}" sizes="any">
+    @endif
     <link rel="apple-touch-icon" href="{{ $faviconHref }}">
     <title>@yield('title', config('app.name'))</title>
     <!-- Google font-->

@@ -154,6 +154,7 @@
                         'twitter'   => 'fa-brands fa-x-twitter',
                         'x'         => 'fa-brands fa-x-twitter',
                         'instagram' => 'fa-brands fa-instagram',
+                        'snapchat'  => 'fa-brands fa-snapchat',
                         'linkedin'  => 'fa-brands fa-linkedin-in',
                         'youtube'   => 'fa-brands fa-youtube',
                         'tiktok'    => 'fa-brands fa-tiktok',
@@ -177,13 +178,8 @@
                                 <i class="{{ $icon }}"></i>
                             </a>
                         @empty
-                            {{-- Default placeholders --}}
-                            @foreach (['facebook-f', 'instagram', 'x-twitter', 'linkedin-in'] as $brand)
-                                <a href="#"
-                                   class="flex h-11 w-11 items-center justify-center rounded-full border border-[var(--color-brand-100)] bg-white text-[var(--color-primary)] transition-all hover:-translate-y-0.5 hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white">
-                                    <i class="fa-brands fa-{{ $brand }}"></i>
-                                </a>
-                            @endforeach
+                            {{-- Same defaults as config/branding.php default_social_urls (shown if nothing validates) --}}
+                            <p class="text-[13px] text-[var(--color-ink-500)]">{{ __('Social links will appear here once configured in settings.') }}</p>
                         @endforelse
                     </div>
                 </div>

@@ -51,8 +51,13 @@
                                 </div>
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="checkbox" name="remove_header_logo" id="remove_header_logo" value="1">
-                                    <label class="form-check-label" for="remove_header_logo">{{ __('Remove custom header logo (use theme default)') }}</label>
+                                    <label class="form-check-label" for="remove_header_logo">{{ __('Remove custom header logo (use site default logo)') }}</label>
                                 </div>
+                            @else
+                                <div class="mb-2 p-2 border rounded bg-light d-inline-block">
+                                    <img src="{{ $settings->displayHeaderLogoUrl() }}" alt="" class="img-fluid" style="max-height: 48px;">
+                                </div>
+                                <p class="text-muted small mb-2">{{ __('This default appears on the public site and dashboard until you pick a logo from Media.') }}</p>
                             @endif
                             <input type="hidden" name="header_logo_media_id" id="header_logo_media_id" value="">
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
@@ -79,8 +84,13 @@
                                 </div>
                                 <div class="form-check mb-2">
                                     <input class="form-check-input" type="checkbox" name="remove_footer_logo" id="remove_footer_logo" value="1">
-                                    <label class="form-check-label" for="remove_footer_logo">{{ __('Remove custom footer logo') }}</label>
+                                    <label class="form-check-label" for="remove_footer_logo">{{ __('Remove custom footer logo (use header or site default)') }}</label>
                                 </div>
+                            @else
+                                <div class="mb-2 p-2 border rounded bg-light d-inline-block">
+                                    <img src="{{ $settings->displayFooterLogoUrl() }}" alt="" class="img-fluid" style="max-height: 48px;">
+                                </div>
+                                <p class="text-muted small mb-2">{{ __('Uses the header logo when set; otherwise the same site default as above.') }}</p>
                             @endif
                             <input type="hidden" name="footer_logo_media_id" id="footer_logo_media_id" value="">
                             <div class="d-flex flex-wrap align-items-center gap-2 mb-2">

@@ -47,10 +47,7 @@
                 <div class="relative bg-gradient-to-br from-[var(--color-primary)] via-[var(--color-brand-500)] to-[var(--color-brand-200)] px-6 py-8 text-center sm:px-10 sm:py-10">
                     <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.18),transparent_60%)]"></div>
 
-                    <div class="relative z-10 mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-sm sm:h-20 sm:w-20">
-                        <i class="fa-solid fa-shield-halved text-2xl sm:text-3xl"></i>
-                    </div>
-                    <h2 class="relative z-10 mt-5 text-2xl font-bold leading-tight text-white sm:text-3xl">
+                    <h2 class="relative z-10 mt-0 text-2xl font-bold leading-tight text-white sm:text-3xl">
                         {{ __('Become a Host') }}
                     </h2>
                     <p class="relative z-10 mx-auto mt-2 max-w-xl text-[15px] text-white/85">

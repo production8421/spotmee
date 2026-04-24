@@ -34,15 +34,15 @@ class AppServiceProvider extends ServiceProvider
             $applicationSetting = Schema::hasTable('application_settings')
                 ? ApplicationSetting::instance()
                 : new ApplicationSetting;
-            $customHeader = $applicationSetting->headerLogoUrl();
+            $resolvedHeader = $applicationSetting->displayHeaderLogoUrl();
             $base = config('cuba.assets_path');
             $themeAsset = fn (string $path) => asset($base.'/'.ltrim($path, '/'));
 
             $data = [
                 'applicationSetting' => $applicationSetting,
-                '_brandHeaderLight' => $customHeader ?? $themeAsset('images/logo/logo.png'),
-                '_brandHeaderDark' => $customHeader ?? $themeAsset('images/logo/logo_dark.png'),
-                '_brandHeaderIcon' => $customHeader ?? $themeAsset('images/logo/logo-icon.png'),
+                '_brandHeaderLight' => $resolvedHeader,
+                '_brandHeaderDark' => $resolvedHeader,
+                '_brandHeaderIcon' => $resolvedHeader,
             ];
 
             $view->with($data);

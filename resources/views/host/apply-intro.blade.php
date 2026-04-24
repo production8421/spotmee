@@ -63,9 +63,6 @@
                         </a>
 
                         <div class="text-center mb-4">
-                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle bg-primary text-white mb-3" style="width: 4rem; height: 4rem;">
-                                <i class="fa-solid fa-shield-halved fa-2x" aria-hidden="true"></i>
-                            </span>
                             <h3 class="mb-2">{{ __('Become a Host') }}</h3>
                             <p class="text-muted mb-0 px-sm-2">
                                 {{ __('Create your host account to start listing your facilities on :app.', ['app' => config('app.name')]) }}
