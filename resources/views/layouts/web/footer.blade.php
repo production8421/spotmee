@@ -106,7 +106,9 @@
             <div class="footer-bar">
                 <p>&copy; {{ now()->year }} SPOTMEE. {{ __('All rights reserved.') }}</p>
                 <div class="flex flex-wrap items-center gap-x-6 gap-y-2">
-                    <a href="#" class="footer-bar-link">{{ __('Cookies') }}</a>
+                    <a href="{{ route('contact') }}"
+                       class="footer-bar-link"
+                       title="{{ __('Contact us about cookies, privacy, and your data') }}">{{ __('Cookies') }}</a>
                 </div>
             </div>
         </div>

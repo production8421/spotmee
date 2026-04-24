@@ -147,7 +147,12 @@
                 <div class="group relative" data-aos="fade-up" data-aos-delay="{{ $stepDelay }}">
                     <div class="relative overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-sm)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[var(--shadow-lg)]">
                         <div class="relative aspect-[4/3] overflow-hidden">
-                            <img src="{{ $stepImage }}" alt="{{ $stepTitle }}"
+                            <img src="{{ $stepImage }}"
+                                 alt="{{ $stepTitle }}"
+                                 width="640"
+                                 height="480"
+                                 loading="{{ $index === 0 ? 'eager' : 'lazy' }}"
+                                 decoding="async"
                                  class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]">
                             <span class="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold uppercase tracking-wider text-[var(--color-primary)] shadow-md">
                                 <span class="flex h-5 w-5 items-center justify-center rounded-full bg-[var(--color-primary)] text-[11px] text-white">{{ $index + 1 }}</span>
@@ -193,33 +198,44 @@
 
             {{-- Arrow controls --}}
             <div class="hidden gap-3 md:flex" data-aos="fade-left">
-                <button type="button" class="gym-prev flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-ink-100)] bg-white text-[var(--color-ink-700)] transition-all hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
-                    <i class="fa-solid fa-chevron-left"></i>
+                <button type="button"
+                        class="gym-prev flex h-12 w-12 items-center justify-center rounded-full border border-[var(--color-ink-100)] bg-white text-[var(--color-ink-700)] transition-all hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                        aria-label="{{ __('Show previous gyms') }}">
+                    <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
                 </button>
-                <button type="button" class="gym-next flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-[var(--shadow-md)] transition-all hover:-translate-y-0.5 hover:bg-[var(--color-primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]">
-                    <i class="fa-solid fa-chevron-right"></i>
+                <button type="button"
+                        class="gym-next flex h-12 w-12 items-center justify-center rounded-full bg-[var(--color-primary)] text-white shadow-[var(--shadow-md)] transition-all hover:-translate-y-0.5 hover:bg-[var(--color-primary-hover)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)]"
+                        aria-label="{{ __('Show next gyms') }}">
+                    <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
 
         <div class="gym-slider -mx-3" data-aos="fade-up" data-aos-delay="100">
             @foreach ($popularGyms as $index => $gym)
+                @php
+                    $cityQuery = trim(explode(',', (string) ($gym['location'] ?? ''))[0] ?? '');
+                    $gymFindHref = $cityQuery !== ''
+                        ? route('find-a-gym', array_filter(['searchby' => $cityQuery]))
+                        : route('find-a-gym');
+                @endphp
                 <div class="gym-card px-3">
-                    <a href="#" class="group block overflow-hidden rounded-[24px] bg-white transition-all duration-300 hover:-translate-y-1">
-                        <div class="relative aspect-[4/3] overflow-hidden rounded-[20px]">
-                            <img src="{{ asset('images/'.$gym['image']) }}" alt="{{ $gym['name'] }}"
-                                 class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]">
+                    <div class="group relative overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-sm)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-md)]">
+                        <a href="{{ $gymFindHref }}" class="block">
+                            <div class="relative aspect-[4/3] overflow-hidden rounded-[20px]">
+                                <img src="{{ asset('images/'.$gym['image']) }}"
+                                     alt="{{ $gym['name'] }}"
+                                     width="640"
+                                     height="480"
+                                     loading="lazy"
+                                     decoding="async"
+                                     class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]">
 
                             {{-- rating chip top-left --}}
                             <span class="absolute left-4 top-4 inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3 py-1 text-[13px] font-semibold text-[var(--color-ink-900)] shadow-sm backdrop-blur">
-                                <i class="fa-solid fa-star text-[#f7b500] text-[11px]"></i>
+                                <i class="fa-solid fa-star text-[#f7b500] text-[11px]" aria-hidden="true"></i>
                                 {{ $gym['rating'] }}
                             </span>
-
-                            {{-- wishlist heart --}}
-                            <button type="button" class="absolute right-4 top-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-[var(--color-ink-500)] backdrop-blur transition-colors hover:text-[var(--color-primary)]">
-                                <i class="fa-regular fa-heart"></i>
-                            </button>
 
                             {{-- price pill bottom-left --}}
                             <span class="absolute bottom-4 left-4 inline-flex items-baseline gap-1 rounded-full bg-[var(--color-primary)] px-4 py-1.5 text-[13px] font-semibold text-white shadow-md">
@@ -234,11 +250,20 @@
                             </div>
                             <p class="mt-1 text-[14px] text-[var(--color-ink-500)]">{{ $gym['type'] }}</p>
                             <div class="mt-3 flex items-center gap-2 text-[14px] text-[var(--color-ink-500)]">
-                                <i class="fa-solid fa-location-dot text-[var(--color-primary)]"></i>
+                                <i class="fa-solid fa-location-dot text-[var(--color-primary)]" aria-hidden="true"></i>
                                 <span>{{ $gym['location'] }} · {{ $gym['distance'] }}</span>
                             </div>
                         </div>
-                    </a>
+                        </a>
+                        {{-- Outside <a> so we never nest interactive content inside a link (HTML + a11y). --}}
+                        <button type="button"
+                                class="absolute right-4 top-4 z-20 flex h-9 w-9 cursor-not-allowed items-center justify-center rounded-full border-0 bg-white/90 text-[var(--color-ink-400)] opacity-80 backdrop-blur"
+                                disabled
+                                aria-label="{{ __('Save :name to favorites (coming soon)', ['name' => $gym['name']]) }}"
+                                title="{{ __('Wishlist coming soon') }}">
+                            <i class="fa-regular fa-heart" aria-hidden="true"></i>
+                        </button>
+                    </div>
                 </div>
             @endforeach
         </div>
@@ -265,7 +290,7 @@
                 ['image_url' => asset('images/icon-3.png'), 'link_label' => 'Quality Equipment',     'link_href' => null, 'text' => 'Premium Equipment for Every Workout Style.'],
                 ['image_url' => asset('images/icon-4.png'), 'link_label' => 'Verified Hosts',        'link_href' => null, 'text' => 'Trusted, Reviewed, and Screened Hosts.'],
             ],
-            'cta' => ['label' => 'Get Started', 'href' => '#'],
+            'cta' => ['label' => 'Get Started', 'href' => route('find-a-gym')],
         ];
         $whySection      = $settings?->homeWhySectionForView() ?? $defaultWhy;
         $whyHeading      = (string) ($whySection['heading'] ?? $defaultWhy['heading']);
@@ -310,6 +335,10 @@
                          data-aos="fade-up" data-aos-delay="{{ $featureDelay }}">
                         <div class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[var(--color-brand-50)] transition-colors duration-300 group-hover:bg-[var(--color-primary)]">
                             <img src="{{ $featureImage }}"
+                                 width="80"
+                                 height="80"
+                                 loading="lazy"
+                                 decoding="async"
                                  class="h-10 w-10 object-contain transition-all duration-300 group-hover:brightness-0 group-hover:invert"
                                  alt="{{ $featureLabel !== '' ? $featureLabel : 'Feature' }}">
                         </div>
@@ -346,7 +375,7 @@
             'points' => ['Share your space.', 'Support your community.', 'Unlock new income.'],
             'description' => 'List your fitness space with SPOTMEE. Add photos, set pricing, and accept bookings. We connect you with users seeking quality workout spaces.',
             'footnote' => 'Join hundreds of hosts earning monthly income with spaces they already own.',
-            'cta' => ['label' => 'Start Hosting', 'href' => '#'],
+            'cta' => ['label' => 'Start Hosting', 'href' => route('become-a-host')],
             'image_url' => asset('images/earn-money-right-img.png'),
         ];
         $earnSection     = $settings?->homeEarnSectionForView() ?? $defaultEarn;
@@ -409,7 +438,12 @@
             <div class="order-1 lg:order-2" data-aos="fade-left">
                 <div class="relative">
                     <div class="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-[var(--color-brand-200)]/30 via-[var(--color-brand-50)] to-transparent blur-2xl"></div>
-                    <img src="{{ $earnImageUrl }}" alt="{{ trim($earnEmphasis.' '.$earnHeading) }}"
+                    <img src="{{ $earnImageUrl }}"
+                         alt="{{ trim($earnEmphasis.' '.$earnHeading) }}"
+                         width="960"
+                         height="720"
+                         loading="lazy"
+                         decoding="async"
                          class="relative w-full rounded-[32px] object-cover">
                 </div>
             </div>
@@ -466,7 +500,12 @@
                 <article class="group flex h-full flex-col overflow-hidden rounded-[24px] bg-white shadow-[var(--shadow-sm)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-lg)]"
                          data-aos="fade-up" data-aos-delay="{{ $cardDelay }}">
                     <div class="aspect-[16/10] overflow-hidden">
-                        <img src="{{ $cardImage }}" alt="{{ $cardTitle }}"
+                        <img src="{{ $cardImage }}"
+                             alt="{{ $cardTitle }}"
+                             width="640"
+                             height="400"
+                             loading="lazy"
+                             decoding="async"
                              class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]">
                     </div>
                     <div class="flex flex-1 flex-col p-6">
@@ -495,7 +534,7 @@
         $defaultPromo = [
             'heading' => 'Your Space Is Just a Click Away.',
             'emphasis' => 'Perfect Workout',
-            'cta' => ['label' => 'Get Started', 'href' => '#'],
+            'cta' => ['label' => 'Get Started', 'href' => route('find-a-gym')],
             'image_url' => asset('images/perfect.png'),
             'on_image' => true,
         ];
