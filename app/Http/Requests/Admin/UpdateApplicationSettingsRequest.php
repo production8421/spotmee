@@ -3,9 +3,11 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\UserRole;
+use App\Models\ApplicationSetting;
 use App\Services\Mail\SiteEmailTemplateService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Validation\Rule;
 
 class UpdateApplicationSettingsRequest extends FormRequest
@@ -36,13 +38,29 @@ class UpdateApplicationSettingsRequest extends FormRequest
 
         $smtpOn = fn (): bool => $this->boolean('smtp_enabled');
 
+        $smtpPasswordRequiredIf = function (): bool {
+            if (! $this->boolean('smtp_enabled')) {
+                return false;
+            }
+            if ($this->filled('smtp_password')) {
+                return false;
+            }
+            if (! Schema::hasTable('application_settings')) {
+                return true;
+            }
+            $row = ApplicationSetting::query()->first();
+            $existing = $row?->smtp_password;
+
+            return ! is_string($existing) || $existing === '';
+        };
+
         return array_merge($notificationRules, [
             'smtp_enabled' => ['nullable', 'boolean'],
             'smtp_host' => [Rule::requiredIf($smtpOn), 'nullable', 'string', 'max:255'],
             'smtp_port' => [Rule::requiredIf($smtpOn), 'nullable', 'integer', 'min:1', 'max:65535'],
             'smtp_encryption' => [Rule::requiredIf($smtpOn), 'nullable', Rule::in(['tls', 'ssl', 'none'])],
             'smtp_username' => ['nullable', 'string', 'max:255'],
-            'smtp_password' => ['nullable', 'string', 'max:500'],
+            'smtp_password' => [Rule::requiredIf($smtpPasswordRequiredIf), 'nullable', 'string', 'max:500'],
             'smtp_from_address' => [Rule::requiredIf($smtpOn), 'nullable', 'email', 'max:255'],
             'smtp_from_name' => ['nullable', 'string', 'max:255'],
             'host_registration_auto_approve' => ['nullable', 'boolean'],
@@ -60,5 +78,42 @@ class UpdateApplicationSettingsRequest extends FormRequest
             'remove_home_hero_background' => ['nullable', 'boolean'],
             'home_hero_background_media_id' => ['nullable', 'integer', $imageMediaRule],
         ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'smtp_password.required' => __('Enter the SMTP password. For Gmail with 2-step verification, create an App Password in your Google account and paste it here.'),
+        ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (! $this->boolean('smtp_enabled')) {
+                return;
+            }
+            $host = strtolower(trim((string) $this->input('smtp_host', '')));
+            if (! str_contains($host, 'gmail.com')) {
+                return;
+            }
+            $enc = strtolower(trim((string) $this->input('smtp_encryption', '')));
+            $port = (int) $this->input('smtp_port', 0);
+            if ($enc === 'ssl' && $port !== 465) {
+                $validator->errors()->add(
+                    'smtp_port',
+                    __('Gmail: with SSL encryption use port 465 (not :port).', ['port' => $port])
+                );
+            }
+            if ($enc === 'tls' && $port !== 587) {
+                $validator->errors()->add(
+                    'smtp_port',
+                    __('Gmail: with TLS encryption use port 587 (not :port).', ['port' => $port])
+                );
+            }
+        });
     }
 }

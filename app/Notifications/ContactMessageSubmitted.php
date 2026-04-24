@@ -48,12 +48,8 @@ class ContactMessageSubmitted extends Notification
                 'app' => config('app.name'),
                 'name' => $this->payload['name'],
             ]))
-            ->greeting(__('New contact form submission'))
-            ->line(__('Name: :name', ['name' => $this->payload['name']]))
-            ->line(__('Email: :email', ['email' => $this->payload['email']]))
-            ->line(__('Phone: :phone', ['phone' => $this->payload['phone'] ?: '—']))
-            ->line(__('Company: :company', ['company' => $this->payload['company'] ?: '—']))
-            ->line(__('Message:'))
-            ->line((string) $this->payload['message']);
+            ->view('mail.notifications.contact-message-submitted', [
+                'payload' => $this->payload,
+            ]);
     }
 }

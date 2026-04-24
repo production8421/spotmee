@@ -51,6 +51,8 @@ class GymBookingCreatedForGuestMail extends Mailable
             return new Content(htmlString: $html);
         }
 
+        $this->booking->loadMissing('coupon');
+
         return new Content(
             view: 'mail.gym-booking-created-guest',
         );

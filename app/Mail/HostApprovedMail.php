@@ -47,7 +47,7 @@ class HostApprovedMail extends Mailable
         }
 
         return new Content(
-            markdown: 'mail.host-approved',
+            view: 'mail.host-approved',
         );
     }
 

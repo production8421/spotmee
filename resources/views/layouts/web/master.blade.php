@@ -111,6 +111,7 @@
     </script>
 
     @vite('resources/js/app.js')
+    @vite('resources/js/gym-booking-form/main.jsx')
     @stack('scripts')
 </body>
 

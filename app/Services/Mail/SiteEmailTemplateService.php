@@ -90,7 +90,7 @@ final class SiteEmailTemplateService
             self::KEY_GYM_BOOKING_GUEST => [
                 'title' => __('Guest: booking confirmation'),
                 'when' => __('Sent to the email the guest used for the booking. If that email was new to the site, a Subscriber account is created and login details are included.'),
-                'placeholders' => '[[APP_NAME]] [[GYM_NAME]] [[GUEST_NAME]] [[GUEST_EMAIL]] [[GUEST_USERNAME]] [[GUEST_TEMP_PASSWORD]] [[NEW_SUBSCRIBER_LOGIN_NOTE]] [[LOGIN_URL]] [[GUEST_PHONE]] [[BOOKING_DATE]] [[START_TIME]] [[END_TIME]] [[PERSONS]] [[CONFIRMATION_CODE]] [[TOTAL_PRICE]] [[BOOKING_ID]] [[LISTING_ID]] [[NOTES]] [[TRAINER_SUMMARY]] [[PUBLIC_GYM_URL]] [[ADMIN_BOOKINGS_URL]] [[CREATED_ACCOUNT_NOTE]] [[CANCEL_BOOKING_URL]]',
+                'placeholders' => '[[APP_NAME]] [[GYM_NAME]] [[GUEST_NAME]] [[GUEST_EMAIL]] [[GUEST_USERNAME]] [[GUEST_TEMP_PASSWORD]] [[NEW_SUBSCRIBER_LOGIN_NOTE]] [[LOGIN_URL]] [[GUEST_PHONE]] [[BOOKING_DATE]] [[START_TIME]] [[END_TIME]] [[PERSONS]] [[CONFIRMATION_CODE]] [[TOTAL_PRICE]] [[BOOKING_ID]] [[LISTING_ID]] [[NOTES]] [[TRAINER_SUMMARY]] [[PUBLIC_GYM_URL]] [[ADMIN_BOOKINGS_URL]] [[CREATED_ACCOUNT_NOTE]] [[CANCEL_BOOKING_URL]] [[CANCELLATION_POLICY_URL]]',
             ],
             default => [
                 'title' => $key,

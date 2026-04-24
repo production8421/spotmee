@@ -43,12 +43,10 @@ class GymListingUnapproved extends Notification
                 'app' => config('app.name'),
                 'name' => $listing->name,
             ]))
-            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
-            ->line(__('An administrator has revoked approval for your gym listing on :app. It is no longer published and must be reviewed again before it can go live.', [
-                'app' => config('app.name'),
-            ]))
-            ->line(__('Listing: :name — :city', ['name' => $listing->name, 'city' => $listing->city]))
-            ->action(__('View your listing'), route('host.gym-listings.show', $listing))
-            ->line(__('Thanks for using :app.', ['app' => config('app.name')]));
+            ->view('mail.notifications.gym-listing-unapproved', [
+                'recipientName' => $notifiable->name,
+                'listing' => $listing,
+                'listingUrl' => route('host.gym-listings.show', $listing, true),
+            ]);
     }
 }

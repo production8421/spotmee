@@ -68,12 +68,10 @@ class GymListingApproved extends Notification
 
         return (new MailMessage)
             ->subject($subject)
-            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
-            ->line(__('Great news — an administrator has approved and published your gym listing on :app.', [
-                'app' => config('app.name'),
-            ]))
-            ->line(__('Listing: :name — :city', ['name' => $listing->name, 'city' => $listing->city]))
-            ->action(__('View your listing'), route('host.gym-listings.show', $listing))
-            ->line(__('Thanks for using :app.', ['app' => config('app.name')]));
+            ->view('mail.notifications.gym-listing-approved', [
+                'recipientName' => $notifiable->name,
+                'listing' => $listing,
+                'listingUrl' => route('host.gym-listings.show', $listing, true),
+            ]);
     }
 }

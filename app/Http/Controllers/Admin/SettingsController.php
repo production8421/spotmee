@@ -115,19 +115,36 @@ class SettingsController extends Controller
         }
         $settings->notification_email_templates = $templates;
 
+        // Toggle: when off, mail still uses .env. Credentials below are stored anyway so
+        // admins can fill the form, save, then enable — previously values were only
+        // written when the checkbox was checked, which looked like "SMTP not saving".
         $settings->smtp_enabled = $request->boolean('smtp_enabled');
-        if ($settings->smtp_enabled) {
-            $settings->smtp_host = trim((string) $request->input('smtp_host', ''));
-            $settings->smtp_port = (int) $request->input('smtp_port', 587);
-            $enc = strtolower((string) $request->input('smtp_encryption', 'tls'));
-            $settings->smtp_encryption = in_array($enc, ['tls', 'ssl', 'none'], true) ? $enc : 'tls';
-            $settings->smtp_username = trim((string) $request->input('smtp_username', ''));
-            if ($request->filled('smtp_password')) {
-                $settings->smtp_password = (string) $request->input('smtp_password');
-            }
-            $settings->smtp_from_address = trim((string) $request->input('smtp_from_address', ''));
-            $settings->smtp_from_name = trim((string) $request->input('smtp_from_name', ''));
+
+        $host = trim((string) $request->input('smtp_host', ''));
+        $settings->smtp_host = $host !== '' ? $host : null;
+
+        $portRaw = $request->input('smtp_port');
+        if ($portRaw === null || $portRaw === '') {
+            $settings->smtp_port = null;
+        } else {
+            $settings->smtp_port = max(1, min(65535, (int) $portRaw));
         }
+
+        $enc = strtolower((string) $request->input('smtp_encryption', 'tls'));
+        $settings->smtp_encryption = in_array($enc, ['tls', 'ssl', 'none'], true) ? $enc : 'tls';
+
+        $username = trim((string) $request->input('smtp_username', ''));
+        $settings->smtp_username = $username !== '' ? $username : null;
+
+        if ($request->filled('smtp_password')) {
+            $settings->smtp_password = (string) $request->input('smtp_password');
+        }
+
+        $fromAddr = trim((string) $request->input('smtp_from_address', ''));
+        $settings->smtp_from_address = $fromAddr !== '' ? $fromAddr : null;
+
+        $fromName = trim((string) $request->input('smtp_from_name', ''));
+        $settings->smtp_from_name = $fromName !== '' ? $fromName : null;
 
         $settings->host_registration_auto_approve = $request->boolean('host_registration_auto_approve');
 

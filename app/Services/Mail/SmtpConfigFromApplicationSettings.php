@@ -4,6 +4,7 @@ namespace App\Services\Mail;
 
 use App\Models\ApplicationSetting;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 final class SmtpConfigFromApplicationSettings
@@ -42,6 +43,13 @@ final class SmtpConfigFromApplicationSettings
         $password = $row->smtp_password;
         $passwordStr = is_string($password) ? $password : '';
 
+        if ($passwordStr === '' && $username !== '') {
+            Log::warning('smtp_custom_enabled_but_missing_password', [
+                'host' => $host,
+                'username_set' => true,
+            ]);
+        }
+
         $fromAddress = trim((string) ($row->smtp_from_address ?? ''));
         $fromName = trim((string) ($row->smtp_from_name ?? ''));
 
@@ -65,6 +73,11 @@ final class SmtpConfigFromApplicationSettings
             $smtp['scheme'] = null;
             unset($smtp['auto_tls']);
         }
+
+        // If MAIL_URL is set in .env, Laravel's MailManager::getConfig() merges the
+        // parsed URL over host/port/credentials when sending — which would ignore
+        // these admin SMTP values. Drop `url` so the merged host/port above win.
+        unset($smtp['url']);
 
         Config::set('mail.mailers.smtp', $smtp);
 

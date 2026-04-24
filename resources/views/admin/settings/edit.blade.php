@@ -241,8 +241,13 @@
 
                         <h6 class="mb-2">{{ __('SMTP (outgoing mail)') }}</h6>
                         <p class="text-muted small mb-3">
-                            {{ __('When enabled, the application sends mail (notifications, contact form, etc.) through this SMTP server instead of the values in your .env file.') }}
+                            {{ __('When enabled, the application sends mail (notifications, contact form, booking confirmations, etc.) through this SMTP server instead of the values in your .env file.') }}
+                            {{ __('SMTP fields are saved when you click Save settings even if the toggle is off, so you can configure credentials first and enable later.') }}
                         </p>
+                        <div class="alert alert-warning small mb-3" role="status">
+                            <strong>{{ __('Important') }}:</strong>
+                            {{ __('Booking and other emails only go through this SMTP server after you check “Use custom SMTP from these settings” and click Save settings. If that box is unchecked, Laravel uses your .env mail driver (often “log”, which does not send real email).') }}
+                        </div>
 
                         <div class="form-check mb-3">
                             <input
@@ -331,8 +336,12 @@
                                     value=""
                                     class="form-control @error('smtp_password') is-invalid @enderror"
                                     autocomplete="new-password"
-                                    placeholder="{{ filled($settings->smtp_password) ? __('Leave blank to keep current password') : '' }}"
+                                    placeholder="{{ filled($settings->smtp_password) ? __('Leave blank to keep current password') : __('Required when enabling custom SMTP') }}"
                                 >
+                                <p class="form-text text-muted small mb-0">
+                                    {{ __('Gmail: use an App Password (Google Account → Security → 2-Step Verification → App passwords), not your normal login password, if 2-step verification is on.') }}
+                                    {{ __('Typical Gmail: host smtp.gmail.com, port 587 + TLS, or port 465 + SSL — not port 443.') }}
+                                </p>
                                 @error('smtp_password')
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror

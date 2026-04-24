@@ -81,22 +81,13 @@ class GymListingRejected extends Notification
                 ->view('mail.raw-custom-html', ['html' => $html]);
         }
 
-        $mail = (new MailMessage)
+        return (new MailMessage)
             ->subject($subject)
-            ->greeting(__('Hello :name,', ['name' => $notifiable->name]))
-            ->line(__('An administrator did not approve your gym listing submission on :app at this time.', [
-                'app' => config('app.name'),
-            ]))
-            ->line(__('Listing: :name — :city', ['name' => $listing->name, 'city' => $listing->city]));
-
-        if ($msg !== null) {
-            $mail->line(__('Message from administrator:'))
-                ->line($msg);
-        }
-
-        return $mail
-            ->line(__('You can edit your listing and save changes to send it back for review.'))
-            ->action(__('Edit listing'), route('host.gym-listings.edit', $listing))
-            ->line(__('Thanks for using :app.', ['app' => config('app.name')]));
+            ->view('mail.notifications.gym-listing-rejected', [
+                'recipientName' => $notifiable->name,
+                'listing' => $listing,
+                'rejectionMessage' => $msg,
+                'editListingUrl' => route('host.gym-listings.edit', $listing, true),
+            ]);
     }
 }

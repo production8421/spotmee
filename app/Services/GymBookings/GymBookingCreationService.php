@@ -888,7 +888,12 @@ final class GymBookingCreationService
             try {
                 Mail::to($adminEmail)->send(new GymBookingCreatedForAdminMail($listing, $booking, $createdGuestAccount));
             } catch (\Throwable $e) {
-                Log::error('Gym booking admin mail failed: '.$e->getMessage());
+                Log::error('Gym booking admin mail failed', [
+                    'to' => $adminEmail,
+                    'booking_id' => $booking->id,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -900,7 +905,12 @@ final class GymBookingCreationService
             try {
                 Mail::to($hostEmail)->send(new GymBookingCreatedForHostMail($listing, $booking));
             } catch (\Throwable $e) {
-                Log::error('Gym booking host mail failed: '.$e->getMessage());
+                Log::error('Gym booking host mail failed', [
+                    'to' => $hostEmail,
+                    'booking_id' => $booking->id,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -909,7 +919,12 @@ final class GymBookingCreationService
             try {
                 Mail::to($guestEmail)->send(new GymBookingCreatedForGuestMail($listing, $booking, $guestNewAccountPlainPassword));
             } catch (\Throwable $e) {
-                Log::error('Gym booking guest mail failed: '.$e->getMessage());
+                Log::error('Gym booking guest mail failed', [
+                    'to' => $guestEmail,
+                    'booking_id' => $booking->id,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
     }

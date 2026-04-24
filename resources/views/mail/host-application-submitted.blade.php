@@ -1,65 +1,77 @@
-<!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ __('New host application') }}</title>
-</head>
-<body style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; color: #2f2f3b; max-width: 640px; margin: 0 auto; padding: 24px;">
-    <h1 style="font-size: 1.25rem; margin: 0 0 16px;">{{ __('New host application') }}</h1>
-    <p style="margin: 0 0 20px; color: #52526c;">{{ __('Someone submitted a host application on :app.', ['app' => config('app.name')]) }}</p>
-
-    <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
-        <tbody>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee; width: 40%;">{{ __('Full Name') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->full_name }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Date of Birth') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->date_of_birth?->format('Y-m-d') }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Social Security Number') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->social_security_number ?: __('Not provided') }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Phone Number') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->phone }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Email Address') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->email }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Street Address') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->street_address }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('City') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->city }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('State') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->state }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Postal Code') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->postal_code }}</td>
-            </tr>
-            <tr>
-                <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top; border-bottom: 1px solid #eee;">{{ __('Description') }}</th>
-                <td style="padding: 8px 0; border-bottom: 1px solid #eee;">{{ $application->description ?: '—' }}</td>
-            </tr>
-            @if ($application->user_id)
+@php
+    $brand = 'SPOTMEE';
+    $applicationUrl = route('admin.host-applications.show', $application, true);
+@endphp
+<x-mail.spotmee-layout
+    :email-title="__('New host application').' — '.$brand"
+    :preheader="$application->full_name.' — '.$application->email"
+    :header-title="__('New host application')"
+    :header-subtitle="__('Someone submitted a host application on :app.', ['app' => config('app.name')])"
+    :brand="$brand"
+    :footer-note="__('You are receiving this as a site administrator.')"
+>
+    <tr>
+        <td style="padding:24px 32px 8px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
                 <tr>
-                    <th style="text-align: left; padding: 8px 12px 8px 0; vertical-align: top;">{{ __('Linked user ID') }}</th>
-                    <td style="padding: 8px 0;">{{ $application->user_id }}</td>
+                    <td style="padding:12px 16px;background:#f8fafc;width:38%;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Full Name') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->full_name }}</td>
                 </tr>
-            @endif
-        </tbody>
-    </table>
-
-    <p style="margin: 24px 0 0; font-size: 12px; color: #838383;">{{ __('Application #:id', ['id' => $application->id]) }}</p>
-</body>
-</html>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Date of Birth') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->date_of_birth?->format('Y-m-d') }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Social Security Number') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->social_security_number ?: __('Not provided') }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Phone Number') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->phone }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Email Address') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->email }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Street Address') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->street_address }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('City') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->city }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('State') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->state }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Postal Code') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->postal_code }}</td>
+                </tr>
+                <tr>
+                    <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;border-bottom:1px solid #e2e8f0;">{{ __('Description') }}</td>
+                    <td style="padding:12px 16px;font-size:14px;color:#0f172a;border-bottom:1px solid #e2e8f0;">{{ $application->description ?: '—' }}</td>
+                </tr>
+                @if ($application->user_id)
+                    <tr>
+                        <td style="padding:12px 16px;background:#f8fafc;font-size:13px;font-weight:700;color:#475569;">{{ __('Linked user ID') }}</td>
+                        <td style="padding:12px 16px;font-size:14px;color:#0f172a;">{{ $application->user_id }}</td>
+                    </tr>
+                @endif
+            </table>
+            <p style="margin:16px 0 0;font-size:12px;color:#64748b;">{{ __('Application #:id', ['id' => $application->id]) }}</p>
+        </td>
+    </tr>
+    <tr>
+        <td style="padding:8px 32px 28px;text-align:center;">
+            <table role="presentation" cellpadding="0" cellspacing="0" align="center" style="margin:0 auto;">
+                <tr>
+                    <td style="border-radius:999px;background:#006d77;">
+                        <a href="{{ $applicationUrl }}" style="display:inline-block;padding:14px 28px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">{{ __('Review application') }}</a>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</x-mail.spotmee-layout>
