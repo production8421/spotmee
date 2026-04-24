@@ -79,10 +79,6 @@ const BookingFormContent = ({ localizedData }) => {
   const watchedTimeSlots = Form.useWatch("timeSlot", form);
   const watchedCouponCode = Form.useWatch("couponCode", form);
   const { message } = App.useApp();
-  const msgSlotsMustBeConsecutive = __(
-    "Selected slots must be consecutive with no gaps.",
-    "rent-your-jim"
-  );
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [confirmationCode, setConfirmationCode] = useState("");
@@ -452,8 +448,16 @@ const BookingFormContent = ({ localizedData }) => {
   };
 
   // Calculate total price based on slots and number of persons
-  // Each slot (40 min or 60 min) is charged at its respective rate
-  const calculateTotalPrice = (startTime, endTime, numberOfPersons = 1, trainerSelections = {}, applyPtFreeTrial = false) => {
+  // Each slot (40 min or 60 min) is charged at its respective rate.
+  // When `slotCountOverride` is set (non-contiguous picks), bill by selected slot count, not first→last span.
+  const calculateTotalPrice = (
+    startTime,
+    endTime,
+    numberOfPersons = 1,
+    trainerSelections = {},
+    applyPtFreeTrial = false,
+    slotCountOverride = null
+  ) => {
     if (!startTime || !endTime) {
       setCalculatedPrice(null);
       return;
@@ -461,18 +465,28 @@ const BookingFormContent = ({ localizedData }) => {
 
     const start = dayjs.isDayjs(startTime) ? startTime.hour() * 60 + startTime.minute() : dayjs(startTime, "HH:mm").hour() * 60 + dayjs(startTime, "HH:mm").minute();
     const end = dayjs.isDayjs(endTime) ? endTime.hour() * 60 + endTime.minute() : dayjs(endTime, "HH:mm").hour() * 60 + dayjs(endTime, "HH:mm").minute();
-    
-    if (end <= start) {
-      setCalculatedPrice(null);
-      return;
-    }
 
     const persons = numberOfPersons || 1;
-    const durationMinutes = end - start;
     const slotDuration = getSlotDuration(); // 40 or 60 minutes
-    
-    // Calculate number of slots (must be exact multiple due to validation)
-    const numberOfSlots = Math.round(durationMinutes / slotDuration);
+
+    const useOverride =
+      slotCountOverride != null &&
+      Number.isFinite(Number(slotCountOverride)) &&
+      Number(slotCountOverride) > 0;
+
+    let numberOfSlots;
+    let durationMinutes;
+    if (useOverride) {
+      numberOfSlots = Math.round(Number(slotCountOverride));
+      durationMinutes = numberOfSlots * slotDuration;
+    } else {
+      if (end <= start) {
+        setCalculatedPrice(null);
+        return;
+      }
+      durationMinutes = end - start;
+      numberOfSlots = Math.round(durationMinutes / slotDuration);
+    }
     
     // Select price based on slot duration (40 min or 1 hour)
     const pricePerSlot = slotDuration === 40 
@@ -512,10 +526,6 @@ const BookingFormContent = ({ localizedData }) => {
   useEffect(() => {
     const timeSlots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
     if (timeSlots.length === 0) return;
-    if (!slotsAreContiguousRaw(timeSlots)) {
-      setCalculatedPrice(null);
-      return;
-    }
 
     const sortedSlots = [...timeSlots].sort((a, b) => {
       const [aStart] = a.split("|");
@@ -530,7 +540,7 @@ const BookingFormContent = ({ localizedData }) => {
       trialNorm && timeSlots.some((s) => normalizeSlotValue(String(s)) === trialNorm);
     const applyPtFreeTrial = ptAddOnType === "free_trial" && !!ptFreeTrialSlot && trialStillIn;
     const headcount = Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
-    calculateTotalPrice(firstStart, lastEnd, headcount, trainerPerSlot, applyPtFreeTrial);
+    calculateTotalPrice(firstStart, lastEnd, headcount, trainerPerSlot, applyPtFreeTrial, sortedSlots.length);
   }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, watchedTimeSlots, watchedNumberOfPersons]);
 
   // Handle date change
@@ -615,24 +625,6 @@ const BookingFormContent = ({ localizedData }) => {
     return [normalizeTimeStr(first[0].trim()), normalizeTimeStr(last[1].trim())];
   };
 
-  /** Contiguous HH:mm|HH:mm chain (same rule as Laravel booking). */
-  const slotsAreContiguousRaw = (slotValues) => {
-    if (!slotValues || slotValues.length <= 1) return true;
-    const sorted = [...slotValues].sort((a, b) =>
-      normalizeTimeStr(String(a).split("|")[0]).localeCompare(normalizeTimeStr(String(b).split("|")[0]))
-    );
-    let prevEnd = null;
-    for (const s of sorted) {
-      const p = String(s).split("|");
-      if (p.length < 2) return false;
-      const st = normalizeTimeStr(p[0].trim());
-      const en = normalizeTimeStr(p[1].trim());
-      if (prevEnd !== null && st !== prevEnd) return false;
-      prevEnd = en;
-    }
-    return true;
-  };
-
   // Sum persons already booked overlapping [start, end] on selected date (same idea as Laravel `sumPersonsOverlapping`)
   const getAlreadyBookedForSlot = (slotStartStr, slotEndStr) => {
     if (!bookingDate || !blockedTimes || !Array.isArray(blockedTimes)) return 0;
@@ -704,7 +696,7 @@ const BookingFormContent = ({ localizedData }) => {
 
   const isSlotPtAvailable = (slotValue) => slotHasPersonalTrainingAvailable(slotValue);
 
-  // Party size change: match Laravel capacity (merged slot range). Clear slots if no longer fits.
+  // Party size change: match Laravel capacity per selected slot (gaps allowed). Clear slots if no longer fits.
   const handlePersonsChange = (value) => {
     const timeSlots = form.getFieldValue("timeSlot");
     if (!timeSlots || timeSlots.length === 0) return;
@@ -713,28 +705,27 @@ const BookingFormContent = ({ localizedData }) => {
     const parsed = parseInt(String(value ?? form.getFieldValue("numberOfPersons") ?? 1), 10);
     const headcount = Math.max(1, Math.min(limit, Number.isFinite(parsed) && parsed > 0 ? parsed : 1));
 
-    if (!slotsAreContiguousRaw(timeSlots)) {
-      message.destroy();
-      message.warning(
-        __("Please select consecutive time slots. Your selection was cleared.", "rent-your-jim")
-      );
-      form.setFieldsValue({ timeSlot: [] });
-      setTrainerPerSlot({});
-      setCalculatedPrice(null);
-      return;
-    }
-
     const sorted = [...timeSlots].sort((a, b) =>
       normalizeTimeStr(String(a).split("|")[0]).localeCompare(normalizeTimeStr(String(b).split("|")[0]))
     );
-    const [rangeStart, rangeEnd] = boundsFromRawSlots(sorted);
-    const already = getAlreadyBookedForSlot(rangeStart, rangeEnd);
-    const spotsLeft = Math.max(0, limit - already);
-    if (headcount > spotsLeft) {
+    let minSpotsLeft = Infinity;
+    for (const row of sorted) {
+      const p = String(row).split("|");
+      if (p.length < 2) continue;
+      const rs = normalizeTimeStr(p[0].trim());
+      const re = normalizeTimeStr(p[1].trim());
+      const already = getAlreadyBookedForSlot(rs, re);
+      const spotsLeft = Math.max(0, limit - already);
+      minSpotsLeft = Math.min(minSpotsLeft, spotsLeft);
+    }
+    if (!Number.isFinite(minSpotsLeft)) {
+      minSpotsLeft = limit;
+    }
+    if (headcount > minSpotsLeft) {
       message.destroy();
       message.warning(
         __(
-          `Not enough capacity for ${headcount} people in the selected time range (${spotsLeft} spot(s) left). Please choose different slots.`,
+          `Not enough capacity for ${headcount} people in one or more selected slots (${minSpotsLeft} spot(s) left in the tightest window). Please choose different slots.`,
           "rent-your-jim"
         )
       );
@@ -755,7 +746,7 @@ const BookingFormContent = ({ localizedData }) => {
         ? { [ptFreeTrialSlot]: true }
         : trainerPerSlot;
     const applyPtFreeTrial = ptAddOnType === "free_trial" && !!ptFreeTrialSlot;
-    calculateTotalPrice(firstStart, lastEnd, headcount, currentTrainerSelections, applyPtFreeTrial);
+    calculateTotalPrice(firstStart, lastEnd, headcount, currentTrainerSelections, applyPtFreeTrial, sorted.length);
   };
 
   /** "9:00", "09:00:00", "9:00:00 AM" → minutes from midnight (WP / Laravel schedules use mixed formats). */
@@ -797,7 +788,6 @@ const BookingFormContent = ({ localizedData }) => {
     );
     const selectedTimeSlots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
     const selectedSet = new Set(selectedTimeSlots);
-    const sel = selectedTimeSlots;
 
     const startMinutes = timeStrToMinutes(operatingHours.startTime);
     const endMinutes = timeStrToMinutes(operatingHours.endTime);
@@ -819,23 +809,9 @@ const BookingFormContent = ({ localizedData }) => {
       const endTimeStr = `${Math.floor(slotEnd / 60).toString().padStart(2, '0')}:${(slotEnd % 60).toString().padStart(2, '0')}`;
       const slotValue = `${startTimeStr}|${endTimeStr}`;
 
-      // Same capacity model as Laravel: one merged window for the whole contiguous selection,
-      // not per 40-minute slice (that double-counted overlap and showed false "Fully booked").
-      const normSlot = normalizeSlotValue(slotValue);
-      const normSel = sel.map(normalizeSlotValue).filter(Boolean);
-      const mergedForCapacity =
-        sel.length > 0 && normSel.includes(normSlot) && slotsAreContiguousRaw(sel);
-      let rangeStart;
-      let rangeEnd;
-      if (mergedForCapacity) {
-        const sortedSel = [...sel].sort((a, b) =>
-          normalizeTimeStr(String(a).split("|")[0]).localeCompare(normalizeTimeStr(String(b).split("|")[0]))
-        );
-        [rangeStart, rangeEnd] = boundsFromRawSlots(sortedSel);
-      } else {
-        rangeStart = normalizeTimeStr(startTimeStr);
-        rangeEnd = normalizeTimeStr(endTimeStr);
-      }
+      // Per-slot capacity (Laravel checks each interval); gaps in a multi-slot pick stay bookable for others.
+      const rangeStart = normalizeTimeStr(startTimeStr);
+      const rangeEnd = normalizeTimeStr(endTimeStr);
       const alreadyBooked = getAlreadyBookedForSlot(rangeStart, rangeEnd);
       const spotsLeft = Math.max(0, personLimit - alreadyBooked);
       const isFullyBooked = spotsLeft < numberOfPersons;
@@ -908,13 +884,6 @@ const BookingFormContent = ({ localizedData }) => {
       });
     }
 
-    if (!slotsAreContiguousRaw(values)) {
-      setCalculatedPrice(null);
-      return;
-    }
-
-    setStep0Error((prev) => (prev === msgSlotsMustBeConsecutive ? null : prev));
-
     const sortedSlots = [...values].sort((a, b) => {
       const [aStart] = a.split('|');
       const [bStart] = b.split('|');
@@ -936,7 +905,14 @@ const BookingFormContent = ({ localizedData }) => {
     }
 
     const applyPtFreeTrial = ptAddOnType === "free_trial" && !!ptFreeTrialSlot && trialStillIn;
-    calculateTotalPrice(firstStart, lastEnd, numberOfPersons, currentTrainerSelections, applyPtFreeTrial);
+    calculateTotalPrice(
+      firstStart,
+      lastEnd,
+      numberOfPersons,
+      currentTrainerSelections,
+      applyPtFreeTrial,
+      values.length
+    );
   };
 
   /**
@@ -1093,9 +1069,6 @@ const BookingFormContent = ({ localizedData }) => {
     if (!values.bookingDate || !Array.isArray(values.timeSlot) || values.timeSlot.length === 0) {
       return "noop";
     }
-    if (!slotsAreContiguousRaw(values.timeSlot)) {
-      return "noop";
-    }
     const couponTrim = String(values.couponCode ?? "").trim();
     if (!couponTrim) return "noop";
 
@@ -1147,10 +1120,6 @@ const BookingFormContent = ({ localizedData }) => {
       message.warning(__("Select date and time slots first.", "rent-your-jim"));
       return;
     }
-    if (!slotsAreContiguousRaw(values.timeSlot)) {
-      message.warning(msgSlotsMustBeConsecutive);
-      return;
-    }
     const guestEmailRaw = String(values.guestEmail ?? "").trim();
     if (!isSubscriber && !guestEmailRaw) {
       message.warning(
@@ -1180,7 +1149,6 @@ const BookingFormContent = ({ localizedData }) => {
 
     const timeSlots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
     if (!bookingDate || timeSlots.length === 0) return;
-    if (!slotsAreContiguousRaw(timeSlots)) return;
 
     const delayMs = 450;
     const timer = setTimeout(() => {
@@ -1239,10 +1207,6 @@ const BookingFormContent = ({ localizedData }) => {
       // Validate booking details first
       if (!values.bookingDate || !values.timeSlot || values.timeSlot.length === 0) {
         setStep0Error(__("Please select date and at least one time slot", "rent-your-jim"));
-        return;
-      }
-      if (!slotsAreContiguousRaw(values.timeSlot)) {
-        setStep0Error(msgSlotsMustBeConsecutive);
         return;
       }
 
@@ -1592,21 +1556,10 @@ const BookingFormContent = ({ localizedData }) => {
               <Form.Item
                 label={<><ClockCircleOutlined /> Select Time Slots</>}
                 name="timeSlot"
-                rules={[
-                  { required: true, message: "Please select at least one time slot" },
-                  {
-                    validator: (_, value) => {
-                      const arr = Array.isArray(value) ? value : [];
-                      if (arr.length > 1 && !slotsAreContiguousRaw(arr)) {
-                        return Promise.reject(new Error(msgSlotsMustBeConsecutive));
-                      }
-                      return Promise.resolve();
-                    },
-                  },
-                ]}
+                rules={[{ required: true, message: "Please select at least one time slot" }]}
                 validateTrigger={["onChange", "onSubmit"]}
                 extra={__(
-                  "Select multiple slots in one uninterrupted row (no gaps).",
+                  "You can choose multiple slots on the same day; they do not need to be back-to-back.",
                   "rent-your-jim"
                 )}
               >
@@ -1621,19 +1574,6 @@ const BookingFormContent = ({ localizedData }) => {
                   notFoundContent="No available slots for this day"
                 />
               </Form.Item>
-              {selectedBookingSlots.length > 1 &&
-                !slotsAreContiguousRaw(selectedBookingSlots) && (
-                  <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={msgSlotsMustBeConsecutive}
-                    description={__(
-                      "Pricing and promo codes apply only after your gym slots form one continuous block.",
-                      "rent-your-jim"
-                    )}
-                  />
-                )}
             </>
           )}
 

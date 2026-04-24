@@ -277,9 +277,9 @@ final class GymBookingCreationService
 
             [$user, $temporaryPassword] = $this->resolveOrCreateGuestUser($guestEmail, $guestName);
 
-            $startCarbon = Carbon::parse($date->format('Y-m-d').' '.$startTime);
-            $endCarbon = Carbon::parse($date->format('Y-m-d').' '.$endTime);
-            $durationHours = round($startCarbon->diffInMinutes($endCarbon) / 60, 2);
+            $slotDurationMinutes = (int) $validated['slot_duration_minutes'];
+            $slotCount = count($q['time_slots']);
+            $durationHours = round($slotCount * ($slotDurationMinutes / 60), 2);
 
             $booking = GymBooking::query()->create([
                 'gym_listing_id' => $listing->id,
@@ -287,6 +287,7 @@ final class GymBookingCreationService
                 'booking_date' => $date->format('Y-m-d'),
                 'start_time' => Carbon::parse($startTime)->format('H:i:s'),
                 'end_time' => Carbon::parse($endTime)->format('H:i:s'),
+                'time_slots' => $q['time_slots'],
                 'duration_hours' => $durationHours,
                 'number_of_persons' => $numberOfPersons,
                 'guest_name' => $guestName,
@@ -346,18 +347,21 @@ final class GymBookingCreationService
             ->where('gym_listing_id', $listing->id)
             ->whereBetween('booking_date', [$from->format('Y-m-d'), $to->format('Y-m-d')])
             ->where('status', 'confirmed')
-            ->get(['booking_date', 'start_time', 'end_time', 'number_of_persons']);
+            ->get(['booking_date', 'start_time', 'end_time', 'time_slots', 'number_of_persons']);
 
         $out = [];
         foreach ($rows as $row) {
-            $out[] = [
-                'date' => $row->booking_date instanceof \DateTimeInterface
-                    ? $row->booking_date->format('Y-m-d')
-                    : (string) $row->booking_date,
-                'start' => $this->formatTimeForApi($row->start_time),
-                'end' => $this->formatTimeForApi($row->end_time),
-                'number_of_persons' => (int) $row->number_of_persons,
-            ];
+            $dateStr = $row->booking_date instanceof \DateTimeInterface
+                ? $row->booking_date->format('Y-m-d')
+                : (string) $row->booking_date;
+            foreach ($this->bookingOccupiedIntervalsForModel($row) as [$s, $e]) {
+                $out[] = [
+                    'date' => $dateStr,
+                    'start' => $s,
+                    'end' => $e,
+                    'number_of_persons' => (int) $row->number_of_persons,
+                ];
+            }
         }
 
         return $out;
@@ -403,9 +407,6 @@ final class GymBookingCreationService
             }
         }
 
-        if (! $this->slotsAreContiguousSorted($normalizedSelected)) {
-            throw ValidationException::withMessages(['time_slots' => __('Selected slots must be consecutive with no gaps.')]);
-        }
     }
 
     /**
@@ -416,14 +417,22 @@ final class GymBookingCreationService
         $dayKey = strtolower($date->format('l'));
         $daySchedule = $this->dayAvailabilityRow($listing, $dayKey);
         $personLimit = $listing->effectivePersonLimit($daySchedule);
+        $dateStr = $date->format('Y-m-d');
 
-        [$startStr, $endStr] = $this->boundsFromSlots($timeSlots);
-        $already = $this->sumPersonsOverlapping($listing->id, $date->format('Y-m-d'), $startStr, $endStr);
-        $spotsLeft = max(0, $personLimit - $already);
-        if ($requestedPersons > $spotsLeft) {
-            throw ValidationException::withMessages([
-                'number_of_persons' => __('Not enough capacity left for this time range (:spots spot(s) left).', ['spots' => $spotsLeft]),
-            ]);
+        foreach ($timeSlots as $slot) {
+            $parts = explode('|', $slot, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+            $startStr = $this->formatTimeForApi($parts[0]);
+            $endStr = $this->formatTimeForApi($parts[1]);
+            $already = $this->sumPersonsOverlapping($listing->id, $dateStr, $startStr, $endStr);
+            $spotsLeft = max(0, $personLimit - $already);
+            if ($requestedPersons > $spotsLeft) {
+                throw ValidationException::withMessages([
+                    'number_of_persons' => __('Not enough capacity left for one or more selected slots (:spots spot(s) left in the tightest window).', ['spots' => $spotsLeft]),
+                ]);
+            }
         }
     }
 
@@ -433,18 +442,46 @@ final class GymBookingCreationService
             ->where('gym_listing_id', $listingId)
             ->whereDate('booking_date', $date)
             ->where('status', 'confirmed')
-            ->get(['start_time', 'end_time', 'number_of_persons']);
+            ->get(['start_time', 'end_time', 'time_slots', 'number_of_persons']);
 
         $sum = 0;
         foreach ($bookings as $b) {
-            $s = $this->formatTimeForApi($b->start_time);
-            $e = $this->formatTimeForApi($b->end_time);
-            if ($this->timeRangesOverlap($start, $end, $s, $e)) {
-                $sum += max(1, (int) $b->number_of_persons);
+            foreach ($this->bookingOccupiedIntervalsForModel($b) as [$s, $e]) {
+                if ($this->timeRangesOverlap($start, $end, $s, $e)) {
+                    $sum += max(1, (int) $b->number_of_persons);
+                    break;
+                }
             }
         }
 
         return $sum;
+    }
+
+    /**
+     * @return list<array{0: string, 1: string}> [start, end] as H:i
+     */
+    private function bookingOccupiedIntervalsForModel(GymBooking $booking): array
+    {
+        $raw = $booking->time_slots;
+        if (is_array($raw) && $raw !== []) {
+            $out = [];
+            foreach ($raw as $slot) {
+                if (! is_string($slot)) {
+                    continue;
+                }
+                $norm = $this->normalizeSlotValue($slot);
+                $parts = explode('|', $norm, 2);
+                if (count($parts) !== 2) {
+                    continue;
+                }
+                $out[] = [$this->formatTimeForApi($parts[0]), $this->formatTimeForApi($parts[1])];
+            }
+            if ($out !== []) {
+                return $out;
+            }
+        }
+
+        return [[$this->formatTimeForApi($booking->start_time), $this->formatTimeForApi($booking->end_time)]];
     }
 
     private function timeRangesOverlap(string $s1, string $e1, string $s2, string $e2): bool
@@ -525,30 +562,6 @@ final class GymBookingCreationService
         $mm = $m % 60;
 
         return sprintf('%02d:%02d', $h, $mm);
-    }
-
-    /**
-     * @param  list<string>  $normalizedSlots
-     */
-    private function slotsAreContiguousSorted(array $normalizedSlots): bool
-    {
-        $slots = $normalizedSlots;
-        usort($slots, fn (string $x, string $y) => strcmp(explode('|', $x, 2)[0], explode('|', $y, 2)[0]));
-        $prevEnd = null;
-        foreach ($slots as $s) {
-            $parts = explode('|', $s, 2);
-            if (count($parts) < 2) {
-                return false;
-            }
-            $st = $parts[0];
-            $en = $parts[1];
-            if ($prevEnd !== null && $st !== $prevEnd) {
-                return false;
-            }
-            $prevEnd = $en;
-        }
-
-        return true;
     }
 
     /**

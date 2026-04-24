@@ -518,6 +518,10 @@
             color: #ffffff;
             user-select: none;
             transition: filter 0.15s ease;
+            border-radius: 5px;
+        }
+        .faq-item[open] .faq-summary {
+            border-radius: 5px;
         }
         .faq-summary::-webkit-details-marker { display: none; }
         .faq-summary:hover { filter: brightness(1.05); }

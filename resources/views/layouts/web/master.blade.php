@@ -68,7 +68,7 @@
                 once: true,
                 duration: 700,
                 easing: 'ease-out-cubic',
-                offset: 40,
+                offset: 20,
                 startEvent: 'DOMContentLoaded',
                 disableMutationObserver: false,
             });

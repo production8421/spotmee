@@ -6,16 +6,18 @@ window.Alpine = Alpine;
 
 Alpine.start();
 
-if (typeof AOS !== 'undefined') {
-    AOS.init({
-        duration: 800,
-        easing: 'ease-in-out',
-        once: false,
-        offset: 100,
-        delay: 0,
-    });
-}
-
+// AOS is loaded + initialized in layouts/web/master.blade.php (once: true + refresh on load/fonts).
+// Do not call AOS.init() here — a second init overwrote settings with once:false and made sections
+// (e.g. FAQ accordions) fade back to invisible when scrolling.
+// if (typeof AOS !== 'undefined') {
+//     AOS.init({
+//         duration: 800,
+//         easing: 'ease-in-out',
+//         once: false,
+//         offset: 100,
+//         delay: 0,
+//     });
+// }
 if (typeof window.jQuery !== 'undefined') {
     const $ = window.jQuery;
 
