@@ -124,6 +124,7 @@
                 @else
                     {{ $howHeading }}@if ($howEmphasis !== '') <span class="text-[var(--color-primary)]">{{ $howEmphasis }}</span>@endif
                 @endif
+                <span class="testing-poyooil"></span>
             </h2>
             <p class="mt-4 text-[16px] text-[var(--color-ink-500)]">
                 {{ __('Three steps from discovering to working out — all on your schedule.') }}
