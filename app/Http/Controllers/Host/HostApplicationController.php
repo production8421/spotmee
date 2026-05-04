@@ -74,6 +74,8 @@ class HostApplicationController extends Controller
                 ]);
             }
         } else {
+
+            // add try catch to notify admin
             try {
                 $notifier->notify($application);
             } catch (\Throwable $e) {
