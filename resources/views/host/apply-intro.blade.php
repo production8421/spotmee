@@ -133,7 +133,7 @@
                         <div class="card shadow-sm border rounded-3 mb-4">
                             <div class="card-body p-0">
                                 <div class="px-3 py-2 border-bottom bg-light">
-                                    <strong class="small text-muted">{{ __('What you will need sss') }} <span aria-hidden="true">&#128203;</span></strong>
+                                    <strong class="small text-muted">{{ __('What you will needs') }} <span aria-hidden="true">&#128203;</span></strong>
                                 </div>
                                 <ul class="list-group list-group-flush">
                                     <li class="list-group-item d-flex align-items-start border-0 border-bottom py-2 py-md-3">
