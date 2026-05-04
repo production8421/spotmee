@@ -11,10 +11,10 @@ use App\Models\HostApplication;
 use App\Services\Admin\HostApplicationApprovalService;
 use App\Services\Host\HostApplicationAdminNotifier;
 use App\Services\Host\HostApplicationAutoApproveAdminNotifier;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class HostApplicationController extends Controller
@@ -74,10 +74,6 @@ class HostApplicationController extends Controller
                 ]);
             }
         } else {
-
-            // add try catch to notify admin
-            // add try catch to notify admin
-            // add try catch to notify admin
             try {
                 $notifier->notify($application);
             } catch (\Throwable $e) {
