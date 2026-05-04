@@ -74,7 +74,14 @@ class HostApplicationController extends Controller
                 ]);
             }
         } else {
-            $notifier->notify($application);
+            try {
+                $notifier->notify($application);
+            } catch (\Throwable $e) {
+                Log::error('host_application_admin_notify_failed', [
+                    'application_id' => $application->id,
+                    'message' => $e->getMessage(),
+                ]);
+            }
         }
 
         $request->session()->forget('host_apply_terms_accepted');

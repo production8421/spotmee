@@ -119,8 +119,8 @@ const BookingFormContent = ({ localizedData }) => {
     Number(localizedData.listing_person_limit) > 0
       ? Math.min(100, Math.max(1, parseInt(String(localizedData.listing_person_limit), 10)))
       : null;
-  const termsUrl = localizedData?.terms_url || "#";
-  const privacyUrl = localizedData?.privacy_url || "#";
+  const hostWaiverUrl = "/waiver-of-liability-host";
+  const userWaiverUrl = "/waiver-of-liability-user";
   const personalTrainerAvailable =
     localizedData?.personal_trainer_available === "yes" && !!localizedData?.pt_addon_enabled;
   const personalTrainerIconUrl =
@@ -1665,9 +1665,11 @@ const BookingFormContent = ({ localizedData }) => {
                     {__("Paid personal training", "rent-your-jim")}{" "}
                     <span style={{ color: "#52c41a" }}>{`(+$${personalTrainerPriceText}/slot)`}</span>
                   </Radio>
-                  <Radio value="free_trial" style={{ display: "block", marginTop: 8 }}>
-                    {__("Use free personal training trial (one slot)", "rent-your-jim")}{" "}
-                    <span style={{ color: "#52c41a" }}>{__("FREE", "rent-your-jim")}</span>
+                  <Radio value="free_trial" style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span>{__("Use free personal training trial (one slot)", "rent-your-jim")}</span>
+                      <span style={{ color: "#52c41a" }}>{__("FREE", "rent-your-jim")}</span>
+                    </span>
                   </Radio>
                 </Radio.Group>
                 {ptAddOnType === "free_trial" && (
@@ -1980,7 +1982,7 @@ const BookingFormContent = ({ localizedData }) => {
             </>
           )}
 
-          {/* Terms and Conditions */}
+          {/* Liability agreement */}
           <Form.Item
             name="agreeTerms"
             valuePropName="checked"
@@ -1992,7 +1994,7 @@ const BookingFormContent = ({ localizedData }) => {
             ]}
           >
             <Checkbox>
-              I agree to the <a href={termsUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#006d77', fontWeight: 600 }}>Terms and Conditions</a> and <a href={privacyUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#006d77', fontWeight: 600 }}>Privacy Policy</a>
+              I agree to the <a href={hostWaiverUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#006d77', fontWeight: 600 }}>Host waiver of liability</a> and <a href={userWaiverUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#006d77', fontWeight: 600 }}>User waiver of liability</a>
             </Checkbox>
           </Form.Item>
 

@@ -7,7 +7,7 @@ use App\Http\Requests\Admin\StoreMediaAssetRequest;
 use App\Models\MediaAsset;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -72,7 +72,7 @@ class MediaLibraryController extends Controller
     public function store(StoreMediaAssetRequest $request): RedirectResponse
     {
         $disk = 'local';
-        /** @var array<int, \Illuminate\Http\UploadedFile> $uploadedFiles */
+        /** @var array<int, UploadedFile> $uploadedFiles */
         $uploadedFiles = $request->file('files', []);
         $saved = 0;
 
@@ -116,8 +116,8 @@ class MediaLibraryController extends Controller
     {
         $this->authorizeMedia($media);
 
-        if ($media->pathIsAllowed() && Storage::disk($media->disk)->exists($media->path)) {
-            Storage::disk($media->disk)->delete($media->path);
+        if ($media->pathIsAllowed()) {
+            $media->deleteStoredFile();
         }
 
         $media->delete();

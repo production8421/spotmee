@@ -3,8 +3,6 @@
 @section('title', 'Become a Host — SPOTMEE')
 
 @php
-    $hostTerms   = $applicationSetting?->legal_host_terms_url;
-    $hostPrivacy = $applicationSetting?->legal_host_privacy_url;
     $autoApproveEnabled = (bool) ($applicationSetting?->host_registration_auto_approve ?? false);
 @endphp
 
@@ -217,23 +215,11 @@
                                    class="mt-0.5 h-5 w-5 flex-shrink-0 cursor-pointer rounded border-[var(--color-brand-200)] text-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/30">
                             <span class="text-[14px] leading-relaxed text-[var(--color-ink-700)]">
                                 {{ __('I agree to the') }}
-                                @if (filled($hostTerms))
-                                    <a href="{{ $hostTerms }}" target="_blank" rel="noopener noreferrer"
-                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Terms and Conditions') }}</a>
-                                @else
-                                    <a href="#"
-                                       onclick="event.preventDefault();"
-                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Terms and Conditions') }}</a>
-                                @endif
+                                <a href="{{ route('legal.waiver-host') }}" target="_blank" rel="noopener noreferrer"
+                                   class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Host waiver of liability') }}</a>
                                 {{ __('and') }}
-                                @if (filled($hostPrivacy))
-                                    <a href="{{ $hostPrivacy }}" target="_blank" rel="noopener noreferrer"
-                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Privacy Policy') }}</a>
-                                @else
-                                    <a href="#"
-                                       onclick="event.preventDefault();"
-                                       class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('Privacy Policy') }}</a>
-                                @endif
+                                <a href="{{ route('legal.waiver-user') }}" target="_blank" rel="noopener noreferrer"
+                                   class="font-semibold text-[var(--color-primary)] underline underline-offset-2 hover:text-[var(--color-primary-hover)]">{{ __('User waiver of liability') }}</a>
                             </span>
                         </label>
                         @error('terms_accepted')

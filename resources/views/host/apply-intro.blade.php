@@ -171,21 +171,9 @@
                                     <div class="flex-grow-1 min-w-0">
                                         <label class="form-check-label text-muted mb-0" for="terms_accepted">
                                             {{ __('I agree to the') }}
-                                            @php
-                                                $hostTerms = $applicationSetting->legal_host_terms_url;
-                                                $hostPrivacy = $applicationSetting->legal_host_privacy_url;
-                                            @endphp
-                                            @if (filled($hostTerms))
-                                                <a href="{{ $hostTerms }}" class="text-primary text-decoration-underline" target="_blank" rel="noopener noreferrer">{{ __('Terms and Conditions') }}</a>
-                                            @else
-                                                <a href="#" class="text-primary text-decoration-underline" onclick="event.preventDefault();">{{ __('Terms and Conditions') }}</a>
-                                            @endif
+                                            <a href="{{ route('legal.waiver-host') }}" class="text-primary text-decoration-underline" target="_blank" rel="noopener noreferrer">{{ __('Host waiver of liability') }}</a>
                                             {{ __('and') }}
-                                            @if (filled($hostPrivacy))
-                                                <a href="{{ $hostPrivacy }}" class="text-primary text-decoration-underline" target="_blank" rel="noopener noreferrer">{{ __('Privacy Policy') }}</a>
-                                            @else
-                                                <a href="#" class="text-primary text-decoration-underline" onclick="event.preventDefault();">{{ __('Privacy Policy') }}</a>
-                                            @endif
+                                            <a href="{{ route('legal.waiver-user') }}" class="text-primary text-decoration-underline" target="_blank" rel="noopener noreferrer">{{ __('User waiver of liability') }}</a>
                                         </label>
                                         @error('terms_accepted')
                                             <div class="invalid-feedback d-block mt-1">{{ $message }}</div>
