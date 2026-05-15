@@ -17,6 +17,7 @@ use App\Services\HomeWhySectionImageImporter;
 use App\Services\HowItWorksPageApproachImageImporter;
 use App\Services\HowItWorksPageIntroImageImporter;
 use App\Services\HowItWorksStepImageImporter;
+use App\Support\LegalDocument;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Storage;
@@ -178,6 +179,14 @@ class FrontendSectionController extends Controller
             $settings->faq_page_items = ApplicationSetting::normalizeFaqPageItemsFromRequestInput($request->input('faq_items', []));
         }
 
+        if ($prefix === 'waiver_liability_host') {
+            $this->syncWaiverPdfs($request, $settings, 'host');
+        }
+
+        if ($prefix === 'waiver_liability_user') {
+            $this->syncWaiverPdfs($request, $settings, 'user');
+        }
+
         $settings->save();
 
         return redirect()
@@ -260,6 +269,17 @@ class FrontendSectionController extends Controller
             $data['faqItemRows'] = ApplicationSetting::normalizeFaqPageItemsForForm(
                 old('faq_items', $settings->faq_page_items)
             );
+        }
+
+        if (in_array($prefix, ['waiver_liability_host', 'waiver_liability_user'], true)) {
+            $audience = $prefix === 'waiver_liability_user' ? 'user' : 'host';
+            $data['waiverPdfSections'] = $this->buildWaiverPdfSections($audience, $settings);
+            $data['waiverPdfUploadHeading'] = $audience === 'user'
+                ? __('User waiver PDF documents')
+                : __('Host waiver PDF documents');
+            $data['waiverPdfUploadHelp'] = $audience === 'user'
+                ? __('Upload PDFs shown on the public Waiver of Liability (User) page (sections 6 and 7). Max 20 MB each.')
+                : __('Upload PDFs shown on the public Waiver of Liability (Host) page (sections 6 and 7). Max 20 MB each.');
         }
 
         return view('admin.frontend.page-hero.edit', $data);
@@ -594,5 +614,76 @@ class FrontendSectionController extends Controller
             'cta_url' => $ctaUrl,
             'image_path' => $imagePath,
         ];
+    }
+
+    /**
+     * @return list<array{key: string, label: string, url: ?string, input_name: string, remove_name: string}>
+     */
+    private function buildWaiverPdfSections(string $audience, ApplicationSetting $settings): array
+    {
+        $pdfs = config("legal.{$audience}_waiver_pdfs", []);
+        $pathColumns = config("legal.{$audience}_waiver_path_columns", []);
+        $uploadFields = config("legal.{$audience}_waiver_upload_fields", []);
+
+        if (! is_array($pdfs)) {
+            return [];
+        }
+
+        return collect($pdfs)
+            ->map(function (array $meta, string $key) use ($settings, $pathColumns, $uploadFields, $audience): array {
+                $pathColumn = $pathColumns[$key] ?? null;
+                $fields = $uploadFields[$key] ?? [];
+                $resolved = LegalDocument::waiverPdfResolved($audience, $key);
+
+                return [
+                    'key' => $key,
+                    'label' => (string) ($meta['label'] ?? $key),
+                    'url' => $resolved['url'] ?? null,
+                    'input_name' => (string) ($fields['file'] ?? "legal_{$audience}_{$key}_pdf"),
+                    'remove_name' => (string) ($fields['remove'] ?? "remove_legal_{$audience}_{$key}_pdf"),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    private function syncWaiverPdfs(UpdateFrontendPageHeroRequest $request, ApplicationSetting $settings, string $audience): void
+    {
+        $disk = Storage::disk('public');
+        $uploadFields = config("legal.{$audience}_waiver_upload_fields", []);
+        $pathColumns = config("legal.{$audience}_waiver_path_columns", []);
+
+        if (! is_array($uploadFields)) {
+            return;
+        }
+
+        foreach ($uploadFields as $key => $fields) {
+            $pathColumn = $pathColumns[$key] ?? null;
+            if ($pathColumn === null || ! is_array($fields)) {
+                continue;
+            }
+
+            $currentPath = $settings->{$pathColumn};
+
+            if ($request->boolean($fields['remove'] ?? '') && filled($currentPath)) {
+                $disk->delete($currentPath);
+                $settings->{$pathColumn} = null;
+                $currentPath = null;
+            }
+
+            $fileInput = $fields['file'] ?? '';
+            if ($fileInput !== '' && $request->hasFile($fileInput)) {
+                $target = LegalDocument::waiverStoragePath($audience, $key);
+                if (filled($currentPath) && $currentPath !== $target) {
+                    $disk->delete($currentPath);
+                }
+                $request->file($fileInput)->storeAs(
+                    dirname($target),
+                    basename($target),
+                    'public'
+                );
+                $settings->{$pathColumn} = $target;
+            }
+        }
     }
 }

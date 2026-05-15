@@ -21,6 +21,7 @@ class HostApplicationTest extends TestCase
         $response->assertOk();
         $response->assertSeeText(__('Become a Host'));
         $response->assertSeeText(__('How it works'));
+        $response->assertSeeText(__('Step 1 of 3'));
     }
 
     public function test_create_form_redirects_without_accepting_terms(): void
@@ -37,7 +38,8 @@ class HostApplicationTest extends TestCase
 
         $this->get(route('host.apply.create'))
             ->assertOk()
-            ->assertSeeText(__('Become a host'));
+            ->assertSeeText(__('Become a host'))
+            ->assertSeeText(__('Step 2 of 3'));
     }
 
     public function test_begin_requires_terms(): void

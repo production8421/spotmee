@@ -52,7 +52,7 @@ class QuotePublicGymBookingRequest extends FormRequest
             'guest_phone' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'booking_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
-            'slot_duration_minutes' => ['required', 'integer', 'in:40,60'],
+            'slot_duration_minutes' => ['required', 'integer', 'in:60'],
             'time_slots' => ['required', 'array', 'min:1'],
             'time_slots.*' => ['required', 'string', 'max:32'],
             'number_of_persons' => ['required', 'integer', 'min:1', 'max:100'],

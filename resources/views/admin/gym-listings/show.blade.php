@@ -201,9 +201,9 @@
                                         }
                                         $durLabels = [];
                                         foreach ($durs as $m) {
-                                            $durLabels[] = $m === '60' || $m === 60
+                                            $durLabels[] = ($m === '60' || $m === 60 || $m === '40' || $m === 40)
                                                 ? __('1 hour')
-                                                : ($m === '40' || $m === 40 ? __('40 min') : (string) $m.' '.__('min'));
+                                                : (string) $m.' '.__('min');
                                         }
                                         $start = $row['startTime'] ?? $row['start'] ?? '';
                                         $end = $row['endTime'] ?? $row['end'] ?? '';

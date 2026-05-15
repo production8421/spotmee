@@ -25,18 +25,6 @@
         return slots;
     }
 
-    function ensureAtLeastOneGymSlot(day) {
-        const row = document.querySelector('[data-day-schedule-row="' + day + '"]');
-        if (!row) {
-            return;
-        }
-        const boxes = row.querySelectorAll('input[name="gym_availability[' + day + '][slot_duration][]"]');
-        const checked = row.querySelectorAll('input[name="gym_availability[' + day + '][slot_duration][]"]:checked');
-        if (boxes.length && checked.length === 0) {
-            boxes[0].checked = true;
-        }
-    }
-
     function getGymDayState(day) {
         const row = document.querySelector('[data-day-schedule-row="' + day + '"]');
         if (!row) {
@@ -45,10 +33,7 @@
         const closed = !!row.querySelector('[data-gym-closed-checkbox]')?.checked;
         const start = row.querySelector('input[name="gym_availability[' + day + '][start_time]"]')?.value || '';
         const end = row.querySelector('input[name="gym_availability[' + day + '][end_time]"]')?.value || '';
-        const checked = row.querySelectorAll('input[name="gym_availability[' + day + '][slot_duration][]"]:checked');
-        const durations = Array.from(checked)
-            .map(function (i) { return parseInt(i.value, 10); })
-            .filter(function (n) { return n === 40 || n === 60; });
+        const durations = closed ? [] : [60];
         return { closed: closed, start: start, end: end, durations: durations };
     }
 
@@ -252,11 +237,8 @@
                 refreshAllPtForDay(day);
             });
         }
-        row.querySelectorAll('[data-gym-time-input], [data-gym-slot-duration]').forEach(function (el) {
+        row.querySelectorAll('[data-gym-time-input]').forEach(function (el) {
             el.addEventListener('change', function () {
-                if (el.matches('[data-gym-slot-duration]')) {
-                    ensureAtLeastOneGymSlot(day);
-                }
                 refreshAllPtForDay(day);
             });
         });
@@ -271,7 +253,6 @@
         const closed = mon.querySelector('[data-gym-closed-checkbox]');
         const start = mon.querySelector('input[name="gym_availability[monday][start_time]"]');
         const end = mon.querySelector('input[name="gym_availability[monday][end_time]"]');
-        const slotChecks = mon.querySelectorAll('input[name="gym_availability[monday][slot_duration][]"]');
         const days = ['tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         days.forEach(function (day) {
             const row = document.querySelector('[data-day-schedule-row="' + day + '"]');
@@ -290,13 +271,6 @@
             if (eInp && end) {
                 eInp.value = end.value;
             }
-            const targets = row.querySelectorAll('input[name="gym_availability[' + day + '][slot_duration][]"]');
-            slotChecks.forEach(function (src, i) {
-                const tgt = targets[i];
-                if (tgt && src) {
-                    tgt.checked = src.checked;
-                }
-            });
             syncGymRowDisabled(day);
             refreshAllPtForDay(day);
         });

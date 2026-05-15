@@ -69,6 +69,8 @@
                             </p>
                         </div>
 
+                        @include('host.partials.apply-progress', ['step' => 1])
+
                         <div class="row g-3 mb-3">
                             <div class="col-lg-6">
                                 <div class="card shadow-sm border rounded-3 h-100">

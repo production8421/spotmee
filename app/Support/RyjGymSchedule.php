@@ -18,9 +18,9 @@ class RyjGymSchedule
             if (! is_array($slots)) {
                 $slots = [];
             }
-            $slots = array_values(array_intersect(array_map('strval', $slots), ['40', '60']));
+            $slots = array_values(array_intersect(array_map('strval', $slots), ['60']));
             if ($slots === []) {
-                $slots = ['40'];
+                $slots = ['60'];
             }
             $out[$day] = [
                 'isClosed' => $isClosed,
@@ -103,22 +103,25 @@ class RyjGymSchedule
     {
         $row = is_array($row) ? $row : [];
         if (isset($row['startTime']) || isset($row['isClosed']) || isset($row['is_closed'])) {
-            $durations = $row['slotDuration'] ?? ['40'];
+            $durations = $row['slotDuration'] ?? ['60'];
             if (! is_array($durations)) {
                 $durations = [$durations];
+            }
+            $durations = array_values(array_intersect(array_map('strval', $durations), ['60']));
+            if ($durations === []) {
+                $durations = ['60'];
             }
 
             return [
                 'is_closed' => filter_var($row['isClosed'] ?? $row['is_closed'] ?? false, FILTER_VALIDATE_BOOLEAN),
                 'start_time' => (string) ($row['startTime'] ?? $row['start'] ?? ''),
                 'end_time' => (string) ($row['endTime'] ?? $row['end'] ?? ''),
-                'slot_duration' => array_map('strval', $durations),
+                'slot_duration' => $durations,
                 'person_limit' => max(1, (int) ($row['personLimit'] ?? 1)),
             ];
         }
 
-        $sm = (int) ($row['slot_minutes'] ?? 40);
-        $dur = in_array($sm, [40, 60], true) ? [(string) $sm] : ['40'];
+        $dur = ['60'];
 
         return [
             'is_closed' => filter_var($row['closed'] ?? false, FILTER_VALIDATE_BOOLEAN),
@@ -198,9 +201,9 @@ class RyjGymSchedule
         foreach (config('gym_listing.weekday_keys', []) as $day) {
             $form = self::gymRowToForm(is_array($schedule[$day] ?? null) ? $schedule[$day] : null);
             $isClosed = $form['is_closed'];
-            $slots = array_values(array_intersect($form['slot_duration'], ['40', '60']));
+            $slots = array_values(array_intersect($form['slot_duration'], ['60']));
             if ($slots === []) {
-                $slots = ['40'];
+                $slots = ['60'];
             }
             $out[$day] = [
                 'isClosed' => $isClosed,
@@ -266,14 +269,13 @@ class RyjGymSchedule
     }
 
     /**
-     * Whether weekly gym availability offers 40- and/or 60-minute slots (aligned with WP gym main page flags).
+     * Whether weekly gym availability offers one-hour slots (aligned with WP gym main page flags).
      *
      * @param  array<string, mixed>|null  $schedule  Stored `availability_schedule` (normalized shape)
      * @return array{offers_40min: bool, offers_1hr: bool}
      */
     public static function gymScheduleOfferSlotLengths(?array $schedule): array
     {
-        $offers40 = false;
         $offers1hr = false;
         if (! is_array($schedule) || $schedule === []) {
             return ['offers_40min' => false, 'offers_1hr' => true];
@@ -292,18 +294,16 @@ class RyjGymSchedule
                 $durs = $durs !== null && $durs !== '' ? [(string) $durs] : [];
             }
             foreach (array_map('strval', $durs) as $d) {
-                if ($d === '40') {
-                    $offers40 = true;
-                }
-                if ($d === '60') {
+                if ($d === '60' || $d === '40') {
                     $offers1hr = true;
+                    break 2;
                 }
             }
         }
-        if (! $offers40 && ! $offers1hr) {
+        if (! $offers1hr) {
             $offers1hr = true;
         }
 
-        return ['offers_40min' => $offers40, 'offers_1hr' => $offers1hr];
+        return ['offers_40min' => false, 'offers_1hr' => $offers1hr];
     }
 }

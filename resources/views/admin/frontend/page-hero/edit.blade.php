@@ -33,7 +33,7 @@
 
     <div class="row">
         <div class="col-lg-8">
-            <form id="frontend-page-hero-form" method="POST" action="{{ $updateUrl }}" novalidate>
+            <form id="frontend-page-hero-form" method="POST" action="{{ $updateUrl }}" @if (! empty($waiverPdfSections)) enctype="multipart/form-data" @endif novalidate>
                 @csrf
                 @method('PUT')
 
@@ -174,6 +174,55 @@
                         </div>
                     </div>
                 @endisset
+
+                @if (! empty($waiverPdfSections))
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">{{ $waiverPdfUploadHeading ?? __('Waiver PDF documents') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">
+                                {{ $waiverPdfUploadHelp ?? __('Upload PDFs for the public waiver page. Max 20 MB each.') }}
+                            </p>
+                        </div>
+                        <div class="card-body">
+                            @foreach ($waiverPdfSections as $pdf)
+                                <div class="border rounded p-3 mb-3 {{ $loop->last ? 'mb-0' : '' }}">
+                                    <h6 class="fw-semibold mb-2">{{ $pdf['label'] }}</h6>
+                                    @if ($pdf['url'])
+                                        <p class="text-muted small mb-2">
+                                            <i class="fa-solid fa-circle-check text-success me-1" aria-hidden="true"></i>
+                                            {{ __('Current file:') }}
+                                            <a href="{{ $pdf['url'] }}" target="_blank" rel="noopener noreferrer">{{ __('View PDF') }}</a>
+                                        </p>
+                                        <div class="form-check mb-3">
+                                            <input
+                                                class="form-check-input"
+                                                type="checkbox"
+                                                name="{{ $pdf['remove_name'] }}"
+                                                id="{{ $pdf['remove_name'] }}"
+                                                value="1"
+                                                @checked(old($pdf['remove_name']))
+                                            >
+                                            <label class="form-check-label" for="{{ $pdf['remove_name'] }}">{{ __('Remove current PDF') }}</label>
+                                        </div>
+                                    @else
+                                        <p class="text-muted small mb-2">{{ __('No PDF uploaded yet.') }}</p>
+                                    @endif
+                                    <label class="form-label fw-semibold" for="{{ $pdf['input_name'] }}">{{ __('Upload PDF') }}</label>
+                                    <input
+                                        class="form-control @error($pdf['input_name']) is-invalid @enderror"
+                                        type="file"
+                                        name="{{ $pdf['input_name'] }}"
+                                        id="{{ $pdf['input_name'] }}"
+                                        accept="application/pdf,.pdf"
+                                    >
+                                    @error($pdf['input_name'])
+                                        <div class="invalid-feedback d-block">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
 
                 <div class="mt-3 mb-4">
                     <button class="btn btn-primary" type="submit">{{ __('Save') }}</button>

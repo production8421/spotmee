@@ -135,7 +135,7 @@
         @error('personal_training_cpr_cert')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
     </div>
 
-    <p class="text-muted small mb-2">{{ __('Session times follow your gym opening hours for each day. Tick the one-hour slots you offer. Days where availability is only 40 minutes cannot show personal training slots (PT is one hour).') }}</p>
+    <p class="text-muted small mb-2">{{ __('Session times follow your gym opening hours for each day. Tick the one-hour slots you offer.') }}</p>
 
     <div class="table-responsive border rounded mb-4">
         <table class="table table-bordered align-middle mb-0 gym-availability-table">

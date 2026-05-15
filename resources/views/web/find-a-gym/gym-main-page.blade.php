@@ -33,9 +33,8 @@
         $tierIconsFallback  = ['silver' => 'fa-medal', 'gold' => 'fa-trophy', 'platinum' => 'fa-gem'];
         $tierFaIcon         = $tierIconsFallback[$tier] ?? 'fa-medal';
         $tierIconUrl        = RyjOptionIcon::publicUrl($tier);
-        $has40min           = ($slotOffers['offers_40min'] ?? false) && ($pricing['rate_40min'] ?? null) !== null;
-        $has1hr             = ($slotOffers['offers_1hr']   ?? false) && ($pricing['rate_1hr']   ?? null) !== null;
-        $showPricingSection = $has40min || $has1hr;
+        $has1hr             = ($slotOffers['offers_1hr'] ?? false) && ($pricing['rate_1hr'] ?? null) !== null;
+        $showPricingSection = $has1hr;
 
         $fullAddress = trim(collect([$listing->address, $listing->city, $stateCode, $listing->postal_code])->filter()->implode(', '));
 
@@ -419,25 +418,6 @@
                                     </p>
 
                                     <div class="mt-4 space-y-3">
-                                        @if ($has40min)
-                                            <div class="flex items-center justify-between rounded-2xl border border-[var(--color-brand-100)] bg-[var(--color-brand-50)]/60 px-4 py-3">
-                                                <div class="flex items-center gap-3">
-                                                    <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-[var(--color-primary)]">
-                                                        <i class="fa-solid fa-stopwatch"></i>
-                                                    </div>
-                                                    <div>
-                                                        <p class="text-[13px] font-semibold text-[var(--color-ink-900)]">{{ __('Standard') }}</p>
-                                                        <p class="text-[12px] text-[var(--color-ink-500)]">{{ __('40 minute session') }}</p>
-                                                    </div>
-                                                </div>
-                                                <div class="text-right">
-                                                    <p class="text-[20px] font-bold leading-none text-[var(--color-primary)]">
-                                                        ${{ number_format((float) $pricing['rate_40min'], 2) }}
-                                                    </p>
-                                                    <p class="mt-0.5 text-[11px] font-medium text-[var(--color-ink-500)]">/ 40 min</p>
-                                                </div>
-                                            </div>
-                                        @endif
                                         @if ($has1hr)
                                             <div class="flex items-center justify-between rounded-2xl border border-[var(--color-brand-100)] bg-[var(--color-brand-50)]/60 px-4 py-3">
                                                 <div class="flex items-center gap-3">
@@ -753,12 +733,12 @@
         <div id="spotmee-booking-floating-bar"
              class="fixed inset-x-0 bottom-0 z-[90] border-t border-[var(--color-brand-100)] bg-white/95 p-3 shadow-[0_-6px_24px_rgba(0,109,119,0.08)] backdrop-blur lg:hidden">
             <div class="site-container flex items-center justify-between gap-3">
-                @if ($has1hr || $has40min)
+                @if ($has1hr)
                     <div class="min-w-0">
                         <p class="text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-500)]">{{ __('From') }}</p>
                         <p class="text-[16px] font-bold text-[var(--color-primary)]">
-                            ${{ number_format((float) ($has40min ? $pricing['rate_40min'] : $pricing['rate_1hr']), 2) }}
-                            <span class="text-[11px] font-medium text-[var(--color-ink-500)]">/ {{ $has40min ? __('40 min') : __('hour') }}</span>
+                            ${{ number_format((float) $pricing['rate_1hr'], 2) }}
+                            <span class="text-[11px] font-medium text-[var(--color-ink-500)]">/ {{ __('hour') }}</span>
                         </p>
                     </div>
                 @else

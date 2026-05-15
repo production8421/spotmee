@@ -22,9 +22,9 @@
                     <li><a href="#space-standards">{{ __('3. Space standards') }}</a></li>
                     <li><a href="#booking-standards">{{ __('4. Booking standards') }}</a></li>
                     <li><a href="#liability-release">{{ __('5. Liability release') }}</a></li>
-                    <li><a href="#nda">{{ __('6. NDA summary (PDF)') }}</a></li>
+                    <li><a href="#nda">{{ __('6. NDA (PDF)') }}</a></li>
                     <li><a href="#contractor">{{ __('7. Contractor agreement (PDF)') }}</a></li>
-                    <li><a href="#non-compete">{{ __('8. Non-compete summary (PDF)') }}</a></li>
+                    <li><a href="#non-compete">{{ __('8. Non-compete summary') }}</a></li>
                     <li><a href="#contact">{{ __('9. Contact') }}</a></li>
                 </ul>
             </aside>
@@ -104,7 +104,7 @@
                     </section>
 
                     <section class="legal-section" id="nda">
-                        <h2 class="legal-section__heading"><span class="legal-section__num">6</span> {{ __('Standard Non-disclosure Agreement (PDF content)') }}</h2>
+                        <h2 class="legal-section__heading"><span class="legal-section__num">6</span> {{ __('Standard Non-disclosure Agreement') }}</h2>
                         <p>
                             {{ __('The Standard NDA identifies SPOTMEE and the signer, defines confidential information, and requires non-disclosure of private company and operational details.') }}
                         </p>
@@ -115,10 +115,11 @@
                             <li>{{ __('Agreement includes non-circumvention language and return/destruction of confidential materials after termination.') }}</li>
                             <li>{{ __('Governing law is California; indemnification obligations are included.') }}</li>
                         </ul>
+                        @include('web.legal.partials.pdf-document', ['pdfKey' => 'nda', 'audience' => 'host'])
                     </section>
 
                     <section class="legal-section" id="contractor">
-                        <h2 class="legal-section__heading"><span class="legal-section__num">7</span> {{ __('Independent Contractor Agreement (PDF content)') }}</h2>
+                        <h2 class="legal-section__heading"><span class="legal-section__num">7</span> {{ __('Independent Contractor Agreement') }}</h2>
                         <p>
                             {{ __('The Independent Contractor Agreement defines the host/contractor relationship and confirms that the host provides private workout space services as an independent contractor, not as an employee.') }}
                         </p>
@@ -129,6 +130,7 @@
                             <li>{{ __('Confidential information, return of property, and indemnification terms are included.') }}</li>
                             <li>{{ __('Governing law and forum are California (including Sacramento County courts).') }}</li>
                         </ul>
+                        @include('web.legal.partials.pdf-document', ['pdfKey' => 'contractor', 'audience' => 'host'])
                     </section>
 
                     <section class="legal-section" id="non-compete">

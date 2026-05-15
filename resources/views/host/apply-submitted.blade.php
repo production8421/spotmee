@@ -18,6 +18,8 @@
                         </div>
                         <div class="login-main">
                             <div class="theme-form text-center">
+                                @include('host.partials.apply-progress', ['step' => 3])
+
                                 <div class="mb-4">
                                     <i class="fa-solid fa-circle-check text-success" style="font-size: 3.5rem;" aria-hidden="true"></i>
                                     <h3 class="mt-3 mb-2">{{ __('Registration Submitted!') }}</h3>

@@ -48,7 +48,6 @@ function buildLocalizedFromBootstrap(b) {
     personal_trainer_available: b.personalTrainingAvailable ? "yes" : "no",
     pt_addon_enabled: !!b.ptAddonEnabled,
     pricing: {
-      rate_40min: Number(b.rate40) || 0,
       rate_1hr: Number(b.rate1hr) || 0,
       hourly_rate: Number(b.rate1hr) || 0,
     },
@@ -106,7 +105,6 @@ const BookingFormContent = ({ localizedData }) => {
   const pricing = localizedData?.pricing || {
     hourly_rate: 30,
     rate_1hr: 30,
-    rate_40min: 22,
     tier: "silver",
   };
   const stripePublishableKey = localizedData?.stripe_publishable_key || "";
@@ -144,12 +142,12 @@ const BookingFormContent = ({ localizedData }) => {
     if (!date) return [];
     const operatingHours = getOperatingHours(date);
     if (!operatingHours || !operatingHours.slotDuration) return [];
-    
-    const duration = operatingHours.slotDuration;
-    if (Array.isArray(duration)) {
-        return duration.map(d => parseInt(d, 10)); // return [40, 60] etc
-    }
-    return [parseInt(duration, 10)];
+    const closed =
+      operatingHours.isClosed === true ||
+      operatingHours.isClosed === "true" ||
+      operatingHours.is_closed === true;
+    if (closed) return [];
+    return [60];
   };
 
   // Initialize Stripe
@@ -300,28 +298,8 @@ const BookingFormContent = ({ localizedData }) => {
     return availability[dayName];
   };
 
-  // Get slot duration for selected date (in minutes)
-  const getSlotDuration = () => {
-    // If user has explicitly selected a duration type, use it
-    if (selectedDurationType) {
-        return parseInt(selectedDurationType, 10);
-    }
-
-    const operatingHours = getOperatingHours(bookingDate);
-    if (!operatingHours) return 60; // Default to 1 hour
-    
-    let duration = operatingHours.slotDuration;
-    
-    // Handle array of durations (from checkboxes)
-    if (Array.isArray(duration)) {
-        if (duration.includes('40') || duration.includes(40)) return 40;
-        return 60;
-    }
-
-    // slotDuration is stored as string "40" or "60"
-    const parsedDuration = parseInt(duration, 10);
-    return parsedDuration === 40 ? 40 : 60; // Default to 60 if invalid
-  };
+  // Gym listings use one-hour slots only.
+  const getSlotDuration = () => 60;
 
   /** Gym offers 60-minute slots — required before PT add-on (same rule as `RyjGymSchedule::gymAvailabilityAllowsOneHourPt`). */
   const gymAllowsOneHourPt = () => {
@@ -447,8 +425,7 @@ const BookingFormContent = ({ localizedData }) => {
     return Object.values(trainerSelections || {}).filter(Boolean).length;
   };
 
-  // Calculate total price based on slots and number of persons
-  // Each slot (40 min or 60 min) is charged at its respective rate.
+  // Calculate total price based on slots and number of persons (one-hour slots only).
   // When `slotCountOverride` is set (non-contiguous picks), bill by selected slot count, not first→last span.
   const calculateTotalPrice = (
     startTime,
@@ -467,7 +444,7 @@ const BookingFormContent = ({ localizedData }) => {
     const end = dayjs.isDayjs(endTime) ? endTime.hour() * 60 + endTime.minute() : dayjs(endTime, "HH:mm").hour() * 60 + dayjs(endTime, "HH:mm").minute();
 
     const persons = numberOfPersons || 1;
-    const slotDuration = getSlotDuration(); // 40 or 60 minutes
+    const slotDuration = getSlotDuration();
 
     const useOverride =
       slotCountOverride != null &&
@@ -488,10 +465,7 @@ const BookingFormContent = ({ localizedData }) => {
       numberOfSlots = Math.round(durationMinutes / slotDuration);
     }
     
-    // Select price based on slot duration (40 min or 1 hour)
-    const pricePerSlot = slotDuration === 40 
-      ? (pricing.rate_40min || pricing.hourly_rate * 0.75) 
-      : (pricing.rate_1hr || pricing.hourly_rate);
+    const pricePerSlot = pricing.rate_1hr || pricing.hourly_rate;
     
     const pricePerPerson = numberOfSlots * pricePerSlot;
     const basePrice = pricePerPerson * persons;
@@ -516,7 +490,7 @@ const BookingFormContent = ({ localizedData }) => {
       ptFreeTrial: applyPtFreeTrial && trainerSlotCount > 0,
       total: totalPrice.toFixed(2),
       currentRate: pricePerSlot.toFixed(2),
-      rateType: slotDuration === 40 ? '40 min' : '1 hour',
+      rateType: '1 hour',
       startTime: dayjs.isDayjs(startTime) ? startTime.format("HH:mm") : startTime,
       endTime: dayjs.isDayjs(endTime) ? endTime.format("HH:mm") : endTime,
     });
@@ -553,13 +527,8 @@ const BookingFormContent = ({ localizedData }) => {
     // Set default duration type for new date
     if (date) {
         const availableDurations = getAvailableDurations(date);
-        // Default to 40 if available, else 60, else whatever is there
-        if (availableDurations.includes(40)) {
-            setSelectedDurationType(40);
-        } else if (availableDurations.includes(60)) {
+        if (availableDurations.includes(60)) {
             setSelectedDurationType(60);
-        } else if (availableDurations.length > 0) {
-            setSelectedDurationType(availableDurations[0]);
         } else {
             setSelectedDurationType(null);
         }
@@ -591,7 +560,7 @@ const BookingFormContent = ({ localizedData }) => {
     };
 
     const slotDuration = getSlotDuration();
-    const slotText = slotDuration === 40 ? "40 min" : "1 hour";
+    const slotText = "1 hour";
 
     return `Available: ${formatTime(operatingHours.startTime)} - ${formatTime(operatingHours.endTime)} • ${slotText} slots`;
   };
@@ -779,7 +748,7 @@ const BookingFormContent = ({ localizedData }) => {
       return [];
     }
 
-    const slotDuration = getSlotDuration(); // 40 or 60 minutes
+    const slotDuration = getSlotDuration();
     const slots = [];
     const personLimit = getPersonLimit();
     const numberOfPersons = Math.max(
@@ -1526,33 +1495,6 @@ const BookingFormContent = ({ localizedData }) => {
           {/* Time Slot Selection */}
           {bookingDate && (
             <>
-              {/* Duration Type Selection (only if multiple available) */}
-              {getAvailableDurations(bookingDate).length > 1 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ marginBottom: 8, fontWeight: 500 }}>
-                    <ClockCircleOutlined /> Choose Slot Duration:
-                  </div>
-                  <Radio.Group 
-                    value={selectedDurationType} 
-                    onChange={(e) => {
-                      setSelectedDurationType(e.target.value);
-                      form.setFieldsValue({ timeSlot: [] });
-                      setCalculatedPrice(null);
-                      setTrainerPerSlot({});
-                      setPtFreeTrialSlot(null);
-                    }}
-                    buttonStyle="solid"
-                  >
-                    {getAvailableDurations(bookingDate).includes(40) && (
-                      <Radio.Button value={40}>40 Min</Radio.Button>
-                    )}
-                    {getAvailableDurations(bookingDate).includes(60) && (
-                      <Radio.Button value={60}>1 Hour</Radio.Button>
-                    )}
-                  </Radio.Group>
-                </div>
-              )}
-
               <Form.Item
                 label={<><ClockCircleOutlined /> Select Time Slots</>}
                 name="timeSlot"

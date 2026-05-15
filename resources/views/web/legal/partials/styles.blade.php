@@ -200,4 +200,86 @@
         border-radius: 999px;
         font-size: 12px;
     }
+
+    .legal-pdf-block {
+        margin-top: 20px;
+    }
+
+    .legal-pdf-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .legal-pdf-actions__btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding-inline: 16px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 999px;
+        text-decoration: none;
+    }
+
+    .legal-pdf-viewer {
+        border: 1px solid var(--color-brand-100);
+        border-radius: 16px;
+        overflow: hidden;
+        background: #f8fafc;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .legal-pdf-viewer__frame {
+        display: block;
+        width: 100%;
+        min-height: 520px;
+        height: 70vh;
+        max-height: 900px;
+        border: 0;
+        background: #fff;
+    }
+
+    @media (max-width: 639px) {
+        .legal-pdf-viewer__frame {
+            min-height: 420px;
+            height: 55vh;
+        }
+    }
+
+    .legal-pdf-fallback {
+        margin: 12px 0 0;
+        font-size: 13px;
+        color: var(--color-ink-500);
+    }
+
+    .legal-pdf-missing {
+        border: 1px dashed var(--color-brand-100);
+        border-radius: 16px;
+        background: var(--color-brand-50);
+        padding: 24px 20px;
+        text-align: center;
+    }
+
+    .legal-pdf-missing__icon {
+        font-size: 2rem;
+        color: var(--color-primary);
+        margin-bottom: 10px;
+    }
+
+    .legal-pdf-missing__title {
+        margin: 0 0 6px;
+        font-size: 15px;
+        font-weight: 700;
+        color: var(--color-ink-900);
+    }
+
+    .legal-pdf-missing__text {
+        margin: 0;
+        font-size: 13px;
+        color: var(--color-ink-500);
+        line-height: 1.5;
+    }
 </style>

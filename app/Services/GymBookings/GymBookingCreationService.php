@@ -61,7 +61,7 @@ final class GymBookingCreationService
 
         $date = Carbon::parse($validated['booking_date'])->startOfDay();
         $slotDuration = (int) $validated['slot_duration_minutes'];
-        if (! in_array($slotDuration, [40, 60], true)) {
+        if ($slotDuration !== 60) {
             throw ValidationException::withMessages(['slot_duration_minutes' => __('Invalid slot length.')]);
         }
 
@@ -123,7 +123,6 @@ final class GymBookingCreationService
             $slotCount,
             $slotDuration,
             $numberOfPersons,
-            (float) ($rates['rate_40min'] ?? 0),
             (float) ($rates['rate_1hr'] ?? 0),
             $trainerSlotCount,
             $ptPrice,
@@ -186,7 +185,6 @@ final class GymBookingCreationService
                     $paidSlots,
                     $slotDuration,
                     $numberOfPersons,
-                    (float) ($rates['rate_40min'] ?? 0),
                     (float) ($rates['rate_1hr'] ?? 0),
                     $trainerSlotCount,
                     $ptPrice,
@@ -512,7 +510,7 @@ final class GymBookingCreationService
         $out = [];
         foreach (array_map('strval', $durs) as $d) {
             $n = (int) $d;
-            if (in_array($n, [40, 60], true)) {
+            if ($n === 60) {
                 $out[] = $n;
             }
         }
@@ -777,13 +775,12 @@ final class GymBookingCreationService
         int $numberOfSlots,
         int $slotDuration,
         int $persons,
-        float $rate40,
         float $rate1hr,
         int $trainerSlotCount,
         float $ptSlotPrice,
         bool $ptFreeTrialApplies
     ): array {
-        $perSlot = $slotDuration === 40 ? $rate40 : $rate1hr;
+        $perSlot = $rate1hr;
         $base = round($numberOfSlots * $perSlot * $persons, 2);
         $trainerFee = ($trainerSlotCount > 0 && ! $ptFreeTrialApplies)
             ? round($trainerSlotCount * $ptSlotPrice, 2)

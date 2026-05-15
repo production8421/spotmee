@@ -67,8 +67,12 @@ use Illuminate\Support\Facades\Schema;
     'contact_hero_background_color',
     'waiver_liability_host_hero_title',
     'waiver_liability_host_hero_background_color',
+    'legal_host_nda_pdf_path',
+    'legal_host_contractor_pdf_path',
     'waiver_liability_user_hero_title',
     'waiver_liability_user_hero_background_color',
+    'legal_user_nda_pdf_path',
+    'legal_user_non_compete_pdf_path',
     'cancellation_policy_hero_title',
     'cancellation_policy_hero_background_color',
     'footer_social_urls',
@@ -1242,7 +1246,7 @@ class ApplicationSetting extends Model
     /**
      * Guest-facing session rates for a host tier (base + admin commission %), matching gym listing settings.
      *
-     * @return array{tier: string, rate_40min: ?float, rate_1hr: ?float}
+     * @return array{tier: string, rate_1hr: ?float}
      */
     public function publicGuestTierRates(string $tier = 'silver'): array
     {
@@ -1252,16 +1256,11 @@ class ApplicationSetting extends Model
             default => 'silver',
         };
 
-        $base40 = $this->{"{$tier}_tier_price_40_min"};
-        $pct40 = $this->{"{$tier}_tier_admin_commission_40_min_pct"};
         $base1 = $this->{"{$tier}_tier_price_1_hour"};
         $pct1 = $this->{"{$tier}_tier_admin_commission_1_hour_pct"};
 
         return [
             'tier' => $tier,
-            'rate_40min' => is_numeric($base40) && is_numeric($pct40)
-                ? self::tierTotalWithCommission((float) $base40, (float) $pct40)
-                : null,
             'rate_1hr' => is_numeric($base1) && is_numeric($pct1)
                 ? self::tierTotalWithCommission((float) $base1, (float) $pct1)
                 : null,

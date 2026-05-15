@@ -27,8 +27,8 @@ trait ValidatesGymListingAvailabilitySchedule
             $rules["availability_schedule.{$day}.isClosed"] = ['required', 'boolean'];
             $rules["availability_schedule.{$day}.startTime"] = ['nullable', 'date_format:H:i'];
             $rules["availability_schedule.{$day}.endTime"] = ['nullable', 'date_format:H:i'];
-            $rules["availability_schedule.{$day}.slotDuration"] = ['required', 'array', 'min:1', 'max:2'];
-            $rules["availability_schedule.{$day}.slotDuration.*"] = ['string', Rule::in(['40', '60'])];
+            $rules["availability_schedule.{$day}.slotDuration"] = ['required', 'array', 'min:1', 'max:1'];
+            $rules["availability_schedule.{$day}.slotDuration.*"] = ['string', Rule::in(['60'])];
             $rules["availability_schedule.{$day}.personLimit"] = ['sometimes', 'integer', 'min:1', 'max:999'];
         }
 

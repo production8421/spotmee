@@ -450,23 +450,16 @@
     }
     function updateTierTotals(tier) {
         var p1El = document.getElementById(tier + '_tier_price_1_hour');
-        var p40El = document.getElementById(tier + '_tier_price_40_min');
         var c1El = document.getElementById(tier + '_tier_admin_commission_1_hour_pct');
-        var c40El = document.getElementById(tier + '_tier_admin_commission_40_min_pct');
         var out1 = document.getElementById(tier + '_total_1h');
-        var out40 = document.getElementById(tier + '_total_40');
         if (!p1El || !out1) return;
         var p1 = parseNum(p1El.value);
-        var p40 = parseNum(p40El.value);
         var c1 = parseNum(c1El.value);
-        var c40 = parseNum(c40El.value);
         var t1 = (p1 !== null && c1 !== null) ? p1 * (1 + c1 / 100) : null;
-        var t40 = (p40 !== null && c40 !== null) ? p40 * (1 + c40 / 100) : null;
         out1.textContent = t1 !== null ? formatMoney(t1) : '—';
-        out40.textContent = t40 !== null ? formatMoney(t40) : '—';
     }
     var tiers = ['silver', 'gold', 'platinum'];
-    var suffixes = ['_tier_price_1_hour', '_tier_price_40_min', '_tier_admin_commission_1_hour_pct', '_tier_admin_commission_40_min_pct'];
+    var suffixes = ['_tier_price_1_hour', '_tier_admin_commission_1_hour_pct'];
     tiers.forEach(function (tier) {
         suffixes.forEach(function (suf) {
             var el = document.getElementById(tier + suf);

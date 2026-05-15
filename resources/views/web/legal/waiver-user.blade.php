@@ -22,8 +22,8 @@
                     <li><a href="#property-conduct">{{ __('3. Property & conduct rules') }}</a></li>
                     <li><a href="#guest-liability">{{ __('4. Guest & damage liability') }}</a></li>
                     <li><a href="#platform-release">{{ __('5. Platform liability release') }}</a></li>
-                    <li><a href="#nda">{{ __('6. NDA summary (PDF)') }}</a></li>
-                    <li><a href="#non-compete">{{ __('7. Non-compete summary (PDF)') }}</a></li>
+                    <li><a href="#nda">{{ __('6. NDA (PDF)') }}</a></li>
+                    <li><a href="#non-compete">{{ __('7. Non-compete (PDF)') }}</a></li>
                     <li><a href="#contact">{{ __('8. Contact') }}</a></li>
                 </ul>
             </aside>
@@ -102,7 +102,7 @@
                     </section>
 
                     <section class="legal-section" id="nda">
-                        <h2 class="legal-section__heading"><span class="legal-section__num">6</span> {{ __('Standard Non-disclosure Agreement (PDF content)') }}</h2>
+                        <h2 class="legal-section__heading"><span class="legal-section__num">6</span> {{ __('Standard Non-disclosure Agreement') }}</h2>
                         <p>
                             {{ __('The Standard NDA identifies SPOTMEE and the signer, defines confidential information, and requires non-disclosure of private company and operational details.') }}
                         </p>
@@ -113,10 +113,11 @@
                             <li>{{ __('Agreement includes non-circumvention language and return/destruction of confidential materials after termination.') }}</li>
                             <li>{{ __('Governing law is California; indemnification obligations are included.') }}</li>
                         </ul>
+                        @include('web.legal.partials.pdf-document', ['pdfKey' => 'nda', 'audience' => 'user'])
                     </section>
 
                     <section class="legal-section" id="non-compete">
-                        <h2 class="legal-section__heading"><span class="legal-section__num">7</span> {{ __('Non-compete Agreement (PDF content)') }}</h2>
+                        <h2 class="legal-section__heading"><span class="legal-section__num">7</span> {{ __('Non-compete Agreement') }}</h2>
                         <p>
                             {{ __('The Non-compete Agreement outlines restrictions against competitive activity and non-solicitation, alongside enforcement rights and governing law.') }}
                         </p>
@@ -127,6 +128,7 @@
                             <li>{{ __('Includes severability, amendment, waiver, and entire agreement clauses.') }}</li>
                             <li>{{ __('Governing law and jurisdiction are California.') }}</li>
                         </ul>
+                        @include('web.legal.partials.pdf-document', ['pdfKey' => 'non_compete', 'audience' => 'user'])
                     </section>
 
                     <section class="legal-section" id="contact">

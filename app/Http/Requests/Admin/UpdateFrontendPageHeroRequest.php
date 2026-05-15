@@ -119,6 +119,20 @@ class UpdateFrontendPageHeroRequest extends FormRequest
             $rules['faq_items.*.answer'] = ['nullable', 'string', 'max:10000'];
         }
 
+        if ($prefix === 'waiver_liability_host') {
+            $rules['legal_host_nda_pdf'] = ['nullable', 'file', 'mimes:pdf', 'max:20480'];
+            $rules['legal_host_contractor_pdf'] = ['nullable', 'file', 'mimes:pdf', 'max:20480'];
+            $rules['remove_legal_host_nda_pdf'] = ['nullable', 'boolean'];
+            $rules['remove_legal_host_contractor_pdf'] = ['nullable', 'boolean'];
+        }
+
+        if ($prefix === 'waiver_liability_user') {
+            $rules['legal_user_nda_pdf'] = ['nullable', 'file', 'mimes:pdf', 'max:20480'];
+            $rules['legal_user_non_compete_pdf'] = ['nullable', 'file', 'mimes:pdf', 'max:20480'];
+            $rules['remove_legal_user_nda_pdf'] = ['nullable', 'boolean'];
+            $rules['remove_legal_user_non_compete_pdf'] = ['nullable', 'boolean'];
+        }
+
         return $rules;
     }
 }

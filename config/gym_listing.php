@@ -26,7 +26,7 @@ return [
         'closed' => false,
         'start' => '09:00',
         'end' => '17:00',
-        'slot_minutes' => 40,
+        'slot_minutes' => 60,
     ],
 
     'default_personal_training_availability_row' => [

@@ -42,6 +42,8 @@
                             <a href="{{ route('host.apply') }}">{{ __('Back to overview') }}</a>
                         </p>
 
+                        @include('host.partials.apply-progress', ['step' => 2])
+
                         <div class="row g-3">
                             <div class="col-lg-6">
                                 <div class="form-group">
