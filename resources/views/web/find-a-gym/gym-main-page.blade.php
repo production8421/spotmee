@@ -234,7 +234,7 @@
                     <div class="rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 shadow-[var(--shadow-sm)] sm:p-8"
                          data-aos="fade-up">
                         <h2 class="flex items-center gap-2 text-[22px] font-bold text-[var(--color-ink-900)]">
-                            <i class="fa-solid fa-list-check text-[var(--color-primary)]"></i>
+                            <i class="fa-solid fa-list-check text-[20px] text-[var(--color-primary)]"></i>
                             {{ __('Facility details') }}
                         </h2>
                         <div class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-6">
@@ -248,11 +248,11 @@
                             @endphp
                             @foreach ($facilityItems as $item)
                                 <div class="group flex flex-col items-center rounded-2xl border border-[var(--color-brand-100)] bg-[var(--color-brand-50)]/40 p-5 text-center transition-all hover:-translate-y-0.5 hover:border-[var(--color-brand-200)] hover:bg-[var(--color-brand-50)]">
-                                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-[var(--color-primary)] shadow-[var(--shadow-sm)] transition-all group-hover:bg-[var(--color-primary)] group-hover:text-white">
+                                    <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-white text-[var(--color-primary)] shadow-[var(--shadow-sm)] transition-all group-hover:bg-[var(--color-primary)] group-hover:text-white">
                                         @if (! empty($item['icon']))
-                                            <img src="{{ $item['icon'] }}" alt="" class="h-6 w-6 object-contain">
+                                            <img src="{{ $item['icon'] }}" alt="" class="h-8 w-8 object-contain">
                                         @else
-                                            <i class="fa-solid {{ $item['fa'] }} text-[18px]"></i>
+                                            <i class="fa-solid {{ $item['fa'] }} text-[22px]"></i>
                                         @endif
                                     </div>
                                     <span class="mt-3 text-[11px] font-semibold uppercase tracking-wide text-[var(--color-ink-500)]">{{ $item['label'] }}</span>
@@ -267,7 +267,7 @@
                         <div class="rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 shadow-[var(--shadow-sm)] sm:p-8"
                              data-aos="fade-up">
                             <h2 class="flex items-center gap-2 text-[22px] font-bold text-[var(--color-ink-900)]">
-                                <i class="fa-solid fa-dumbbell text-[var(--color-primary)]"></i>
+                                <i class="fa-solid fa-dumbbell text-[20px] text-[var(--color-primary)]"></i>
                                 {{ __('Services offered') }}
                             </h2>
                             <div class="mt-5 flex flex-wrap gap-2.5">
@@ -278,11 +278,11 @@
                                         $svcFa    = $serviceIconMap[$svcKey] ?? 'fa-dumbbell';
                                         $svcLabel = ucwords(str_replace(['_', '-'], ' ', $svcKey));
                                     @endphp
-                                    <span class="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-100)] bg-[var(--color-brand-50)] px-4 py-2 text-[13px] font-semibold text-[var(--color-primary)]">
+                                    <span class="inline-flex items-center gap-2.5 rounded-full border border-[var(--color-brand-100)] bg-[var(--color-brand-50)] px-4 py-2.5 text-[13px] font-semibold text-[var(--color-primary)]">
                                         @if ($svcIcon)
-                                            <img src="{{ $svcIcon }}" alt="" class="h-4 w-4 object-contain">
+                                            <img src="{{ $svcIcon }}" alt="" class="h-6 w-6 shrink-0 object-contain">
                                         @else
-                                            <i class="fa-solid {{ $svcFa }} text-[12px]"></i>
+                                            <i class="fa-solid {{ $svcFa }} text-[16px]"></i>
                                         @endif
                                         {{ $svcLabel }}
                                     </span>
@@ -296,7 +296,7 @@
                         <div class="rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 shadow-[var(--shadow-sm)] sm:p-8"
                              data-aos="fade-up">
                             <h2 class="flex items-center gap-2 text-[22px] font-bold text-[var(--color-ink-900)]">
-                                <i class="fa-solid fa-toolbox text-[var(--color-primary)]"></i>
+                                <i class="fa-solid fa-toolbox text-[20px] text-[var(--color-primary)]"></i>
                                 {{ __('Equipment available') }}
                             </h2>
                             <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -308,11 +308,11 @@
                                     @endphp
                                     @if ($eqName !== '')
                                         <div class="flex items-center gap-3 rounded-xl border border-[var(--color-brand-100)] bg-white px-4 py-3">
-                                            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-50)] text-[var(--color-primary)]">
+                                            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-50)] text-[var(--color-primary)]">
                                                 @if ($eqIcon)
-                                                    <img src="{{ $eqIcon }}" alt="" class="h-5 w-5 object-contain">
+                                                    <img src="{{ $eqIcon }}" alt="" class="h-7 w-7 object-contain">
                                                 @else
-                                                    <i class="fa-solid fa-dumbbell text-[14px]"></i>
+                                                    <i class="fa-solid fa-dumbbell text-[18px]"></i>
                                                 @endif
                                             </div>
                                             <span class="flex-1 text-[14px] font-semibold text-[var(--color-ink-900)]">
@@ -333,7 +333,7 @@
                         <div class="rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 shadow-[var(--shadow-sm)] sm:p-8"
                              data-aos="fade-up">
                             <h2 class="flex items-center gap-2 text-[22px] font-bold text-[var(--color-ink-900)]">
-                                <i class="fa-solid fa-star text-[var(--color-primary)]"></i>
+                                <i class="fa-solid fa-star text-[20px] text-[var(--color-primary)]"></i>
                                 {{ __('Amenities') }}
                             </h2>
                             <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -345,11 +345,11 @@
                                         $amLabel = ucwords(str_replace('_', ' ', $amKey));
                                     @endphp
                                     <div class="flex items-center gap-3 rounded-xl border border-[var(--color-brand-100)] bg-white px-4 py-3 transition-all hover:border-[var(--color-brand-200)] hover:bg-[var(--color-brand-50)]">
-                                        <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[var(--color-brand-50)] text-[var(--color-primary)]">
+                                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--color-brand-50)] text-[var(--color-primary)]">
                                             @if ($amIcon)
-                                                <img src="{{ $amIcon }}" alt="" class="h-5 w-5 object-contain">
+                                                <img src="{{ $amIcon }}" alt="" class="h-7 w-7 object-contain">
                                             @else
-                                                <i class="fa-solid {{ $amFa }} text-[14px]"></i>
+                                                <i class="fa-solid {{ $amFa }} text-[18px]"></i>
                                             @endif
                                         </div>
                                         <span class="text-[14px] font-semibold text-[var(--color-ink-900)]">{{ $amLabel }}</span>

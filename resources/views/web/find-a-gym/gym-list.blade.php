@@ -2,10 +2,14 @@
 @section('title', 'Gym Listings — SPOTMEE')
 @section('content')
     @php
-        $selectedState   = strtoupper((string) ($state ?? request('state', '')));
+        $isStateBrowsePage = request()->routeIs('find-a-gym.state');
+        $selectedState     = $isStateBrowsePage
+            ? strtoupper((string) ($state ?? request()->route('state', '')))
+            : '';
         $selectedService = (string) ($selectedService ?? request('service', ''));
         $searchBy        = (string) ($searchBy ?? request('searchby', ''));
         $searchCity      = (string) ($searchCity ?? request('city', ''));
+        $searchInputValue = trim($searchBy) !== '' ? trim($searchBy) : trim($searchCity);
         $stateLabel      = (string) ($stateLabel ?? config('gym_listing.states.'.$selectedState, $selectedState));
         $stateLabel      = $stateLabel !== '' ? $stateLabel : __('All States');
 
@@ -22,6 +26,16 @@
             ['key' => 'group_classes',     'label' => 'Group Classes',     'icon_path' => asset('images/rent-your-jim/group_class.png')],
         ];
         $activeServiceLabel = collect($serviceFilters)->firstWhere('key', $selectedService)['label'] ?? '';
+        $locationQuery = trim((string) ($locationQuery ?? ''));
+        if ($locationQuery === '' && trim($searchBy) !== '') {
+            $locationQuery = trim($searchBy);
+        }
+        if ($locationQuery === '' && trim($searchCity) !== '') {
+            $locationQuery = trim($searchCity);
+        }
+        $heroLocationLabel = $locationQuery !== ''
+            ? $locationQuery
+            : ($selectedState !== '' ? $stateLabel : __('All States'));
     @endphp
 
     <main class="spotmee-main">
@@ -47,11 +61,11 @@
 
                     <span class="inner-banner__eyebrow" data-aos="fade-down" data-aos-delay="50">
                         <i class="fa-solid fa-location-dot"></i>
-                        {{ $selectedState !== '' ? $stateLabel : __('All States') }}
+                        {{ strtoupper($heroLocationLabel) }}
                     </span>
                     <h1 class="inner-banner__title" data-aos="fade-down" data-aos-delay="100">
-                        {{ __('Private gyms in') }}
-                        <span class="text-[var(--color-brand-200)]">{{ $stateLabel }}</span>
+                        {{ $locationQuery !== '' ? __('Private gyms matching') : __('Private gyms in') }}
+                        <span class="text-[var(--color-brand-200)]">{{ $heroLocationLabel }}</span>
                     </h1>
                     <p class="inner-banner__subtitle" data-aos="fade-up" data-aos-delay="200">
                         {{ __('Browse verified hosts, pick a service you love, and book your session in minutes.') }}
@@ -63,8 +77,8 @@
                           data-aos="fade-up" data-aos-delay="300">
                         <label class="flex flex-1 items-center gap-3 rounded-xl bg-[var(--color-brand-50)] px-4 py-2.5">
                             <i class="fa-solid fa-magnifying-glass text-[var(--color-primary)]"></i>
-                            <input type="text" name="searchby" value="{{ $searchBy }}"
-                                   placeholder="{{ __('City, zip or keyword') }}"
+                            <input type="text" name="searchby" value="{{ $searchInputValue }}"
+                                   placeholder="{{ __('City, state, zip or keyword') }}"
                                    class="w-full border-0 bg-transparent p-0 text-[15px] text-[var(--color-ink-900)] placeholder:text-[var(--color-ink-400)] focus:outline-none focus:ring-0">
                             @if ($selectedService !== '')
                                 <input type="hidden" name="service" value="{{ $selectedService }}">
@@ -141,8 +155,17 @@
                     <div>
                         <p class="text-[15px] font-semibold text-[var(--color-ink-900)]">{{ $countLabel }}</p>
                         <p class="text-[13px] text-[var(--color-ink-500)]">
-                            {{ __('Showing listings in') }}
-                            <span class="font-semibold text-[var(--color-ink-900)]">{{ $stateLabel }}</span>
+                            @if ($locationQuery !== '')
+                                {{ __('Matching') }}
+                                <span class="font-semibold text-[var(--color-ink-900)]">"{{ $locationQuery }}"</span>
+                                @if ($selectedState !== '')
+                                    {{ __('in') }}
+                                    <span class="font-semibold text-[var(--color-ink-900)]">{{ $stateLabel }}</span>
+                                @endif
+                            @else
+                                {{ __('Showing listings in') }}
+                                <span class="font-semibold text-[var(--color-ink-900)]">{{ $stateLabel }}</span>
+                            @endif
                             @if ($activeServiceLabel !== '')
                                 · {{ __('Service') }}:
                                 <span class="font-semibold text-[var(--color-primary)]">{{ $activeServiceLabel }}</span>
@@ -311,7 +334,7 @@
                         {{ __('No hosts in your area yet') }}
                     </h3>
                     <p class="mt-3 text-[15px] leading-relaxed text-[var(--color-ink-500)]">
-                        {{ __("We couldn't find any gyms matching these filters. Try clearing filters, picking a different state — or be the first to host in your area.") }}
+                        {{ __("We couldn't find any gyms matching these filters. Try clearing filters, a different city or zip — or be the first to host in your area.") }}
                     </p>
                     <div class="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
                         <a href="{{ route('find-a-gym') }}" class="btn btn-outline">

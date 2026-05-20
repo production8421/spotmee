@@ -63,8 +63,8 @@
                       data-aos="fade-up" data-aos-delay="300">
                     <label class="flex flex-1 items-center gap-3 rounded-xl bg-[var(--color-brand-50)] px-4 py-3">
                         <i class="fa-solid fa-location-dot text-[var(--color-primary)]"></i>
-                        <input type="text" name="city" value="{{ request('city', '') }}"
-                               placeholder="{{ __('Enter city, neighbourhood or ZIP') }}"
+                        <input type="text" name="searchby" value="{{ request('searchby', request('city', '')) }}"
+                               placeholder="{{ __('City, state, zip or neighbourhood') }}"
                                class="w-full border-0 bg-transparent p-0 text-[15px] text-[var(--color-ink-900)] placeholder:text-[var(--color-ink-400)] focus:outline-none focus:ring-0">
                     </label>
                     <button type="submit" class="btn btn-primary btn-lg justify-center sm:w-auto">

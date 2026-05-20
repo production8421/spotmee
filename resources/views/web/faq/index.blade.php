@@ -709,10 +709,16 @@
             letter-spacing: -0.01em;
         }
         .faq-cta__action { display: inline-flex; align-items: center; gap: 10px; }
-        .faq-cta__action span {
+        .faq-cta__host-link {
             font-size: 13px;
             font-weight: 600;
-            color: var(--color-ink-500);
+            color: var(--color-primary);
+            text-decoration: underline;
+            text-underline-offset: 3px;
+            transition: color 0.2s ease;
+        }
+        .faq-cta__host-link:hover {
+            color: var(--color-primary-hover, #005962);
         }
     </style>
 @endsection

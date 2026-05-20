@@ -96,12 +96,49 @@
     border-color: var(--color-primary, #006d77);
 }
 
-.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon > .ant-steps-icon {
-    color: #ffffff;
+/* Icons must contrast with the filled step circle (process + finish) */
+.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon,
+.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-icon .anticon,
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon,
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon .anticon,
+#spotmee-booking-modal .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon,
+#spotmee-booking-modal .ant-steps-item-process .ant-steps-item-icon .anticon,
+#spotmee-booking-modal .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon,
+#spotmee-booking-modal .ant-steps-item-finish .ant-steps-item-icon .anticon {
+    color: #ffffff !important;
+}
+
+.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-icon .ant-steps-icon svg,
+.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-icon .anticon svg,
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon .ant-steps-icon svg,
+.ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-icon .anticon svg {
+    fill: currentColor;
+}
+
+/* Upcoming step: light circle + visible primary icon */
+.ryj-booking-form-container .ant-steps-item-wait .ant-steps-item-icon,
+#spotmee-booking-modal .ant-steps-item-wait .ant-steps-item-icon {
+    background-color: #ffffff;
+    border-color: var(--color-brand-200, #83c5be);
+}
+
+.ryj-booking-form-container .ant-steps-item-wait .ant-steps-item-icon .ant-steps-icon,
+.ryj-booking-form-container .ant-steps-item-wait .ant-steps-item-icon .anticon,
+#spotmee-booking-modal .ant-steps-item-wait .ant-steps-item-icon .ant-steps-icon,
+#spotmee-booking-modal .ant-steps-item-wait .ant-steps-item-icon .anticon {
+    color: var(--color-primary, #006d77) !important;
 }
 
 .ryj-booking-form-container .ant-steps-item-title {
     font-weight: 600;
+}
+
+.ryj-booking-form-container .ant-steps-item-process .ant-steps-item-title {
+    color: var(--color-ink-900, #0a1f23);
+}
+
+.ryj-booking-form-container .ant-steps-item-wait .ant-steps-item-title {
+    color: var(--color-ink-500, #5a7278);
 }
 
 .ryj-booking-form-container .ant-steps-item-finish .ant-steps-item-title::after {

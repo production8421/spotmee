@@ -125,40 +125,47 @@
                 </p>
             </div>
 
+            @php
+                $whatWeDoCards = [
+                    [
+                        'href' => route('find-a-gym'),
+                        'aria' => __('Find a private gym — browse and book'),
+                        'icon' => 'fa-magnifying-glass-dollar',
+                        'title' => __('Find a private gym'),
+                        'body' => __('Search by city, state, or service type, see photos and equipment up front, and book a 40-minute or 1-hour slot instantly. No membership required.'),
+                        'delay' => 100,
+                    ],
+                    [
+                        'href' => route('become-a-host'),
+                        'aria' => __('Host your space — become a SPOTMEE host'),
+                        'icon' => 'fa-house-chimney-user',
+                        'title' => __('Host your space'),
+                        'body' => __('Turn the idle hours in your home gym, private studio, or training facility into income. You set the schedule, prices, and who trains in your space.'),
+                        'delay' => 200,
+                    ],
+                    [
+                        'href' => route('find-a-gym', ['service' => 'personal_training']),
+                        'aria' => __('Train with a pro — find gyms with personal training'),
+                        'icon' => 'fa-user-check',
+                        'title' => __('Train with a pro'),
+                        'body' => __('Add a certified personal trainer to any session — or claim your free first trial. Perfect for first timers and anyone pushing for a new PR.'),
+                        'delay' => 300,
+                    ],
+                ];
+            @endphp
             <div class="grid grid-cols-1 gap-6 sm:gap-7 md:grid-cols-3">
-
-                <div class="group rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-lg)]"
-                     data-aos="fade-up" data-aos-delay="100">
-                    <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-brand-50)] text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-white">
-                        <i class="fa-solid fa-magnifying-glass-dollar text-xl"></i>
-                    </span>
-                    <h3 class="mt-5 text-[20px] font-bold text-[var(--color-ink-900)]">{{ __('Find a private gym') }}</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-[var(--color-ink-500)]">
-                        {{ __('Search by city, state, or service type, see photos and equipment up front, and book a 40-minute or 1-hour slot instantly. No membership required.') }}
-                    </p>
-                </div>
-
-                <div class="group rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-lg)]"
-                     data-aos="fade-up" data-aos-delay="200">
-                    <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-brand-50)] text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-white">
-                        <i class="fa-solid fa-house-chimney-user text-xl"></i>
-                    </span>
-                    <h3 class="mt-5 text-[20px] font-bold text-[var(--color-ink-900)]">{{ __('Host your space') }}</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-[var(--color-ink-500)]">
-                        {{ __('Turn the idle hours in your home gym, private studio, or training facility into income. You set the schedule, prices, and who trains in your space.') }}
-                    </p>
-                </div>
-
-                <div class="group rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-lg)]"
-                     data-aos="fade-up" data-aos-delay="300">
-                    <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-brand-50)] text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-white">
-                        <i class="fa-solid fa-user-check text-xl"></i>
-                    </span>
-                    <h3 class="mt-5 text-[20px] font-bold text-[var(--color-ink-900)]">{{ __('Train with a pro') }}</h3>
-                    <p class="mt-3 text-[14px] leading-relaxed text-[var(--color-ink-500)]">
-                        {{ __('Add a certified personal trainer to any session — or claim your free first trial. Perfect for first timers and anyone pushing for a new PR.') }}
-                    </p>
-                </div>
+                @foreach ($whatWeDoCards as $card)
+                    <a href="{{ $card['href'] }}"
+                       aria-label="{{ $card['aria'] }}"
+                       class="group block rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 text-inherit no-underline transition-all duration-300 hover:-translate-y-1 hover:border-[var(--color-primary)] hover:shadow-[var(--shadow-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:ring-offset-2"
+                       data-aos="fade-up" data-aos-delay="{{ $card['delay'] }}">
+                        <span class="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-brand-50)] text-[var(--color-primary)] transition-colors group-hover:bg-[var(--color-primary)] group-hover:text-white">
+                            <i class="fa-solid {{ $card['icon'] }} text-xl"></i>
+                        </span>
+                        <h3 class="mt-5 text-[20px] font-bold text-[var(--color-ink-900)]">{{ $card['title'] }}</h3>
+                        <p class="mt-3 text-[14px] leading-relaxed text-[var(--color-ink-500)]">{{ $card['body'] }}</p>
+                    </a>
+                @endforeach
             </div>
         </div>
     </section>

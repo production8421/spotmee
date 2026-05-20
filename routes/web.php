@@ -23,6 +23,7 @@ use App\Http\Controllers\SubscriberGymBookingController;
 use App\Http\Controllers\WebContactController;
 use App\Models\ApplicationSetting;
 use App\Models\GymListing;
+use App\Support\GymListingSearch;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
@@ -88,29 +89,17 @@ Route::get(
             'group_classes' => ['group_classes', 'group_class'],
         ];
 
+        $redirectState = GymListingSearch::redirectStateCodeIfAbbrev($searchBy, $city);
+        if ($redirectState !== null) {
+            return redirect()->route('find-a-gym.state', array_filter([
+                'state' => $redirectState,
+                'service' => $selectedService !== '' ? $selectedService : null,
+            ]));
+        }
+
         $query = GymListing::query()->where('is_published', true);
 
-        if ($city !== '') {
-            $cityLike = '%'.addcslashes($city, '%_\\').'%';
-            $query->where('city', 'like', $cityLike);
-        }
-
-        if ($searchBy !== '') {
-            $like = '%'.addcslashes($searchBy, '%_\\').'%';
-            $stateMap = array_change_key_case((array) config('gym_listing.states', []), CASE_LOWER);
-            $searchedStateCode = array_search(strtolower($searchBy), $stateMap, true);
-            $query->where(function ($sub) use ($like, $searchedStateCode): void {
-                $sub->where('name', 'like', $like)
-                    ->orWhere('address', 'like', $like)
-                    ->orWhere('city', 'like', $like)
-                    ->orWhere('state', 'like', $like)
-                    ->orWhere('postal_code', 'like', $like)
-                    ->orWhere('description', 'like', $like);
-                if (is_string($searchedStateCode)) {
-                    $sub->orWhereRaw('UPPER(state) = ?', [strtoupper($searchedStateCode)]);
-                }
-            });
-        }
+        GymListingSearch::applyLocationFilters($query, $searchBy, $city);
 
         if ($selectedService !== '') {
             $aliases = $serviceAliases[$selectedService] ?? [$selectedService];
@@ -122,9 +111,12 @@ Route::get(
             });
         }
 
+        $locationQuery = trim($searchBy) !== '' ? trim($searchBy) : trim($city);
+
         return view('web.find-a-gym.gym-list', [
             'state' => '',
-            'stateLabel' => __('All States'),
+            'stateLabel' => $locationQuery !== '' ? __('Search results') : __('All States'),
+            'locationQuery' => $locationQuery,
             'selectedService' => $selectedService,
             'searchBy' => $searchBy,
             'searchCity' => $city,
@@ -144,6 +136,14 @@ Route::get(
         $searchBy = trim((string) $request->query('searchby', ''));
         $city = trim((string) $request->query('city', ''));
         $selectedService = trim((string) $request->query('service', ''));
+
+        if ($searchBy !== '' || $city !== '') {
+            return redirect()->route('find-a-gym', array_filter([
+                'searchby' => $searchBy !== '' ? $searchBy : null,
+                'city' => $searchBy === '' && $city !== '' ? $city : null,
+                'service' => $selectedService !== '' ? $selectedService : null,
+            ]));
+        }
 
         if (! Schema::hasTable((new GymListing)->getTable())) {
             $page = max(1, (int) $request->query('page', 1));
@@ -173,28 +173,6 @@ Route::get(
             ->where('is_published', true)
             ->whereRaw('UPPER(state) = ?', [$selectedState]);
 
-        if ($city !== '') {
-            $cityLike = '%'.addcslashes($city, '%_\\').'%';
-            $query->where('city', 'like', $cityLike);
-        }
-
-        if ($searchBy !== '') {
-            $like = '%'.addcslashes($searchBy, '%_\\').'%';
-            $stateMap = array_change_key_case((array) config('gym_listing.states', []), CASE_LOWER);
-            $searchedStateCode = array_search(strtolower($searchBy), $stateMap, true);
-            $query->where(function ($sub) use ($like, $searchedStateCode): void {
-                $sub->where('name', 'like', $like)
-                    ->orWhere('address', 'like', $like)
-                    ->orWhere('city', 'like', $like)
-                    ->orWhere('state', 'like', $like)
-                    ->orWhere('postal_code', 'like', $like)
-                    ->orWhere('description', 'like', $like);
-                if (is_string($searchedStateCode)) {
-                    $sub->orWhereRaw('UPPER(state) = ?', [strtoupper($searchedStateCode)]);
-                }
-            });
-        }
-
         if ($selectedService !== '') {
             $aliases = $serviceAliases[$selectedService] ?? [$selectedService];
             $query->where(function ($sub) use ($aliases): void {
@@ -207,6 +185,8 @@ Route::get(
 
         return view('web.find-a-gym.gym-list', [
             'state' => $selectedState,
+            'stateLabel' => config('gym_listing.states.'.$selectedState, $selectedState),
+            'locationQuery' => '',
             'selectedService' => $selectedService,
             'searchBy' => $searchBy,
             'searchCity' => $city,
