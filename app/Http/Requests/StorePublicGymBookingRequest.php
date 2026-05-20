@@ -44,6 +44,8 @@ class StorePublicGymBookingRequest extends FormRequest
             'trainer_per_slot.*' => ['boolean'],
             'pt_addon' => ['nullable', 'string', 'in:none,paid,free_trial'],
             'pt_free_trial_slot' => ['nullable', 'string', 'max:32'],
+            'pt_trainer_levels_selected' => ['nullable', 'array'],
+            'pt_trainer_levels_selected.*' => ['required', 'string', 'max:20'],
             'coupon_code' => ['nullable', 'string', 'max:64'],
             'accept_terms' => ['required', 'accepted'],
         ];

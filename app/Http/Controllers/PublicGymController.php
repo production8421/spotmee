@@ -41,7 +41,8 @@ class PublicGymController extends Controller
             }
         }
 
-        $ptSlotPrice = $settings->publicPtSlotCustomerPrice($listing->ptPricingTierKey());
+        $ptLevels = $listing->ptTrainerLevelsForGuest();
+        $ptSlotPrice = $ptLevels[0]['price_per_slot'] ?? $settings->publicPtSlotCustomerPrice($listing->ptPricingTierKey());
         $stripeReady = $settings->isStripeConfiguredForPayments();
         $bookingBootstrap = [
             'gymTitle' => $listing->name,
@@ -57,7 +58,8 @@ class PublicGymController extends Controller
             'personalTrainingAvailability' => is_array($listing->personal_training_availability) ? $listing->personal_training_availability : [],
             'rate1hr' => $pricing['rate_1hr'] ?? 0,
             'ptSlotPrice' => $ptSlotPrice,
-            'ptAddonEnabled' => (bool) $listing->personal_training_available && $ptSlotPrice > 0,
+            'ptTrainerLevels' => $ptLevels,
+            'ptAddonEnabled' => (bool) $listing->personal_training_available && count($ptLevels) > 0,
             'offers1hr' => $slotOffers['offers_1hr'],
             'termsUrl' => (string) ($settings->legal_booking_terms_url ?? ''),
             'privacyUrl' => (string) ($settings->legal_booking_privacy_url ?? ''),

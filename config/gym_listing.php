@@ -106,4 +106,22 @@ return [
         'host_greets_you' => 'Host greets you',
     ],
 
+    /*
+    | Personal trainer levels (stored as silver / gold / platinum keys for compatibility).
+    */
+    'pt_trainer_levels' => [
+        'silver' => [
+            'label' => 'Junior Trainer',
+            'suggested_hourly' => 30,
+        ],
+        'gold' => [
+            'label' => 'Advanced Trainer',
+            'suggested_hourly' => 60,
+        ],
+        'platinum' => [
+            'label' => 'Senior Trainer',
+            'suggested_hourly' => 120,
+        ],
+    ],
+
 ];

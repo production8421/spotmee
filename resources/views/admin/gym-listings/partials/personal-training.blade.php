@@ -1,6 +1,8 @@
 @php
+    use App\Models\ApplicationSetting;
     use App\Support\RyjGymSchedule;
 
+    $applicationSettings = ApplicationSetting::instance();
     $dayKeys = config('gym_listing.weekday_keys', []);
     $dayLabels = config('gym_listing.weekday_labels', []);
     $def = config('gym_listing.default_personal_training_availability_row', []);
@@ -24,6 +26,14 @@
                 ]);
             }
         }
+    }
+
+    $ptLevelKeys = array_keys(config('gym_listing.pt_trainer_levels', []));
+    $selectedPtLevels = old('pt_trainer_levels', ($isEdit ?? false) && isset($gymListing)
+        ? $gymListing->ptTrainerLevelKeys()
+        : []);
+    if (! is_array($selectedPtLevels)) {
+        $selectedPtLevels = [];
     }
 
     $ptTimeSlotsOld = old('pt_time_slots');
@@ -67,6 +77,54 @@
 </div>
 
 <div id="pt-details" class="{{ $ptOn ? '' : 'd-none' }}" data-pt-details>
+    <div class="row mb-3 align-items-start">
+        <label class="col-sm-3 col-form-label fw-semibold pt-2">{{ __('Personal trainer levels') }}</label>
+        <div class="col-sm-9">
+            <fieldset
+                class="border rounded p-3 mb-0 @error('pt_trainer_levels') border-danger @enderror @error('pt_trainer_levels.*') border-danger @enderror"
+                id="pt_trainer_levels"
+                aria-describedby="pt_trainer_levels_help"
+            >
+                <legend class="visually-hidden">{{ __('Personal trainer levels') }}</legend>
+                @foreach ($ptLevelKeys as $levelKey)
+                    @php
+                        $levelMeta = config("gym_listing.pt_trainer_levels.{$levelKey}", []);
+                        $levelLabel = (string) ($levelMeta['label'] ?? ucfirst($levelKey));
+                        $guestPricePerSlot = $applicationSettings->publicPtSlotCustomerPrice($levelKey);
+                        $levelId = 'pt_trainer_level_'.$levelKey;
+                    @endphp
+                    <div class="form-check mb-2 {{ $loop->last ? 'mb-0' : '' }}">
+                        <input
+                            class="form-check-input @error('pt_trainer_levels') is-invalid @enderror @error('pt_trainer_levels.*') is-invalid @enderror"
+                            type="checkbox"
+                            name="pt_trainer_levels[]"
+                            id="{{ $levelId }}"
+                            value="{{ $levelKey }}"
+                            @checked(in_array($levelKey, $selectedPtLevels, true))
+                        >
+                        <label class="form-check-label" for="{{ $levelId }}">
+                            <span class="fw-semibold">{{ $levelLabel }}</span>
+                            @if ($guestPricePerSlot > 0)
+                                <span class="text-muted"> — ${{ number_format($guestPricePerSlot, 2) }}/{{ __('slot') }}</span>
+                            @else
+                                <span class="text-warning"> — {{ __('Price not configured in settings') }}</span>
+                            @endif
+                        </label>
+                    </div>
+                @endforeach
+            </fieldset>
+            <p id="pt_trainer_levels_help" class="text-muted small mb-0 mt-2">
+                {{ __('Check every trainer level you are qualified to offer. Guest price per slot matches Admin → Gym Listings → Settings (price + commission).') }}
+            </p>
+            @error('pt_trainer_levels')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+            @error('pt_trainer_levels.*')
+                <div class="invalid-feedback d-block">{{ $message }}</div>
+            @enderror
+        </div>
+    </div>
+
     <div class="mb-4">
         <label class="form-label fw-semibold">{{ __('PT certification') }} <span class="text-danger">*</span></label>
         @if ($isEdit && $gymListing->personal_training_cert_path)

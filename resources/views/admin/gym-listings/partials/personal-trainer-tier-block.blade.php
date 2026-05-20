@@ -14,6 +14,7 @@
     $wrapperClass = (isset($tierWrapperClass) && is_string($tierWrapperClass) && $tierWrapperClass !== '')
         ? $tierWrapperClass
         : 'border rounded p-3 mb-4 bg-light';
+    $trainerLevelLabel = (string) (config("gym_listing.pt_trainer_levels.{$ptTier}.label") ?? ucfirst($ptTier));
 @endphp
 <div class="{{ $wrapperClass }}">
     <h5 class="mb-3 pb-2 border-bottom d-flex align-items-center gap-2 {{ $tierHeadingClass ?? '' }}">
@@ -42,7 +43,7 @@
                 >
             </div>
             <p class="text-muted small fst-italic mb-0 mt-1">
-                {{ __('Price per personal trainer slot (:tier tier)', ['tier' => ucfirst($ptTier)]) }}
+                {{ __('Price per personal trainer slot (:level)', ['level' => $trainerLevelLabel]) }}
             </p>
             @error($priceKey)
                 <div class="invalid-feedback d-block">{{ $message }}</div>

@@ -133,7 +133,7 @@ class UpdateGymListingRequest extends FormRequest
         ], $this->availabilityScheduleRules());
 
         if ($this->boolean('personal_training_available')) {
-            $rules = array_merge($rules, $this->personalTrainingAvailabilityRules());
+            $rules = array_merge($rules, $this->personalTrainingAvailabilityRules(), $this->ptTrainerLevelsRules());
         }
 
         return $rules;

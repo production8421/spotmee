@@ -14,12 +14,16 @@ trait ValidatesPersonalTrainingSection
         $this->merge(['personal_training_available' => $available]);
 
         if (! $available) {
-            $this->merge(['personal_training_availability' => null]);
+            $this->merge([
+                'personal_training_availability' => null,
+                'pt_trainer_levels' => null,
+            ]);
 
             return;
         }
 
         $this->merge([
+            'pt_trainer_levels' => $this->normalizePtTrainerLevelsInput(),
             'personal_training_availability' => RyjGymSchedule::normalizePtFormToStorage(
                 $this->input('pt_schedule', []),
                 $this->input('pt_time_slots', []),
@@ -48,6 +52,37 @@ trait ValidatesPersonalTrainingSection
         }
 
         return $rules;
+    }
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    protected function ptTrainerLevelsRules(): array
+    {
+        $allowed = array_keys(config('gym_listing.pt_trainer_levels', []));
+
+        return [
+            'pt_trainer_levels' => ['required', 'array', 'min:1'],
+            'pt_trainer_levels.*' => ['required', 'string', Rule::in($allowed)],
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function normalizePtTrainerLevelsInput(): array
+    {
+        $raw = $this->input('pt_trainer_levels', []);
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $allowed = array_keys(config('gym_listing.pt_trainer_levels', []));
+
+        return array_values(array_unique(array_filter(
+            array_map('strval', $raw),
+            fn (string $key): bool => in_array($key, $allowed, true)
+        )));
     }
 
     /**

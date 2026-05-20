@@ -237,9 +237,9 @@
                                     'stroke' => 'stroke-learning',
                                 ])
                                 <div class="min-w-0">
-                                    <h5 class="mb-2 fw-semibold">{{ __('Personal Trainer Tier Pricing') }}</h5>
+                                    <h5 class="mb-2 fw-semibold">{{ __('Personal Trainer Level Pricing') }}</h5>
                                     <p class="text-muted small mb-0">
-                                        {{ __('Configure the additional price per slot when a guest requests a personal trainer. Use the same tier (Silver / Gold / Platinum) as the gym’s facility tier.') }}
+                                        {{ __('Configure the guest price per slot for each trainer level: Junior Trainer, Advanced Trainer, and Senior Trainer.') }}
                                     </p>
                                 </div>
                             </div>
@@ -247,7 +247,7 @@
 
                         @include('admin.gym-listings.partials.personal-trainer-tier-block', [
                             'ptTier' => 'silver',
-                            'tierTitle' => __('Personal Trainer – Silver Tier'),
+                            'tierTitle' => __('Personal Trainer – Junior Trainer'),
                             'tierHeadingClass' => 'text-primary',
                             'tierWrapperClass' => 'border rounded p-3 mb-4 bg-white border-start border-primary border-4',
                             'gymSettingsSprite' => $gymSettingsSprite,
@@ -258,7 +258,7 @@
 
                         @include('admin.gym-listings.partials.personal-trainer-tier-block', [
                             'ptTier' => 'gold',
-                            'tierTitle' => __('Personal Trainer – Gold Tier'),
+                            'tierTitle' => __('Personal Trainer – Advanced Trainer'),
                             'gymSettingsSprite' => $gymSettingsSprite,
                             'tierIconStroke' => 'stroke-ecommerce',
                             'tierIconStrokeClass' => 'text-warning',
@@ -267,7 +267,7 @@
 
                         @include('admin.gym-listings.partials.personal-trainer-tier-block', [
                             'ptTier' => 'platinum',
-                            'tierTitle' => __('Personal Trainer – Platinum Tier'),
+                            'tierTitle' => __('Personal Trainer – Senior Trainer'),
                             'tierHeadingClass' => 'text-primary',
                             'tierWrapperClass' => 'border rounded p-3 mb-4 bg-white border-start border-primary border-4',
                             'gymSettingsSprite' => $gymSettingsSprite,

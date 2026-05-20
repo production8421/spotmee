@@ -93,7 +93,11 @@ class StoreGymListingRequest extends FormRequest
         ], $this->availabilityScheduleRules());
 
         if ($this->boolean('personal_training_available')) {
-            $rules = array_merge($rules, $this->personalTrainingAvailabilityRules());
+            $rules = array_merge($rules, $this->personalTrainingAvailabilityRules(), $this->ptTrainerLevelsRules());
+        }
+
+        if ($this->routeIs('host.gym-listings.store')) {
+            $rules['waiver_terms_accepted'] = ['accepted'];
         }
 
         return $rules;

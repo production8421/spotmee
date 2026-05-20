@@ -5,7 +5,10 @@
     $filters = $filters ?? [];
     $gymListingsShowHostFilter = $gymListingsShowHostFilter ?? false;
     $gymListingsShowHostTierColumn = $gymListingsShowHostTierColumn ?? false;
-    $ptSlotPriceByTier = is_array($ptSlotPriceByTier ?? null) ? $ptSlotPriceByTier : [];
+    $gymListingsShowHostNameColumn = $gymListingsShowHostNameColumn ?? false;
+    $tableColspan = 7
+        + ($gymListingsShowHostNameColumn ? 1 : 0)
+        + ($gymListingsShowHostTierColumn ? 1 : 0);
     $cfg = config('gym_listing');
     $filterHosts = $filterHosts ?? collect();
 @endphp
@@ -136,10 +139,11 @@
                                     <th scope="col">{{ __('Name') }}</th>
                                     <th scope="col">{{ __('City') }}</th>
                                     <th scope="col">{{ __('Created date') }}</th>
-                                    <th scope="col">{{ __('Created by') }}</th>
+                                    @if ($gymListingsShowHostNameColumn)
+                                        <th scope="col">{{ __('Host') }}</th>
+                                    @endif
                                     @if ($gymListingsShowHostTierColumn)
                                         <th scope="col">{{ __('Host tier') }}</th>
-                                        <th scope="col">{{ __('Personal Trainer tier price') }}</th>
                                     @endif
                                     <th scope="col">{{ __('Published') }}</th>
                                     <th scope="col" class="text-end">{{ __('Actions') }}</th>
@@ -161,16 +165,18 @@
                                         <td class="text-muted small text-nowrap">
                                             {{ $listing->created_at?->timezone(config('app.timezone'))->format('Y-m-d H:i') ?? '—' }}
                                         </td>
-                                        <td>
-                                            @if ($listing->user)
-                                                <div class="fw-semibold">{{ $listing->user->name }}</div>
-                                                <div class="text-muted small">
-                                                    {{ $listing->user->getRoleNames()->implode(', ') }}
-                                                </div>
-                                            @else
-                                                <span class="text-muted">—</span>
-                                            @endif
-                                        </td>
+                                        @if ($gymListingsShowHostNameColumn)
+                                            <td>
+                                                @if ($listing->user)
+                                                    <div class="fw-semibold">{{ $listing->user->name }}</div>
+                                                    @if (filled($listing->user->email))
+                                                        <div class="text-muted small">{{ $listing->user->email }}</div>
+                                                    @endif
+                                                @else
+                                                    <span class="text-muted" title="{{ __('No host account linked to this listing') }}">—</span>
+                                                @endif
+                                            </td>
+                                        @endif
                                         @if ($gymListingsShowHostTierColumn)
                                             <td>
                                                 <form method="post" action="{{ route('admin.gym-listings.host-tier.update', $listing) }}" class="m-0">
@@ -188,32 +194,6 @@
                                                         <option value="platinum" @selected($listing->hostTierKey() === 'platinum')>{{ __('Platinum Tier') }}</option>
                                                     </select>
                                                 </form>
-                                            </td>
-                                            <td>
-                                                <form method="post" action="{{ route('admin.gym-listings.pt-pricing-tier.update', $listing) }}" class="m-0">
-                                                    @csrf
-                                                    @method('PATCH')
-                                                    <select
-                                                        class="form-select form-select-sm"
-                                                        name="pt_pricing_tier"
-                                                        style="min-width: 9rem; border: 2px solid #64748b; border-radius: 6px; box-shadow: 0 0 0 1px rgba(100, 116, 139, 0.15);"
-                                                        onchange="this.form.submit()"
-                                                        aria-label="{{ __('Personal Trainer tier price') }}"
-                                                    >
-                                                        <option value="" @selected($listing->pt_pricing_tier === null || $listing->pt_pricing_tier === '')>{{ __('Same as host tier') }}</option>
-                                                        <option value="silver" @selected($listing->pt_pricing_tier === 'silver')>{{ __('Silver (PT)') }}</option>
-                                                        <option value="gold" @selected($listing->pt_pricing_tier === 'gold')>{{ __('Gold (PT)') }}</option>
-                                                        <option value="platinum" @selected($listing->pt_pricing_tier === 'platinum')>{{ __('Platinum (PT)') }}</option>
-                                                    </select>
-                                                </form>
-                                                @php
-                                                    $ptEff = $listing->ptPricingTierKey();
-                                                    $ptPrice = $ptSlotPriceByTier[$ptEff] ?? 0;
-                                                @endphp
-                                                <div class="text-muted small mt-1">
-                                                    ${{ number_format((float) $ptPrice, 2) }} / {{ __('slot') }}
-                                                    <span class="text-muted">({{ ucfirst($ptEff) }})</span>
-                                                </div>
                                             </td>
                                         @endif
                                         <td>
@@ -239,7 +219,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="{{ 8 + ($gymListingsShowHostTierColumn ? 2 : 0) }}" class="text-center text-muted py-4">{{ __('No listings yet.') }}</td>
+                                        <td colspan="{{ $tableColspan }}" class="text-center text-muted py-4">{{ __('No listings yet.') }}</td>
                                     </tr>
                                 @endforelse
                             </tbody>

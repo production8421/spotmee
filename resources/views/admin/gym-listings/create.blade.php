@@ -38,6 +38,7 @@
                     <form class="gym-listing-form" method="POST" action="{{ route($gymRoutePrefix.'.store') }}" enctype="multipart/form-data" novalidate>
                         @csrf
                         @include('admin.gym-listings.partials.form-fields', ['gymListing' => null])
+                        @include('admin.gym-listings.partials.waiver-agreement', ['gymRoutePrefix' => $gymRoutePrefix])
                         <div class="d-flex gap-2 mt-4">
                             <button class="btn btn-primary" type="submit">{{ __('Create listing') }}</button>
                             <a class="btn btn-light" href="{{ route($gymRoutePrefix.'.index') }}">{{ __('Cancel') }}</a>

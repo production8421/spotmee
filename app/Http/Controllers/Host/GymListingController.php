@@ -69,6 +69,7 @@ class GymListingController extends Controller
 
         if (! $request->boolean('personal_training_available')) {
             $data['personal_training_availability'] = null;
+            $data['pt_trainer_levels'] = null;
         }
 
         $listing = GymListing::query()->create($data);
@@ -186,6 +187,7 @@ class GymListingController extends Controller
         if (! $request->boolean('personal_training_available')) {
             $data['personal_training_available'] = false;
             $data['personal_training_availability'] = null;
+            $data['pt_trainer_levels'] = null;
             if ($gymListing->personal_training_cert_path) {
                 $disk->delete($gymListing->personal_training_cert_path);
             }

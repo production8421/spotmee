@@ -39,6 +39,7 @@ use Illuminate\Support\Str;
     'personal_training_cert_path',
     'personal_training_cpr_cert_path',
     'personal_training_availability',
+    'pt_trainer_levels',
     'is_published',
     'approved_at',
     'rejected_at',
@@ -303,7 +304,55 @@ class GymListing extends Model
             'availability_schedule' => 'array',
             'personal_training_available' => 'boolean',
             'personal_training_availability' => 'array',
+            'pt_trainer_levels' => 'array',
             'person_limit' => 'integer',
         ];
+    }
+
+    /**
+     * @return list<string> silver|gold|platinum keys enabled for this listing
+     */
+    public function ptTrainerLevelKeys(): array
+    {
+        $raw = $this->pt_trainer_levels;
+        if (! is_array($raw)) {
+            return [];
+        }
+
+        $allowed = array_keys(config('gym_listing.pt_trainer_levels', []));
+
+        return array_values(array_unique(array_filter(
+            array_map('strval', $raw),
+            fn (string $key): bool => in_array($key, $allowed, true)
+        )));
+    }
+
+    /**
+     * Guest-facing PT levels with label and price per slot (from site settings).
+     *
+     * @return list<array{key: string, label: string, price_per_slot: float}>
+     */
+    public function ptTrainerLevelsForGuest(): array
+    {
+        if (! $this->personal_training_available) {
+            return [];
+        }
+
+        $settings = ApplicationSetting::instance();
+        $out = [];
+
+        foreach ($this->ptTrainerLevelKeys() as $key) {
+            $price = $settings->publicPtSlotCustomerPrice($key);
+            if ($price <= 0) {
+                continue;
+            }
+            $out[] = [
+                'key' => $key,
+                'label' => (string) (config("gym_listing.pt_trainer_levels.{$key}.label") ?? ucfirst($key)),
+                'price_per_slot' => round($price, 2),
+            ];
+        }
+
+        return $out;
     }
 }

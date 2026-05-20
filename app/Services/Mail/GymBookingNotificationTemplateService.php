@@ -74,8 +74,16 @@ final class GymBookingNotificationTemplateService
         $total = $booking->total_price !== null
             ? '$'.number_format((float) $booking->total_price, 2)
             : '—';
+        $ptLevelSummary = '';
+        if (is_array($booking->pt_trainer_level_keys) && $booking->pt_trainer_level_keys !== []) {
+            $labels = [];
+            foreach ($booking->pt_trainer_level_keys as $key) {
+                $labels[] = (string) (config("gym_listing.pt_trainer_levels.{$key}.label") ?? ucfirst((string) $key));
+            }
+            $ptLevelSummary = ' — '.implode(', ', $labels);
+        }
         $trainer = $booking->personal_trainer_requested
-            ? __('Yes').' ('.$booking->trainer_slot_count.' '.__('slot(s)').')'
+            ? __('Yes').' ('.$booking->trainer_slot_count.' '.__('slot(s)').')'.$ptLevelSummary
             : __('No');
         $notes = trim((string) ($booking->notes ?? ''));
         $guestPhone = trim((string) ($booking->guest_phone ?? ''));

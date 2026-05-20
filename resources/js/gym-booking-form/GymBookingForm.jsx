@@ -47,6 +47,7 @@ function buildLocalizedFromBootstrap(b) {
     personal_trainer_schedule: b.personalTrainingAvailability || {},
     personal_trainer_available: b.personalTrainingAvailable ? "yes" : "no",
     pt_addon_enabled: !!b.ptAddonEnabled,
+    pt_trainer_levels: Array.isArray(b.ptTrainerLevels) ? b.ptTrainerLevels : [],
     pricing: {
       rate_1hr: Number(b.rate1hr) || 0,
       hourly_rate: Number(b.rate1hr) || 0,
@@ -133,6 +134,8 @@ const BookingFormContent = ({ localizedData }) => {
   // Personal trainer add-on type: 'paid' or 'free_trial' (trial is 1 slot, $0, enforced once-per-gym on Continue to Payment)
   const [ptAddOnType, setPtAddOnType] = useState("paid");
   const [ptFreeTrialSlot, setPtFreeTrialSlot] = useState(null);
+  /** Selected PT level keys (silver|gold|platinum) for paid add-on pricing. */
+  const [selectedPtLevels, setSelectedPtLevels] = useState([]);
   const [selectedDurationType, setSelectedDurationType] = useState(null);
   const [step0Error, setStep0Error] = useState(null);
   const [step1Error, setStep1Error] = useState(null);
@@ -415,10 +418,64 @@ const BookingFormContent = ({ localizedData }) => {
     return disabledMinutes;
   };
 
-  // `personal_trainer_price` is already the final guest-facing PT slot price from backend.
-  // Do not re-apply commission in frontend (prevents inflated totals, e.g. 120.01).
+  // `personal_trainer_price` is a fallback when the listing exposes a single PT level.
   const personalTrainerPrice = Math.max(0, Number(localizedData?.personal_trainer_price) || 0);
-  const personalTrainerPriceText = personalTrainerPrice.toFixed(2);
+  const ptTrainerLevelsList = Array.isArray(localizedData?.pt_trainer_levels)
+    ? localizedData.pt_trainer_levels
+    : [];
+  const hasMultiplePtLevels = ptTrainerLevelsList.length > 1;
+
+  const getPtPricePerSlotBundle = (levelKeys) => {
+    if (!Array.isArray(levelKeys) || levelKeys.length === 0) {
+      return 0;
+    }
+    const priceByKey = Object.fromEntries(
+      ptTrainerLevelsList.map((row) => [String(row.key), Number(row.price_per_slot) || 0])
+    );
+    return levelKeys.reduce((sum, key) => sum + (priceByKey[String(key)] || 0), 0);
+  };
+
+  const getActivePtPricePerSlotBundle = () => {
+    if (ptTrainerLevelsList.length === 0) {
+      return personalTrainerPrice;
+    }
+    if (ptTrainerLevelsList.length === 1) {
+      return Number(ptTrainerLevelsList[0].price_per_slot) || personalTrainerPrice;
+    }
+    return getPtPricePerSlotBundle(selectedPtLevels);
+  };
+
+  const personalTrainerPriceText = getActivePtPricePerSlotBundle().toFixed(2);
+
+  const normalizeSelectedPtLevelsForPersons = (keys, persons) => {
+    const allowed = new Set(ptTrainerLevelsList.map((row) => String(row.key)));
+    const cleaned = (Array.isArray(keys) ? keys : [])
+      .map((k) => String(k))
+      .filter((k, i, arr) => allowed.has(k) && arr.indexOf(k) === i);
+    const headcount = Math.max(1, parseInt(String(persons ?? 1), 10) || 1);
+    if (headcount <= 1) {
+      if (cleaned.length >= 1) return [cleaned[0]];
+      if (ptTrainerLevelsList.length >= 1) return [String(ptTrainerLevelsList[0].key)];
+      return [];
+    }
+    if (cleaned.length > headcount) return cleaned.slice(0, headcount);
+    return cleaned;
+  };
+
+  const isPtLevelSelectionValid = (persons) => {
+    if (ptAddOnType !== "paid" || getTrainerSlotCount(trainerPerSlot) < 1) {
+      return true;
+    }
+    if (ptTrainerLevelsList.length === 0) {
+      return true;
+    }
+    const headcount = Math.max(1, parseInt(String(persons ?? 1), 10) || 1);
+    const normalized = normalizeSelectedPtLevelsForPersons(selectedPtLevels, headcount);
+    if (headcount <= 1) {
+      return normalized.length === 1;
+    }
+    return normalized.length >= 1 && normalized.length <= headcount;
+  };
 
   // Count how many slots have trainer selected
   const getTrainerSlotCount = (trainerSelections) => {
@@ -472,7 +529,9 @@ const BookingFormContent = ({ localizedData }) => {
     
     // Add personal trainer fee based on number of selected trainer slots
     const trainerSlotCount = getTrainerSlotCount(trainerSelections);
-    const trainerFee = applyPtFreeTrial && trainerSlotCount > 0 ? 0 : trainerSlotCount * personalTrainerPrice;
+    const ptBundlePerSlot = getActivePtPricePerSlotBundle();
+    const trainerFee =
+      applyPtFreeTrial && trainerSlotCount > 0 ? 0 : trainerSlotCount * ptBundlePerSlot;
     const totalPrice = basePrice + trainerFee;
 
     setCalculatedPrice({
@@ -486,6 +545,10 @@ const BookingFormContent = ({ localizedData }) => {
       basePrice: basePrice.toFixed(2),
       trainerFee: trainerFee.toFixed(2),
       trainerSlotCount: trainerSlotCount,
+      ptPricePerSlot: ptBundlePerSlot.toFixed(2),
+      ptLevelLabels: selectedPtLevels
+        .map((key) => ptTrainerLevelsList.find((row) => String(row.key) === String(key))?.label)
+        .filter(Boolean),
       includesTrainer: trainerSlotCount > 0,
       ptFreeTrial: applyPtFreeTrial && trainerSlotCount > 0,
       total: totalPrice.toFixed(2),
@@ -515,7 +578,25 @@ const BookingFormContent = ({ localizedData }) => {
     const applyPtFreeTrial = ptAddOnType === "free_trial" && !!ptFreeTrialSlot && trialStillIn;
     const headcount = Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
     calculateTotalPrice(firstStart, lastEnd, headcount, trainerPerSlot, applyPtFreeTrial, sortedSlots.length);
-  }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, watchedTimeSlots, watchedNumberOfPersons]);
+  }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, selectedPtLevels, watchedTimeSlots, watchedNumberOfPersons]);
+
+  // Default trainer level when paid PT is on (single guest → first level).
+  useEffect(() => {
+    if (ptAddOnType !== "paid" || ptTrainerLevelsList.length === 0) {
+      return;
+    }
+    if (getTrainerSlotCount(trainerPerSlot) < 1) {
+      return;
+    }
+    const headcount = Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
+    setSelectedPtLevels((prev) => {
+      const next = normalizeSelectedPtLevelsForPersons(prev, headcount);
+      if (headcount <= 1 && next.length === 0 && ptTrainerLevelsList[0]) {
+        return [String(ptTrainerLevelsList[0].key)];
+      }
+      return next;
+    });
+  }, [ptAddOnType, trainerPerSlot, watchedNumberOfPersons]);
 
   // Handle date change
   const handleDateChange = (date) => {
@@ -523,6 +604,7 @@ const BookingFormContent = ({ localizedData }) => {
     setTrainerPerSlot({});
     setPtAddOnType("paid");
     setPtFreeTrialSlot(null);
+    setSelectedPtLevels([]);
     
     // Set default duration type for new date
     if (date) {
@@ -673,6 +755,7 @@ const BookingFormContent = ({ localizedData }) => {
     const limit = getPersonLimit();
     const parsed = parseInt(String(value ?? form.getFieldValue("numberOfPersons") ?? 1), 10);
     const headcount = Math.max(1, Math.min(limit, Number.isFinite(parsed) && parsed > 0 ? parsed : 1));
+    setSelectedPtLevels((prev) => normalizeSelectedPtLevelsForPersons(prev, headcount));
 
     const sorted = [...timeSlots].sort((a, b) =>
       normalizeTimeStr(String(a).split("|")[0]).localeCompare(normalizeTimeStr(String(b).split("|")[0]))
@@ -944,6 +1027,13 @@ const BookingFormContent = ({ localizedData }) => {
     if (cc) {
       payload.coupon_code = cc;
     }
+    const persons = Math.max(1, parseInt(String(values.numberOfPersons ?? 1), 10) || 1);
+    if (pt_addon === "paid" && getTrainerSlotCount(trainerPerSlotFiltered) > 0 && ptTrainerLevelsList.length > 0) {
+      payload.pt_trainer_levels_selected = normalizeSelectedPtLevelsForPersons(
+        selectedPtLevels,
+        persons
+      );
+    }
     return payload;
   };
 
@@ -1137,6 +1227,7 @@ const BookingFormContent = ({ localizedData }) => {
     trainerPerSlot,
     ptAddOnType,
     ptFreeTrialSlot,
+    selectedPtLevels,
     selectedDurationType,
     form,
     message,
@@ -1189,6 +1280,19 @@ const BookingFormContent = ({ localizedData }) => {
 
       if (!calculatedPrice || calculatedPrice.total == null) {
         setStep0Error(__("Please select date and time to calculate price", "rent-your-jim"));
+        return;
+      }
+
+      if (!isPtLevelSelectionValid(values.numberOfPersons)) {
+        const headcount = Math.max(1, parseInt(String(values.numberOfPersons ?? 1), 10) || 1);
+        setStep0Error(
+          headcount <= 1
+            ? __("Please select a personal trainer level.", "rent-your-jim")
+            : `${__("Please select between 1 and", "rent-your-jim")} ${headcount} ${__(
+                "trainer level(s) for your group.",
+                "rent-your-jim"
+              )}`
+        );
         return;
       }
 
@@ -1578,7 +1682,9 @@ const BookingFormContent = ({ localizedData }) => {
                 <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
                   {ptAddOnType === "free_trial"
                     ? __("Choose one slot for your free personal training trial (1 per gym).", "rent-your-jim")
-                    : `Select which slots you'd like a personal trainer (+$${personalTrainerPriceText}/slot)`}
+                    : hasMultiplePtLevels
+                      ? __("Choose trainer level(s), then select which slots need a trainer.", "rent-your-jim")
+                      : `Select which slots you'd like a personal trainer (+$${personalTrainerPriceText}/slot)`}
                 </div>
               </div>
               <div style={{ marginBottom: 12 }}>
@@ -1598,14 +1704,26 @@ const BookingFormContent = ({ localizedData }) => {
                         }
                       });
                       setTrainerPerSlot(nextMap);
+                      const persons = Math.max(
+                        1,
+                        parseInt(String(form.getFieldValue("numberOfPersons") ?? 1), 10) || 1
+                      );
+                      setSelectedPtLevels((prev) =>
+                        normalizeSelectedPtLevelsForPersons(prev, persons)
+                      );
                     } else {
                       setTrainerPerSlot({});
+                      setSelectedPtLevels([]);
                     }
                   }}
                 >
                   <Radio value="paid">
                     {__("Paid personal training", "rent-your-jim")}{" "}
-                    <span style={{ color: "#52c41a" }}>{`(+$${personalTrainerPriceText}/slot)`}</span>
+                    <span style={{ color: "#52c41a" }}>
+                      {hasMultiplePtLevels
+                        ? __("price varies by level", "rent-your-jim")
+                        : `(+$${personalTrainerPriceText}/slot)`}
+                    </span>
                   </Radio>
                   <Radio value="free_trial" style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -1620,6 +1738,72 @@ const BookingFormContent = ({ localizedData }) => {
                   </div>
                 )}
               </div>
+
+              {ptAddOnType === "paid" && ptTrainerLevelsList.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
+                    {hasMultiplePtLevels
+                      ? (Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1) > 1
+                        ? __("Trainer levels (select up to one per person)", "rent-your-jim")
+                        : __("Trainer level", "rent-your-jim"))
+                      : __("Trainer level", "rent-your-jim")}
+                  </div>
+                  {hasMultiplePtLevels &&
+                  Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1) > 1 ? (
+                    <Checkbox.Group
+                      value={selectedPtLevels}
+                      onChange={(checked) => {
+                        const headcount = Math.max(
+                          1,
+                          parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1
+                        );
+                        const next = normalizeSelectedPtLevelsForPersons(checked, headcount);
+                        if (checked.length > headcount) {
+                          message.warning(
+                            `${__("You can select at most", "rent-your-jim")} ${headcount} ${__(
+                              "trainer level(s) for your group.",
+                              "rent-your-jim"
+                            )}`
+                          );
+                          return;
+                        }
+                        setSelectedPtLevels(next);
+                      }}
+                      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                      {ptTrainerLevelsList.map((level) => (
+                        <Checkbox key={level.key} value={String(level.key)}>
+                          <span className="fw-semibold">{level.label}</span>
+                          <span style={{ color: "#52c41a", marginLeft: 8 }}>
+                            +${Number(level.price_per_slot).toFixed(2)}/{__("slot", "rent-your-jim")}
+                          </span>
+                        </Checkbox>
+                      ))}
+                    </Checkbox.Group>
+                  ) : (
+                    <Radio.Group
+                      value={selectedPtLevels[0] ?? undefined}
+                      onChange={(e) => setSelectedPtLevels([String(e.target.value)])}
+                      style={{ display: "flex", flexDirection: "column", gap: 8 }}
+                    >
+                      {ptTrainerLevelsList.map((level) => (
+                        <Radio key={level.key} value={String(level.key)}>
+                          <span className="fw-semibold">{level.label}</span>
+                          <span style={{ color: "#52c41a", marginLeft: 8 }}>
+                            +${Number(level.price_per_slot).toFixed(2)}/{__("slot", "rent-your-jim")}
+                          </span>
+                        </Radio>
+                      ))}
+                    </Radio.Group>
+                  )}
+                  {hasMultiplePtLevels && getActivePtPricePerSlotBundle() > 0 && (
+                    <div style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
+                      {__("Per slot with trainer:", "rent-your-jim")}{" "}
+                      <strong style={{ color: "#52c41a" }}>${personalTrainerPriceText}</strong>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {ptAddOnType === "paid" ? (
                 selectedBookingSlots.filter(isSlotPtAvailable).map((slot) => {
@@ -1646,7 +1830,7 @@ const BookingFormContent = ({ localizedData }) => {
                       >
                         <span>{slotLabel}</span>
                         <span style={{ color: '#52c41a', marginLeft: '8px', fontSize: '12px' }}>
-                          +${personalTrainerPriceText}
+                          +${getActivePtPricePerSlotBundle().toFixed(2)}
                         </span>
                       </Checkbox>
                     </div>
@@ -1750,7 +1934,11 @@ const BookingFormContent = ({ localizedData }) => {
                         ) : (
                           <span>🏋️ </span>
                         )}
-                        Personal Trainer ({calculatedPrice.trainerSlotCount} slot{calculatedPrice.trainerSlotCount > 1 ? 's' : ''})
+                        Personal Trainer ({calculatedPrice.trainerSlotCount} slot{calculatedPrice.trainerSlotCount > 1 ? 's' : ''}
+                        {Array.isArray(calculatedPrice.ptLevelLabels) && calculatedPrice.ptLevelLabels.length > 0
+                          ? ` — ${calculatedPrice.ptLevelLabels.join(", ")}`
+                          : ""}
+                        )
                         {calculatedPrice.ptFreeTrial ? ` ${__("(free trial)", "rent-your-jim")}` : ""}:
                       </span>
                       <span className="ryj-price-value">

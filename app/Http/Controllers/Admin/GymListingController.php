@@ -34,8 +34,6 @@ class GymListingController extends Controller
         $query = GymListing::query()->with(['user.roles']);
         GymListingsIndexFilter::apply($query, $request->validated(), restrictToAuthHost: false);
         $query->orderByDesc('id');
-        $settings = ApplicationSetting::instance();
-
         $filterHosts = User::role(UserRole::Host->value)
             ->whereHas('gymListings')
             ->orderBy('name')
@@ -46,12 +44,8 @@ class GymListingController extends Controller
             'gymRoutePrefix' => 'admin.gym-listings',
             'gymListingsIndexHeading' => __('All gym listings'),
             'gymListingsShowHostFilter' => true,
+            'gymListingsShowHostNameColumn' => true,
             'gymListingsShowHostTierColumn' => true,
-            'ptSlotPriceByTier' => [
-                'silver' => $settings->publicPtSlotCustomerPrice('silver'),
-                'gold' => $settings->publicPtSlotCustomerPrice('gold'),
-                'platinum' => $settings->publicPtSlotCustomerPrice('platinum'),
-            ],
             'filterHosts' => $filterHosts,
             'filters' => $request->validated(),
         ]);
@@ -88,6 +82,7 @@ class GymListingController extends Controller
 
         if (! $request->boolean('personal_training_available')) {
             $data['personal_training_availability'] = null;
+            $data['pt_trainer_levels'] = null;
         }
 
         $listing = GymListing::query()->create($data);
@@ -204,6 +199,7 @@ class GymListingController extends Controller
         if (! $request->boolean('personal_training_available')) {
             $data['personal_training_available'] = false;
             $data['personal_training_availability'] = null;
+            $data['pt_trainer_levels'] = null;
             if ($gymListing->personal_training_cert_path) {
                 $disk->delete($gymListing->personal_training_cert_path);
             }
