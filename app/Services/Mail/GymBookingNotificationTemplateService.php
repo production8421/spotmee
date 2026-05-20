@@ -75,7 +75,18 @@ final class GymBookingNotificationTemplateService
             ? '$'.number_format((float) $booking->total_price, 2)
             : '—';
         $ptLevelSummary = '';
-        if (is_array($booking->pt_trainer_level_keys) && $booking->pt_trainer_level_keys !== []) {
+        if (is_array($booking->pt_trainer_levels_per_slot) && $booking->pt_trainer_levels_per_slot !== []) {
+            $parts = [];
+            foreach ($booking->pt_trainer_levels_per_slot as $slotKey => $levels) {
+                $levelList = is_array($levels) ? $levels : [$levels];
+                $labels = [];
+                foreach ($levelList as $key) {
+                    $labels[] = (string) (config("gym_listing.pt_trainer_levels.{$key}.label") ?? ucfirst((string) $key));
+                }
+                $parts[] = (string) $slotKey.': '.implode(' + ', $labels);
+            }
+            $ptLevelSummary = ' — '.implode('; ', $parts);
+        } elseif (is_array($booking->pt_trainer_level_keys) && $booking->pt_trainer_level_keys !== []) {
             $labels = [];
             foreach ($booking->pt_trainer_level_keys as $key) {
                 $labels[] = (string) (config("gym_listing.pt_trainer_levels.{$key}.label") ?? ucfirst((string) $key));

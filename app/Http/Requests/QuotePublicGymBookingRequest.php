@@ -62,6 +62,8 @@ class QuotePublicGymBookingRequest extends FormRequest
             'pt_free_trial_slot' => ['nullable', 'string', 'max:32'],
             'pt_trainer_levels_selected' => ['nullable', 'array'],
             'pt_trainer_levels_selected.*' => ['required', 'string', 'max:20'],
+            'pt_trainer_levels_per_slot' => ['nullable', 'array'],
+            'pt_trainer_levels_per_slot.*' => ['nullable'],
             'coupon_code' => ['nullable', 'string', 'max:64'],
         ];
     }

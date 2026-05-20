@@ -134,8 +134,8 @@ const BookingFormContent = ({ localizedData }) => {
   // Personal trainer add-on type: 'paid' or 'free_trial' (trial is 1 slot, $0, enforced once-per-gym on Continue to Payment)
   const [ptAddOnType, setPtAddOnType] = useState("paid");
   const [ptFreeTrialSlot, setPtFreeTrialSlot] = useState(null);
-  /** Selected PT level keys (silver|gold|platinum) for paid add-on pricing. */
-  const [selectedPtLevels, setSelectedPtLevels] = useState([]);
+  /** PT level(s) per time slot: slot value → level key or list of keys (multi-guest, one slot). */
+  const [ptLevelsPerSlot, setPtLevelsPerSlot] = useState({});
   const [selectedDurationType, setSelectedDurationType] = useState(null);
   const [step0Error, setStep0Error] = useState(null);
   const [step1Error, setStep1Error] = useState(null);
@@ -435,31 +435,59 @@ const BookingFormContent = ({ localizedData }) => {
     return levelKeys.reduce((sum, key) => sum + (priceByKey[String(key)] || 0), 0);
   };
 
-  const getActivePtPricePerSlotBundle = () => {
-    if (ptTrainerLevelsList.length === 0) {
-      return personalTrainerPrice;
-    }
-    if (ptTrainerLevelsList.length === 1) {
-      return Number(ptTrainerLevelsList[0].price_per_slot) || personalTrainerPrice;
-    }
-    return getPtPricePerSlotBundle(selectedPtLevels);
+  const getTrainerSlotsEnabled = () =>
+    Object.keys(trainerPerSlot).filter((slot) => trainerPerSlot[slot] && isSlotPtAvailable(slot));
+
+  const getHeadcount = () =>
+    Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
+
+  const usesPerSlotPtLevels = () => {
+    const enabled = getTrainerSlotsEnabled();
+    return hasMultiplePtLevels && enabled.length > 1;
   };
 
-  const personalTrainerPriceText = getActivePtPricePerSlotBundle().toFixed(2);
+  const usesMultiLevelSingleSlot = () => {
+    const enabled = getTrainerSlotsEnabled();
+    return hasMultiplePtLevels && enabled.length === 1 && getHeadcount() > 1;
+  };
 
-  const normalizeSelectedPtLevelsForPersons = (keys, persons) => {
+  const getSlotLevelKeys = (slot) => {
+    const raw = ptLevelsPerSlot[slot];
+    if (Array.isArray(raw)) {
+      return raw.map((k) => String(k)).filter(Boolean);
+    }
+    if (typeof raw === "string" && raw) {
+      return [String(raw)];
+    }
+    return [];
+  };
+
+  const getSlotTrainerFee = (slot) =>
+    getPtPricePerSlotBundle(getSlotLevelKeys(slot));
+
+  const computeTrainerFeeTotal = (trainerSelections, applyPtFreeTrial) => {
+    if (applyPtFreeTrial) {
+      return 0;
+    }
+    let fee = 0;
+    Object.entries(trainerSelections || {}).forEach(([slot, enabled]) => {
+      if (!enabled || !isSlotPtAvailable(slot)) {
+        return;
+      }
+      fee += getSlotTrainerFee(slot);
+    });
+    return fee;
+  };
+
+  const defaultLevelKey = () =>
+    ptTrainerLevelsList.length > 0 ? String(ptTrainerLevelsList[0].key) : "";
+
+  const setSlotLevelKeys = (slot, keys) => {
     const allowed = new Set(ptTrainerLevelsList.map((row) => String(row.key)));
-    const cleaned = (Array.isArray(keys) ? keys : [])
+    const cleaned = (Array.isArray(keys) ? keys : [keys])
       .map((k) => String(k))
       .filter((k, i, arr) => allowed.has(k) && arr.indexOf(k) === i);
-    const headcount = Math.max(1, parseInt(String(persons ?? 1), 10) || 1);
-    if (headcount <= 1) {
-      if (cleaned.length >= 1) return [cleaned[0]];
-      if (ptTrainerLevelsList.length >= 1) return [String(ptTrainerLevelsList[0].key)];
-      return [];
-    }
-    if (cleaned.length > headcount) return cleaned.slice(0, headcount);
-    return cleaned;
+    setPtLevelsPerSlot((prev) => ({ ...prev, [slot]: cleaned.length === 1 ? cleaned[0] : cleaned }));
   };
 
   const isPtLevelSelectionValid = (persons) => {
@@ -470,11 +498,18 @@ const BookingFormContent = ({ localizedData }) => {
       return true;
     }
     const headcount = Math.max(1, parseInt(String(persons ?? 1), 10) || 1);
-    const normalized = normalizeSelectedPtLevelsForPersons(selectedPtLevels, headcount);
-    if (headcount <= 1) {
-      return normalized.length === 1;
+    const enabled = getTrainerSlotsEnabled();
+    for (const slot of enabled) {
+      const levels = getSlotLevelKeys(slot);
+      if (usesMultiLevelSingleSlot() && enabled.length === 1) {
+        if (levels.length < 1 || levels.length > headcount) {
+          return false;
+        }
+      } else if (levels.length !== 1) {
+        return false;
+      }
     }
-    return normalized.length >= 1 && normalized.length <= headcount;
+    return enabled.length > 0;
   };
 
   // Count how many slots have trainer selected
@@ -529,10 +564,17 @@ const BookingFormContent = ({ localizedData }) => {
     
     // Add personal trainer fee based on number of selected trainer slots
     const trainerSlotCount = getTrainerSlotCount(trainerSelections);
-    const ptBundlePerSlot = getActivePtPricePerSlotBundle();
-    const trainerFee =
-      applyPtFreeTrial && trainerSlotCount > 0 ? 0 : trainerSlotCount * ptBundlePerSlot;
+    const trainerFee = computeTrainerFeeTotal(trainerSelections, applyPtFreeTrial && trainerSlotCount > 0);
     const totalPrice = basePrice + trainerFee;
+    const ptLevelLabels = [];
+    getTrainerSlotsEnabled().forEach((slot) => {
+      getSlotLevelKeys(slot).forEach((key) => {
+        const label = ptTrainerLevelsList.find((row) => String(row.key) === String(key))?.label;
+        if (label && !ptLevelLabels.includes(label)) {
+          ptLevelLabels.push(label);
+        }
+      });
+    });
 
     setCalculatedPrice({
       slots: numberOfSlots,
@@ -545,10 +587,7 @@ const BookingFormContent = ({ localizedData }) => {
       basePrice: basePrice.toFixed(2),
       trainerFee: trainerFee.toFixed(2),
       trainerSlotCount: trainerSlotCount,
-      ptPricePerSlot: ptBundlePerSlot.toFixed(2),
-      ptLevelLabels: selectedPtLevels
-        .map((key) => ptTrainerLevelsList.find((row) => String(row.key) === String(key))?.label)
-        .filter(Boolean),
+      ptLevelLabels,
       includesTrainer: trainerSlotCount > 0,
       ptFreeTrial: applyPtFreeTrial && trainerSlotCount > 0,
       total: totalPrice.toFixed(2),
@@ -578,25 +617,7 @@ const BookingFormContent = ({ localizedData }) => {
     const applyPtFreeTrial = ptAddOnType === "free_trial" && !!ptFreeTrialSlot && trialStillIn;
     const headcount = Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
     calculateTotalPrice(firstStart, lastEnd, headcount, trainerPerSlot, applyPtFreeTrial, sortedSlots.length);
-  }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, selectedPtLevels, watchedTimeSlots, watchedNumberOfPersons]);
-
-  // Default trainer level when paid PT is on (single guest → first level).
-  useEffect(() => {
-    if (ptAddOnType !== "paid" || ptTrainerLevelsList.length === 0) {
-      return;
-    }
-    if (getTrainerSlotCount(trainerPerSlot) < 1) {
-      return;
-    }
-    const headcount = Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
-    setSelectedPtLevels((prev) => {
-      const next = normalizeSelectedPtLevelsForPersons(prev, headcount);
-      if (headcount <= 1 && next.length === 0 && ptTrainerLevelsList[0]) {
-        return [String(ptTrainerLevelsList[0].key)];
-      }
-      return next;
-    });
-  }, [ptAddOnType, trainerPerSlot, watchedNumberOfPersons]);
+  }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, ptLevelsPerSlot, watchedTimeSlots, watchedNumberOfPersons]);
 
   // Handle date change
   const handleDateChange = (date) => {
@@ -755,7 +776,22 @@ const BookingFormContent = ({ localizedData }) => {
     const limit = getPersonLimit();
     const parsed = parseInt(String(value ?? form.getFieldValue("numberOfPersons") ?? 1), 10);
     const headcount = Math.max(1, Math.min(limit, Number.isFinite(parsed) && parsed > 0 ? parsed : 1));
-    setSelectedPtLevels((prev) => normalizeSelectedPtLevelsForPersons(prev, headcount));
+    if (hasMultiplePtLevels) {
+      const enabled = Object.keys(trainerPerSlot).filter(
+        (s) => trainerPerSlot[s] && isSlotPtAvailable(s)
+      );
+      if (enabled.length === 1 && headcount > 1) {
+        const slot = enabled[0];
+        setPtLevelsPerSlot((prev) => {
+          const raw = prev[slot];
+          const keys = Array.isArray(raw) ? raw.map(String) : raw ? [String(raw)] : [];
+          if (keys.length > headcount) {
+            return { ...prev, [slot]: keys.slice(0, headcount) };
+          }
+          return prev;
+        });
+      }
+    }
 
     const sorted = [...timeSlots].sort((a, b) =>
       normalizeTimeStr(String(a).split("|")[0]).localeCompare(normalizeTimeStr(String(b).split("|")[0]))
@@ -898,6 +934,7 @@ const BookingFormContent = ({ localizedData }) => {
     if (!values || values.length === 0) {
       setCalculatedPrice(null);
       setTrainerPerSlot({});
+      setPtLevelsPerSlot({});
       setPtFreeTrialSlot(null);
       return;
     }
@@ -926,6 +963,23 @@ const BookingFormContent = ({ localizedData }) => {
       });
       mergedTrainerForPrice = newTrainerSlots;
       setTrainerPerSlot(newTrainerSlots);
+      const defaultKey = defaultLevelKey();
+      if (defaultKey) {
+        setPtLevelsPerSlot((prev) => {
+          const next = { ...prev };
+          values.forEach((slot) => {
+            if (isSlotPtAvailable(slot) && newTrainerSlots[slot] && !next[slot]) {
+              next[slot] = defaultKey;
+            }
+          });
+          Object.keys(next).forEach((slot) => {
+            if (!values.includes(slot)) {
+              delete next[slot];
+            }
+          });
+          return next;
+        });
+      }
     } else {
       // free trial mode: trainerPerSlot is managed by the radio selection
       setTrainerPerSlot((prev) => {
@@ -1029,10 +1083,20 @@ const BookingFormContent = ({ localizedData }) => {
     }
     const persons = Math.max(1, parseInt(String(values.numberOfPersons ?? 1), 10) || 1);
     if (pt_addon === "paid" && getTrainerSlotCount(trainerPerSlotFiltered) > 0 && ptTrainerLevelsList.length > 0) {
-      payload.pt_trainer_levels_selected = normalizeSelectedPtLevelsForPersons(
-        selectedPtLevels,
-        persons
-      );
+      const perSlot = {};
+      Object.entries(trainerPerSlotFiltered).forEach(([slot, enabled]) => {
+        if (!enabled) {
+          return;
+        }
+        const norm = normalizeSlotValue(slot);
+        const keys = getSlotLevelKeys(slot);
+        if (keys.length > 0) {
+          perSlot[norm] = keys;
+        }
+      });
+      if (Object.keys(perSlot).length > 0) {
+        payload.pt_trainer_levels_per_slot = perSlot;
+      }
     }
     return payload;
   };
@@ -1227,7 +1291,7 @@ const BookingFormContent = ({ localizedData }) => {
     trainerPerSlot,
     ptAddOnType,
     ptFreeTrialSlot,
-    selectedPtLevels,
+    ptLevelsPerSlot,
     selectedDurationType,
     form,
     message,
@@ -1683,8 +1747,8 @@ const BookingFormContent = ({ localizedData }) => {
                   {ptAddOnType === "free_trial"
                     ? __("Choose one slot for your free personal training trial (1 per gym).", "rent-your-jim")
                     : hasMultiplePtLevels
-                      ? __("Choose trainer level(s), then select which slots need a trainer.", "rent-your-jim")
-                      : `Select which slots you'd like a personal trainer (+$${personalTrainerPriceText}/slot)`}
+                      ? __("For each slot, choose a trainer level. You can pick different levels for different times.", "rent-your-jim")
+                      : `Select which slots you'd like a personal trainer (+$${Number(ptTrainerLevelsList[0]?.price_per_slot || personalTrainerPrice).toFixed(2)}/slot)`}
                 </div>
               </div>
               <div style={{ marginBottom: 12 }}>
@@ -1704,16 +1768,19 @@ const BookingFormContent = ({ localizedData }) => {
                         }
                       });
                       setTrainerPerSlot(nextMap);
-                      const persons = Math.max(
-                        1,
-                        parseInt(String(form.getFieldValue("numberOfPersons") ?? 1), 10) || 1
-                      );
-                      setSelectedPtLevels((prev) =>
-                        normalizeSelectedPtLevelsForPersons(prev, persons)
-                      );
+                      const defaultKey = defaultLevelKey();
+                      if (defaultKey) {
+                        const levelDefaults = {};
+                        arr.forEach((slot) => {
+                          if (isSlotPtAvailable(slot)) {
+                            levelDefaults[slot] = defaultKey;
+                          }
+                        });
+                        setPtLevelsPerSlot(levelDefaults);
+                      }
                     } else {
                       setTrainerPerSlot({});
-                      setSelectedPtLevels([]);
+                      setPtLevelsPerSlot({});
                     }
                   }}
                 >
@@ -1722,7 +1789,7 @@ const BookingFormContent = ({ localizedData }) => {
                     <span style={{ color: "#52c41a" }}>
                       {hasMultiplePtLevels
                         ? __("price varies by level", "rent-your-jim")
-                        : `(+$${personalTrainerPriceText}/slot)`}
+                        : `(+$${Number(ptTrainerLevelsList[0]?.price_per_slot || personalTrainerPrice).toFixed(2)}/slot)`}
                     </span>
                   </Radio>
                   <Radio value="free_trial" style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
@@ -1739,72 +1806,6 @@ const BookingFormContent = ({ localizedData }) => {
                 )}
               </div>
 
-              {ptAddOnType === "paid" && ptTrainerLevelsList.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>
-                    {hasMultiplePtLevels
-                      ? (Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1) > 1
-                        ? __("Trainer levels (select up to one per person)", "rent-your-jim")
-                        : __("Trainer level", "rent-your-jim"))
-                      : __("Trainer level", "rent-your-jim")}
-                  </div>
-                  {hasMultiplePtLevels &&
-                  Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1) > 1 ? (
-                    <Checkbox.Group
-                      value={selectedPtLevels}
-                      onChange={(checked) => {
-                        const headcount = Math.max(
-                          1,
-                          parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1
-                        );
-                        const next = normalizeSelectedPtLevelsForPersons(checked, headcount);
-                        if (checked.length > headcount) {
-                          message.warning(
-                            `${__("You can select at most", "rent-your-jim")} ${headcount} ${__(
-                              "trainer level(s) for your group.",
-                              "rent-your-jim"
-                            )}`
-                          );
-                          return;
-                        }
-                        setSelectedPtLevels(next);
-                      }}
-                      style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                    >
-                      {ptTrainerLevelsList.map((level) => (
-                        <Checkbox key={level.key} value={String(level.key)}>
-                          <span className="fw-semibold">{level.label}</span>
-                          <span style={{ color: "#52c41a", marginLeft: 8 }}>
-                            +${Number(level.price_per_slot).toFixed(2)}/{__("slot", "rent-your-jim")}
-                          </span>
-                        </Checkbox>
-                      ))}
-                    </Checkbox.Group>
-                  ) : (
-                    <Radio.Group
-                      value={selectedPtLevels[0] ?? undefined}
-                      onChange={(e) => setSelectedPtLevels([String(e.target.value)])}
-                      style={{ display: "flex", flexDirection: "column", gap: 8 }}
-                    >
-                      {ptTrainerLevelsList.map((level) => (
-                        <Radio key={level.key} value={String(level.key)}>
-                          <span className="fw-semibold">{level.label}</span>
-                          <span style={{ color: "#52c41a", marginLeft: 8 }}>
-                            +${Number(level.price_per_slot).toFixed(2)}/{__("slot", "rent-your-jim")}
-                          </span>
-                        </Radio>
-                      ))}
-                    </Radio.Group>
-                  )}
-                  {hasMultiplePtLevels && getActivePtPricePerSlotBundle() > 0 && (
-                    <div style={{ fontSize: 12, color: "#666", marginTop: 8 }}>
-                      {__("Per slot with trainer:", "rent-your-jim")}{" "}
-                      <strong style={{ color: "#52c41a" }}>${personalTrainerPriceText}</strong>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {ptAddOnType === "paid" ? (
                 selectedBookingSlots.filter(isSlotPtAvailable).map((slot) => {
                   const [startTimeStr, endTimeStr] = slot.split('|');
@@ -1815,24 +1816,117 @@ const BookingFormContent = ({ localizedData }) => {
                     return `${displayHour}:${mins.toString().padStart(2, '0')} ${ampm}`;
                   };
                   const slotLabel = `${formatTimeDisplay(startTimeStr)} - ${formatTimeDisplay(endTimeStr)}`;
+                  const trainerOn = !!trainerPerSlot[slot];
+                  const slotFee = getSlotTrainerFee(slot);
+                  const showMultiLevelPicker =
+                    hasMultiplePtLevels && trainerOn && usesMultiLevelSingleSlot();
+                  const showPerSlotLevelPicker =
+                    hasMultiplePtLevels && trainerOn && usesPerSlotPtLevels();
+                  const showSingleLevelPicker =
+                    hasMultiplePtLevels &&
+                    trainerOn &&
+                    !showMultiLevelPicker &&
+                    !showPerSlotLevelPicker;
 
                   return (
-                    <div key={slot} style={{ marginBottom: '8px' }}>
+                    <div
+                      key={slot}
+                      style={{
+                        marginBottom: 12,
+                        paddingBottom: 10,
+                        borderBottom: "1px solid #eee",
+                      }}
+                    >
                       <Checkbox
-                        checked={trainerPerSlot[slot] || false}
+                        checked={trainerOn}
                         onChange={(e) => {
+                          const checked = e.target.checked;
                           setTrainerPerSlot((prev) => ({
                             ...prev,
-                            [slot]: e.target.checked,
+                            [slot]: checked,
                           }));
+                          if (checked && defaultLevelKey()) {
+                            setPtLevelsPerSlot((prev) => ({
+                              ...prev,
+                              [slot]: prev[slot] ?? defaultLevelKey(),
+                            }));
+                          }
+                          if (!checked) {
+                            setPtLevelsPerSlot((prev) => {
+                              const next = { ...prev };
+                              delete next[slot];
+                              return next;
+                            });
+                          }
                         }}
-                        style={{ fontSize: '13px' }}
+                        style={{ fontSize: "13px" }}
                       >
                         <span>{slotLabel}</span>
-                        <span style={{ color: '#52c41a', marginLeft: '8px', fontSize: '12px' }}>
-                          +${getActivePtPricePerSlotBundle().toFixed(2)}
-                        </span>
+                        {trainerOn && slotFee > 0 && (
+                          <span style={{ color: "#52c41a", marginLeft: "8px", fontSize: "12px" }}>
+                            +${slotFee.toFixed(2)}
+                          </span>
+                        )}
                       </Checkbox>
+
+                      {showMultiLevelPicker && (
+                        <div style={{ marginLeft: 24, marginTop: 8 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                            {__(
+                              "Trainer levels for this slot (up to one per person)",
+                              "rent-your-jim"
+                            )}
+                          </div>
+                          <Checkbox.Group
+                            value={getSlotLevelKeys(slot)}
+                            onChange={(checked) => {
+                              const headcount = getHeadcount();
+                              if (checked.length > headcount) {
+                                message.warning(
+                                  `${__("You can select at most", "rent-your-jim")} ${headcount} ${__(
+                                    "trainer level(s) for your group.",
+                                    "rent-your-jim"
+                                  )}`
+                                );
+                                return;
+                              }
+                              setSlotLevelKeys(slot, checked);
+                            }}
+                            style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                          >
+                            {ptTrainerLevelsList.map((level) => (
+                              <Checkbox key={level.key} value={String(level.key)}>
+                                <span className="fw-semibold">{level.label}</span>
+                                <span style={{ color: "#52c41a", marginLeft: 8 }}>
+                                  +${Number(level.price_per_slot).toFixed(2)}
+                                </span>
+                              </Checkbox>
+                            ))}
+                          </Checkbox.Group>
+                        </div>
+                      )}
+
+                      {(showPerSlotLevelPicker || showSingleLevelPicker) && (
+                        <div style={{ marginLeft: 24, marginTop: 8 }}>
+                          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+                            {__("Trainer level for this slot", "rent-your-jim")}
+                          </div>
+                          <Radio.Group
+                            value={getSlotLevelKeys(slot)[0] ?? undefined}
+                            onChange={(e) => setSlotLevelKeys(slot, [String(e.target.value)])}
+                            style={{ display: "flex", flexDirection: "column", gap: 6 }}
+                          >
+                            {ptTrainerLevelsList.map((level) => (
+                              <Radio key={level.key} value={String(level.key)}>
+                                <span className="fw-semibold">{level.label}</span>
+                                <span style={{ color: "#52c41a", marginLeft: 8 }}>
+                                  +${Number(level.price_per_slot).toFixed(2)}
+                                </span>
+                              </Radio>
+                            ))}
+                          </Radio.Group>
+                        </div>
+                      )}
                     </div>
                   );
                 })

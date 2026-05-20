@@ -116,15 +116,16 @@ final class GymBookingCreationService
         $tier = $listing->hostTierKey();
         $settings = ApplicationSetting::instance();
         $rates = $settings->publicGuestTierRates($tier);
-        $ptLevelKeys = $this->resolvePtTrainerLevelKeysForBooking(
+        $ptPricing = $this->resolvePtTrainerPricing(
             $listing,
             $validated,
             $numberOfPersons,
-            $trainerSlotCount,
+            $trainerPerSlotFiltered,
             $ptAddon,
             $ptFreeTrial
         );
-        $ptPricePerSlotBundle = $this->ptPricePerSlotBundleForLevels($listing, $ptLevelKeys);
+        $ptLevelKeys = $ptPricing['level_keys'];
+        $trainerFeePrecalc = $ptPricing['trainer_fee'];
 
         $slotCount = count($timeSlots);
         $fullBreakdown = $this->computePriceBreakdown(
@@ -132,8 +133,7 @@ final class GymBookingCreationService
             $slotDuration,
             $numberOfPersons,
             (float) ($rates['rate_1hr'] ?? 0),
-            $trainerSlotCount,
-            $ptPricePerSlotBundle,
+            $trainerFeePrecalc,
             $ptFreeTrial && $trainerSlotCount > 0
         );
         /** Gym slot revenue for all selected slots × persons (before any coupon). */
@@ -194,8 +194,7 @@ final class GymBookingCreationService
                     $slotDuration,
                     $numberOfPersons,
                     (float) ($rates['rate_1hr'] ?? 0),
-                    $trainerSlotCount,
-                    $ptPricePerSlotBundle,
+                    $trainerFeePrecalc,
                     $ptFreeTrial && $trainerSlotCount > 0
                 );
                 $base = $paidBreakdown['base'];
@@ -219,6 +218,7 @@ final class GymBookingCreationService
             'trainer_per_slot_filtered' => $trainerPerSlotFiltered,
             'trainer_slot_count' => $trainerSlotCount,
             'pt_trainer_level_keys' => $ptLevelKeys,
+            'pt_trainer_levels_per_slot' => $ptPricing['levels_per_slot'],
             'pt_free_trial' => $ptFreeTrial,
             'pt_free_trial_slot' => $ptFreeTrial ? $ptFreeTrialSlot : null,
             'base_price' => $base,
@@ -305,6 +305,7 @@ final class GymBookingCreationService
                 'trainer_per_slot' => $trainerPerSlotFiltered === [] ? null : $trainerPerSlotFiltered,
                 'trainer_slot_count' => $trainerSlotCount,
                 'pt_trainer_level_keys' => empty($q['pt_trainer_level_keys']) ? null : array_values($q['pt_trainer_level_keys']),
+                'pt_trainer_levels_per_slot' => empty($q['pt_trainer_levels_per_slot']) ? null : $q['pt_trainer_levels_per_slot'],
                 'pt_free_trial' => $ptFreeTrial,
                 'pt_free_trial_slot' => $ptFreeTrial ? $ptFreeTrialSlot : null,
                 'total_price' => $totalPrice,
@@ -779,62 +780,150 @@ final class GymBookingCreationService
     }
 
     /**
-     * @return list<string>
+     * @param  array<string, bool>  $trainerPerSlotFiltered
+     * @return array{
+     *   trainer_fee: float,
+     *   levels_per_slot: array<string, list<string>>,
+     *   level_keys: list<string>
+     * }
      */
-    private function resolvePtTrainerLevelKeysForBooking(
+    private function resolvePtTrainerPricing(
         GymListing $listing,
         array $validated,
         int $numberOfPersons,
-        int $trainerSlotCount,
+        array $trainerPerSlotFiltered,
         string $ptAddon,
         bool $ptFreeTrial
     ): array {
-        if ($ptFreeTrial || $ptAddon !== 'paid' || $trainerSlotCount < 1) {
-            return [];
+        if ($ptFreeTrial || $ptAddon !== 'paid' || $trainerPerSlotFiltered === []) {
+            return [
+                'trainer_fee' => 0.0,
+                'levels_per_slot' => [],
+                'level_keys' => [],
+            ];
         }
 
         $available = $listing->ptTrainerLevelsForGuest();
         if ($available === []) {
-            return [];
+            return [
+                'trainer_fee' => 0.0,
+                'levels_per_slot' => [],
+                'level_keys' => [],
+            ];
         }
 
         $allowedKeys = array_map(static fn (array $row): string => (string) $row['key'], $available);
-        $raw = $validated['pt_trainer_levels_selected'] ?? [];
-        $selected = [];
-        if (is_array($raw)) {
-            foreach ($raw as $key) {
-                $key = strtolower(trim((string) $key));
-                if ($key !== '' && in_array($key, $allowedKeys, true) && ! in_array($key, $selected, true)) {
-                    $selected[] = $key;
+        $rawPerSlot = is_array($validated['pt_trainer_levels_per_slot'] ?? null)
+            ? $validated['pt_trainer_levels_per_slot']
+            : [];
+        $legacyGlobal = is_array($validated['pt_trainer_levels_selected'] ?? null)
+            ? $validated['pt_trainer_levels_selected']
+            : [];
+
+        $trainerSlotCount = count($trainerPerSlotFiltered);
+        $levelsPerSlot = [];
+        $allKeys = [];
+        $trainerFee = 0.0;
+
+        foreach ($trainerPerSlotFiltered as $slot => $_enabled) {
+            $levels = $this->normalizePtLevelsForSlot(
+                $rawPerSlot,
+                $slot,
+                $legacyGlobal,
+                $allowedKeys,
+                $numberOfPersons,
+                $trainerSlotCount
+            );
+
+            if ($levels === [] && count($allowedKeys) === 1) {
+                $levels = [$allowedKeys[0]];
+            }
+
+            if ($levels === []) {
+                throw ValidationException::withMessages([
+                    'pt_trainer_levels_per_slot' => __('Select a personal trainer level for each slot with a trainer.'),
+                ]);
+            }
+
+            if ($numberOfPersons <= 1 || $trainerSlotCount > 1) {
+                if (count($levels) !== 1) {
+                    throw ValidationException::withMessages([
+                        'pt_trainer_levels_per_slot' => __('Select exactly one trainer level for each time slot.'),
+                    ]);
+                }
+            } else {
+                if (count($levels) < 1 || count($levels) > $numberOfPersons) {
+                    throw ValidationException::withMessages([
+                        'pt_trainer_levels_per_slot' => __('Select between 1 and :count trainer level(s) for your group in this slot.', ['count' => $numberOfPersons]),
+                    ]);
+                }
+            }
+
+            $slotFee = $this->ptPricePerSlotBundleForLevels($listing, $levels);
+            $trainerFee += $slotFee;
+            $levelsPerSlot[$slot] = $levels;
+            foreach ($levels as $key) {
+                if (! in_array($key, $allKeys, true)) {
+                    $allKeys[] = $key;
                 }
             }
         }
 
-        if ($selected === [] && count($allowedKeys) === 1) {
-            $selected = [$allowedKeys[0]];
-        }
+        return [
+            'trainer_fee' => round($trainerFee, 2),
+            'levels_per_slot' => $levelsPerSlot,
+            'level_keys' => $allKeys,
+        ];
+    }
 
-        if ($selected === []) {
-            throw ValidationException::withMessages([
-                'pt_trainer_levels_selected' => __('Select a personal trainer level.'),
-            ]);
-        }
-
-        if ($numberOfPersons <= 1) {
-            if (count($selected) !== 1) {
-                throw ValidationException::withMessages([
-                    'pt_trainer_levels_selected' => __('Select exactly one personal trainer level for a single guest.'),
-                ]);
+    /**
+     * @param  array<string, mixed>  $rawPerSlot
+     * @param  list<string>  $allowedKeys
+     * @return list<string>
+     */
+    private function normalizePtLevelsForSlot(
+        array $rawPerSlot,
+        string $normalizedSlot,
+        array $legacyGlobal,
+        array $allowedKeys,
+        int $numberOfPersons,
+        int $trainerSlotCount
+    ): array {
+        $raw = $rawPerSlot[$normalizedSlot] ?? null;
+        if ($raw === null) {
+            foreach ($rawPerSlot as $key => $value) {
+                if ($this->normalizeSlotValue((string) $key) === $normalizedSlot) {
+                    $raw = $value;
+                    break;
+                }
             }
-        } else {
-            if (count($selected) < 1 || count($selected) > $numberOfPersons) {
-                throw ValidationException::withMessages([
-                    'pt_trainer_levels_selected' => __('Select between 1 and :count trainer level(s) for your group.', ['count' => $numberOfPersons]),
-                ]);
+        }
+
+        $out = [];
+        if (is_string($raw) && trim($raw) !== '') {
+            $out[] = strtolower(trim($raw));
+        } elseif (is_array($raw)) {
+            foreach ($raw as $key) {
+                $key = strtolower(trim((string) $key));
+                if ($key !== '' && ! in_array($key, $out, true)) {
+                    $out[] = $key;
+                }
             }
         }
 
-        return $selected;
+        if ($out === [] && $trainerSlotCount === 1 && $legacyGlobal !== []) {
+            foreach ($legacyGlobal as $key) {
+                $key = strtolower(trim((string) $key));
+                if ($key !== '' && ! in_array($key, $out, true)) {
+                    $out[] = $key;
+                }
+            }
+        }
+
+        return array_values(array_filter(
+            $out,
+            static fn (string $key): bool => in_array($key, $allowedKeys, true)
+        ));
     }
 
     /**
@@ -874,15 +963,12 @@ final class GymBookingCreationService
         int $slotDuration,
         int $persons,
         float $rate1hr,
-        int $trainerSlotCount,
-        float $ptPricePerSlotBundle,
+        float $trainerFeePrecalc,
         bool $ptFreeTrialApplies
     ): array {
         $perSlot = $rate1hr;
         $base = round($numberOfSlots * $perSlot * $persons, 2);
-        $trainerFee = ($trainerSlotCount > 0 && ! $ptFreeTrialApplies)
-            ? round($trainerSlotCount * $ptPricePerSlotBundle, 2)
-            : 0.0;
+        $trainerFee = $ptFreeTrialApplies ? 0.0 : round(max(0.0, $trainerFeePrecalc), 2);
 
         return [
             'base' => $base,
