@@ -77,7 +77,7 @@
     @endphp
 
     @push('styles')
-        <link rel="stylesheet" href="{{ asset('css/gym-main-ryj.css') }}?v=2">
+        <link rel="stylesheet" href="{{ asset('css/gym-main-ryj.css') }}?v=4">
     @endpush
 
     <main class="spotmee-main spotmee-gym-page">
@@ -155,16 +155,17 @@
              2 · PHOTO GALLERY
              ============================================================ --}}
         <section class="site-container pt-6">
-            <div class="grid grid-cols-1 gap-3 overflow-hidden rounded-[24px] sm:grid-cols-2 sm:h-[480px]"
+            <div class="gym-photo-gallery grid grid-cols-1 gap-3 overflow-hidden rounded-[24px] sm:grid-cols-2 sm:h-[480px]"
                  data-aos="fade-up">
 
                 {{-- Main --}}
-                <div class="group relative col-span-1 h-[280px] cursor-pointer overflow-hidden rounded-[20px] bg-[var(--color-brand-50)] sm:h-full sm:rounded-[24px]"
+                <div class="group relative col-span-1 min-h-0 h-[280px] cursor-pointer overflow-hidden rounded-[20px] bg-[var(--color-brand-50)] sm:h-full sm:min-h-[240px] sm:rounded-[24px]"
                      role="button" tabindex="0"
                      onclick="openPhotoModal(0)" onkeydown="if(event.key==='Enter')openPhotoModal(0)">
                     @if ($mainPhoto)
                         <img src="{{ $mainPhoto }}" alt="{{ $listing->name }}"
-                             class="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105">
+                             class="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                             loading="eager" decoding="async">
                     @else
                         <div class="flex h-full items-center justify-center text-[var(--color-brand-300)]">
                             <i class="fa-solid fa-dumbbell text-6xl"></i>
@@ -182,14 +183,14 @@
 
                 {{-- Thumbnails --}}
                 @if ($hasGalleryThumbs)
-                    <div class="col-span-1 grid h-[260px] grid-cols-2 gap-3 sm:h-full">
+                    <div class="gym-photo-gallery__thumbs col-span-1 grid min-h-0 h-[280px] grid-cols-2 grid-rows-2 gap-3 sm:h-full sm:min-h-[240px]">
                         @foreach ($thumbPhotos as $idx => $thumbUrl)
-                            <div class="group relative cursor-pointer overflow-hidden rounded-[16px] bg-[var(--color-brand-50)] sm:rounded-[20px]"
+                            <div class="group relative min-h-0 cursor-pointer overflow-hidden rounded-[16px] bg-[var(--color-brand-50)] sm:rounded-[20px]"
                                  role="button" tabindex="0"
                                  onclick="openPhotoModal({{ $idx + 1 }})"
                                  onkeydown="if(event.key==='Enter')openPhotoModal({{ $idx + 1 }})">
                                 <img src="{{ $thumbUrl }}" alt="{{ __('Gallery photo :n', ['n' => $idx + 2]) }}"
-                                     class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                     class="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
                                      loading="lazy" decoding="async">
                                 @if ($idx === 3 && $photoCount > 5)
                                     <div class="absolute inset-0 flex items-center justify-center bg-black/45 text-[14px] font-bold text-white backdrop-blur-[1px]">
@@ -199,7 +200,7 @@
                             </div>
                         @endforeach
                         @for ($i = $thumbCount; $i < 4; $i++)
-                            <div class="rounded-[16px] bg-[var(--color-brand-50)] sm:rounded-[20px]"></div>
+                            <div class="min-h-0 rounded-[16px] bg-[var(--color-brand-50)] sm:rounded-[20px]" aria-hidden="true"></div>
                         @endfor
                     </div>
                 @endif
@@ -756,12 +757,12 @@
              5 · PHOTO MODAL
              ============================================================ --}}
         @if ($photoCount > 0)
-            <div id="ryj-photo-modal" class="fixed inset-0 z-[100] hidden items-center justify-center"
+            <div id="ryj-photo-modal" class="gym-gallery-modal fixed inset-0 z-[100] hidden items-center justify-center"
                  role="dialog" aria-modal="true" aria-labelledby="ryj-photo-modal-title">
                 <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" onclick="closePhotoModal()"></div>
 
-                <div class="relative z-10 flex h-[90vh] w-[min(1100px,95vw)] flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
-                    <div class="flex items-center justify-between border-b border-[var(--color-brand-100)] px-6 py-4">
+                <div class="gym-gallery-modal__panel relative z-10 flex h-[90vh] w-[min(1100px,95vw)] flex-col overflow-hidden rounded-[24px] bg-white shadow-2xl">
+                    <div class="flex shrink-0 items-center justify-between border-b border-[var(--color-brand-100)] px-6 py-4">
                         <h3 id="ryj-photo-modal-title" class="text-[16px] font-bold text-[var(--color-ink-900)]">
                             {{ $listing->name }} — {{ __('Gallery') }}
                         </h3>
@@ -771,12 +772,13 @@
                         </button>
                     </div>
 
-                    <div class="relative flex-1 bg-black">
+                    <div class="gym-gallery-modal__stage relative min-h-0 flex-1 bg-black">
                         <button type="button" onclick="navigatePhoto(-1)" aria-label="{{ __('Previous') }}"
                                 class="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[var(--color-ink-900)] shadow-lg backdrop-blur transition-all hover:bg-white">
                             <i class="fa-solid fa-chevron-left"></i>
                         </button>
-                        <img id="ryj-modal-main-img" src="" alt="" class="h-full w-full object-contain">
+                        <img id="ryj-modal-main-img" src="" alt=""
+                             class="absolute inset-0 h-full w-full object-contain object-center">
                         <button type="button" onclick="navigatePhoto(1)" aria-label="{{ __('Next') }}"
                                 class="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-[var(--color-ink-900)] shadow-lg backdrop-blur transition-all hover:bg-white">
                             <i class="fa-solid fa-chevron-right"></i>
@@ -786,14 +788,16 @@
                         </div>
                     </div>
 
-                    <div class="flex gap-2 overflow-x-auto border-t border-[var(--color-brand-100)] bg-white p-3">
+                    <div class="gym-gallery-modal__strip flex shrink-0 gap-2 overflow-x-auto border-t border-[var(--color-brand-100)] bg-white px-3 py-3">
                         @foreach ($photos as $index => $photoUrl)
-                            <div class="ryj-modal-thumb h-16 w-24 shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-transparent transition-all data-[active=true]:border-[var(--color-primary)] data-[active=true]:shadow-md"
-                                 data-index="{{ $index }}"
-                                 onclick="showModalPhoto({{ $index }})">
-                                <img src="{{ $photoUrl }}" alt="{{ __('Photo :n', ['n' => $index + 1]) }}"
-                                     class="h-full w-full object-cover">
-                            </div>
+                            <button type="button"
+                                    class="gym-gallery-modal__thumb shrink-0 cursor-pointer overflow-hidden rounded-lg border-2 border-transparent opacity-70 transition-all hover:opacity-90 data-[active=true]:border-[var(--color-primary)] data-[active=true]:opacity-100 data-[active=true]:shadow-md"
+                                    data-index="{{ $index }}"
+                                    data-active="{{ $index === 0 ? 'true' : 'false' }}"
+                                    aria-label="{{ __('Photo :n', ['n' => $index + 1]) }}"
+                                    onclick="showModalPhoto({{ $index }})">
+                                <img src="{{ $photoUrl }}" alt="" class="pointer-events-none" loading="lazy" decoding="async">
+                            </button>
                         @endforeach
                     </div>
                 </div>
@@ -927,7 +931,7 @@
             let allPhotos = [];
 
             function openPhotoModal(photoIndex) {
-                const thumbs = document.querySelectorAll('.ryj-modal-thumb');
+                const thumbs = document.querySelectorAll('.gym-gallery-modal__thumb');
                 allPhotos = Array.from(thumbs).map(function (thumb) {
                     return thumb.querySelector('img').src;
                 });
@@ -951,10 +955,10 @@
                 currentPhotoIndex = index;
                 document.getElementById('ryj-modal-main-img').src = allPhotos[index];
                 document.getElementById('ryj-current-photo').textContent = String(index + 1);
-                document.querySelectorAll('.ryj-modal-thumb').forEach(function (thumb, i) {
+                document.querySelectorAll('.gym-gallery-modal__thumb').forEach(function (thumb, i) {
                     thumb.dataset.active = (i === index) ? 'true' : 'false';
                 });
-                const activeThumb = document.querySelector('.ryj-modal-thumb[data-active="true"]');
+                const activeThumb = document.querySelector('.gym-gallery-modal__thumb[data-active="true"]');
                 if (activeThumb) {
                     activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                 }
