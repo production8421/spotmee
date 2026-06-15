@@ -58,6 +58,11 @@ class UpdateFrontendPageHeroRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $prefix = $this->heroPrefix();
+
+        if (in_array($prefix, ['waiver_liability_host', 'waiver_liability_user'], true)) {
+            return;
+        }
+
         $c = trim((string) $this->input("{$prefix}_hero_background_color", ''));
         if ($c === '') {
             $this->merge(["{$prefix}_hero_background_color" => null]);
@@ -108,10 +113,12 @@ class UpdateFrontendPageHeroRequest extends FormRequest
     {
         $prefix = $this->heroPrefix();
 
-        $rules = [
-            "{$prefix}_hero_title" => ['nullable', 'string', 'max:200'],
-            "{$prefix}_hero_background_color" => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-        ];
+        $rules = [];
+
+        if (! in_array($prefix, ['waiver_liability_host', 'waiver_liability_user'], true)) {
+            $rules["{$prefix}_hero_title"] = ['nullable', 'string', 'max:200'];
+            $rules["{$prefix}_hero_background_color"] = ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'];
+        }
 
         if ($prefix === 'faq') {
             $rules['faq_items'] = ['nullable', 'array', 'max:100'];

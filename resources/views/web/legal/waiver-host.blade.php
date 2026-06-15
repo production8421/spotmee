@@ -3,14 +3,7 @@
 @section('title', 'Waiver of Liability (Host) — SPOTMEE')
 
 @section('content')
-    @include('web.legal.partials.hero', [
-        'heroPrefix'   => 'waiver_liability_host',
-        'heroEyebrow'  => __('Legal · Hosts'),
-        'heroSubtitle' => __('The commitments, risks, and protections every Host agrees to when listing a space on the SPOTMEE platform.'),
-        'lastUpdated'  => 'April 23, 2026',
-    ])
-
-    <section class="site-container py-14 sm:py-20">
+    <section class="site-container pt-6 sm:pt-10 pb-14 sm:pb-20">
         <div class="legal-layout">
 
             {{-- TOC --}}

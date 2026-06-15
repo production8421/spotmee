@@ -104,6 +104,13 @@
                       <svg class="fill-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-file"></use>
                       </svg><span>{{ __('Media') }}</span></a></li>
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('admin.blog.index') }}">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-blog"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-blog"></use>
+                      </svg><span>{{ __('Blog / Community') }}</span></a></li>
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title" href="#" role="button">
                       <svg class="stroke-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-landing-page"></use>
@@ -113,15 +120,21 @@
                       </svg><span>{{ __('Frontend') }}</span></a>
                     <ul class="sidebar-submenu">
                       <li><a href="{{ route('admin.frontend.home') }}"><span>{{ __('Home') }}</span></a></li>
+                      {{-- Hidden for now — uncomment when needed
                       <li><a href="{{ route('admin.frontend.how-it-works') }}"><span>{{ __('How It Works') }}</span></a></li>
                       <li><a href="{{ route('admin.frontend.find-a-gym') }}"><span>{{ __('Find a Gym') }}</span></a></li>
                       <li><a href="{{ route('admin.frontend.become-a-host') }}"><span>{{ __('Become a Host') }}</span></a></li>
                       <li><a href="{{ route('admin.frontend.faq') }}"><span>{{ __('FAQ') }}</span></a></li>
                       <li><a href="{{ route('admin.frontend.contact') }}"><span>{{ __('Contact') }}</span></a></li>
+                      --}}
                       <li><a href="{{ route('admin.frontend.waiver-of-liability-host') }}"><span>{{ __('Waiver of Liability Host') }}</span></a></li>
                       <li><a href="{{ route('admin.frontend.waiver-of-liability-user') }}"><span>{{ __('Waiver of Liability User') }}</span></a></li>
+                      {{-- Hidden for now — uncomment when needed
                       <li><a href="{{ route('admin.frontend.cancellation-policy') }}"><span>{{ __('Cancellation Policy') }}</span></a></li>
+                      --}}
+                      {{-- Hidden for now — uncomment when needed
                       <li><a href="{{ route('admin.frontend.footer') }}"><span>{{ __('Footer') }}</span></a></li>
+                      --}}
                     </ul>
                   </li>
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('admin.settings.edit') }}">

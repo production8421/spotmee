@@ -31,6 +31,15 @@
             ],
         ],
         [
+            'heading' => __('Blog'),
+            'links'   => array_values(array_filter([
+                ['label' => __('User Blog'), 'href' => route('community.user')],
+                auth()->user()?->canViewHostBlog()
+                    ? ['label' => __('Host Blog'), 'href' => route('community.host')]
+                    : null,
+            ])),
+        ],
+        [
             'heading' => __('Support'),
             'links'   => [
                 ['label' => __('Contact Us'), 'href' => route('contact')],
@@ -85,7 +94,7 @@
 
                 {{-- Columns --}}
                 <div class="md:col-span-8">
-                    <div class="grid grid-cols-1 gap-8 sm:grid-cols-3">
+                    <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
                         @foreach ($footerColumns as $column)
                             <div>
                                 <h3 class="footer-heading">{{ $column['heading'] }}</h3>

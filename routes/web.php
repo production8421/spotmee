@@ -2,6 +2,7 @@
 
 use App\Enums\UserRole;
 use App\Http\Controllers\Admin\AdminNotificationController;
+use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\CouponController;
 use App\Http\Controllers\Admin\FrontendSectionController;
 use App\Http\Controllers\Admin\GymBookingController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\PublicGymBookingCancellationController;
 use App\Http\Controllers\PublicGymBookingController;
 use App\Http\Controllers\PublicGymController;
 use App\Http\Controllers\PublicGymReviewController;
+use App\Http\Controllers\PublicBlogController;
 use App\Http\Controllers\SubscriberGymBookingController;
 use App\Http\Controllers\WebContactController;
 use App\Models\ApplicationSetting;
@@ -287,6 +289,43 @@ Route::get(
     fn () => view('web.cart.index')
 )->name('cart');
 
+Route::get('/community', [PublicBlogController::class, 'userIndex'])->name('community.user');
+
+Route::middleware('auth')->group(function (): void {
+    Route::get('/community/create', [PublicBlogController::class, 'userCreate'])->name('community.user.create');
+    Route::post('/community', [PublicBlogController::class, 'userStore'])
+        ->middleware('throttle:10,1')
+        ->name('community.user.store');
+    Route::post('/community/{slug}/comments', [PublicBlogController::class, 'userStoreComment'])
+        ->middleware('throttle:20,1')
+        ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
+        ->name('community.user.comments.store');
+});
+
+Route::get('/community/{slug}', [PublicBlogController::class, 'userShow'])
+    ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
+    ->name('community.user.show');
+
+Route::get('/host/community', [PublicBlogController::class, 'hostIndex'])->name('community.host');
+
+Route::middleware('auth')->group(function (): void {
+    Route::post('/host/community/{slug}/comments', [PublicBlogController::class, 'hostStoreComment'])
+        ->middleware('throttle:20,1')
+        ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
+        ->name('community.host.comments.store');
+});
+
+Route::middleware(['auth', 'role:'.UserRole::Host->value])->group(function (): void {
+    Route::get('/host/community/create', [PublicBlogController::class, 'hostCreate'])->name('community.host.create');
+    Route::post('/host/community', [PublicBlogController::class, 'hostStore'])
+        ->middleware('throttle:10,1')
+        ->name('community.host.store');
+});
+
+Route::get('/host/community/{slug}', [PublicBlogController::class, 'hostShow'])
+    ->where('slug', '[a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*')
+    ->name('community.host.show');
+
 Route::middleware('auth')->group(function (): void {
     Route::get('/admin/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
@@ -368,6 +407,11 @@ Route::middleware('auth')->group(function (): void {
 
             Route::get('gym-bookings', [GymBookingController::class, 'index'])
                 ->name('gym-bookings.index');
+
+            Route::resource('blog', BlogController::class)
+                ->except(['show'])
+                ->parameters(['blog' => 'blog_post']);
+
             Route::get('notifications', [AdminNotificationController::class, 'index'])
                 ->name('notifications.index');
             Route::delete('notifications/{notification}', [AdminNotificationController::class, 'destroy'])

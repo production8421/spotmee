@@ -170,10 +170,12 @@ class FrontendSectionController extends Controller
         $settings = ApplicationSetting::instance();
         $prefix = $request->heroPrefix();
 
-        $settings->{$prefix.'_hero_title'} = $this->nullableTrimmedString($request->input("{$prefix}_hero_title"));
+        if (! in_array($prefix, ['waiver_liability_host', 'waiver_liability_user'], true)) {
+            $settings->{$prefix.'_hero_title'} = $this->nullableTrimmedString($request->input("{$prefix}_hero_title"));
 
-        $color = trim((string) $request->input("{$prefix}_hero_background_color", ''));
-        $settings->{$prefix.'_hero_background_color'} = preg_match('/^#[0-9A-Fa-f]{6}$/', $color) === 1 ? $color : null;
+            $color = trim((string) $request->input("{$prefix}_hero_background_color", ''));
+            $settings->{$prefix.'_hero_background_color'} = preg_match('/^#[0-9A-Fa-f]{6}$/', $color) === 1 ? $color : null;
+        }
 
         if ($prefix === 'faq') {
             $settings->faq_page_items = ApplicationSetting::normalizeFaqPageItemsFromRequestInput($request->input('faq_items', []));
@@ -263,6 +265,7 @@ class FrontendSectionController extends Controller
             'heroHelp' => $heroHelp,
             'defaultHeroTitle' => $sectionHeading,
             'updateUrl' => route($updateRouteName),
+            'showHeroSection' => ! in_array($prefix, ['waiver_liability_host', 'waiver_liability_user'], true),
         ];
 
         if ($prefix === 'faq') {

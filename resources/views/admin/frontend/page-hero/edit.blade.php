@@ -9,13 +9,11 @@
         </div>
         <div class="col-sm-6">
             <ol class="breadcrumb">
-                <li class="breadcrumb-item">
-                    <a href="{{ route('dashboard') }}">
+                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">
                         <svg class="stroke-icon">
                             <use href="{{ asset(config('cuba.assets_path').'/svg/icon-sprite.svg') }}#stroke-home"></use>
                         </svg>
-                    </a>
-                </li>
+                    </a></li>
                 <li class="breadcrumb-item"><a href="{{ route('admin.frontend.home') }}">{{ __('Frontend') }}</a></li>
                 <li class="breadcrumb-item active">{{ $breadcrumbActive }}</li>
             </ol>
@@ -37,6 +35,7 @@
                 @csrf
                 @method('PUT')
 
+                @if ($showHeroSection ?? true)
                 <div class="card">
                     <div class="card-header">
                         <h5 class="mb-0">{{ __('Hero') }}</h5>
@@ -100,6 +99,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 @isset($faqItemRows)
                     <div class="card mt-4">
@@ -176,7 +176,7 @@
                 @endisset
 
                 @if (! empty($waiverPdfSections))
-                    <div class="card mt-4">
+                    <div class="card {{ ($showHeroSection ?? true) ? 'mt-4' : '' }}">
                         <div class="card-header">
                             <h5 class="mb-0">{{ $waiverPdfUploadHeading ?? __('Waiver PDF documents') }}</h5>
                             <p class="text-muted small mb-0 mt-1">
@@ -233,6 +233,7 @@
 @endsection
 
 @push('scripts')
+    @if ($showHeroSection ?? true)
     <script>
         (function () {
             var heroPrefix = @json($prefix);
@@ -301,8 +302,11 @@
                 });
             }
         })();
+    </script>
+    @endif
 
-        @isset($faqItemRows)
+    @isset($faqItemRows)
+    <script>
         (function () {
             var block = document.getElementById('faq-items-block');
             var container = document.getElementById('faq-items-rows');
@@ -332,6 +336,6 @@
                 }
             });
         })();
-        @endisset
     </script>
+    @endisset
 @endpush

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -48,6 +49,12 @@ class User extends Authenticatable implements MustVerifyEmail
     public function gymReviews(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(GymReview::class);
+    }
+
+    public function canViewHostBlog(): bool
+    {
+        return $this->hasRole(UserRole::Host->value)
+            || $this->hasRole(UserRole::Administrator->value);
     }
 
     /**
