@@ -5,6 +5,7 @@ namespace App\Services\GymBookings;
 use App\Models\ApplicationSetting;
 use App\Models\GymBooking;
 use App\Services\GymListing\BookingWebhookDispatcher;
+use App\Services\Payments\HostPayoutScheduler;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -16,6 +17,7 @@ final class GymBookingCancellationService
 {
     public function __construct(
         private readonly BookingWebhookDispatcher $webhooks,
+        private readonly HostPayoutScheduler $hostPayoutScheduler,
     ) {}
 
     /**
@@ -36,6 +38,8 @@ final class GymBookingCancellationService
             }
 
             $this->refundStripeIfNeeded($locked);
+
+            $this->hostPayoutScheduler->markSkippedForCancellation($locked);
 
             $locked->forceFill(['status' => 'cancelled'])->save();
         });

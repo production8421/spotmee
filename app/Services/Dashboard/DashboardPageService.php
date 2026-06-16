@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Schema;
 
 final class DashboardPageService
 {
+    public function __construct(
+        private readonly DashboardAnalyticsService $dashboardAnalyticsService,
+    ) {}
+
     /**
      * @return array{
      *     pageTitle: string,
@@ -159,6 +163,7 @@ final class DashboardPageService
             'gym_bookings_count' => $bookingsCount,
             'settings_snapshot' => $this->settingsSnapshot($settings),
             'recent_notifications' => $this->recentAdminNotifications($user),
+            'analytics' => $this->dashboardAnalyticsService->adminCharts(),
         ];
     }
 

@@ -6,8 +6,11 @@ use App\Enums\HostApplicationStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Host\BeginHostApplicationRequest;
 use App\Http\Requests\Host\StoreHostApplicationRequest;
+use App\Http\Requests\Host\StoreHostBankingDetailRequest;
 use App\Models\ApplicationSetting;
 use App\Models\HostApplication;
+use App\Models\HostBankingDetail;
+use App\Models\User;
 use App\Services\Admin\HostApplicationApprovalService;
 use App\Services\Host\HostApplicationAdminNotifier;
 use App\Services\Host\HostApplicationAutoApproveAdminNotifier;
@@ -15,6 +18,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class HostApplicationController extends Controller
@@ -40,6 +44,15 @@ class HostApplicationController extends Controller
         return view('host.apply');
     }
 
+    public function banking(Request $request): RedirectResponse|View
+    {
+        if ($this->resolvePendingApplicationFromSession($request) === null) {
+            return redirect()->route('host.apply');
+        }
+
+        return view('host.apply-banking');
+    }
+
     public function submitted(Request $request): RedirectResponse|View
     {
         if (! $request->session()->has('host_application_submitted')) {
@@ -49,12 +62,8 @@ class HostApplicationController extends Controller
         return view('host.apply-submitted');
     }
 
-    public function store(
-        StoreHostApplicationRequest $request,
-        HostApplicationAdminNotifier $notifier,
-        HostApplicationApprovalService $approvalService,
-        HostApplicationAutoApproveAdminNotifier $autoApproveAdminNotifier,
-    ): RedirectResponse {
+    public function store(StoreHostApplicationRequest $request): RedirectResponse
+    {
         $data = $request->validated();
         $data['status'] = HostApplicationStatus::Pending;
         if (Auth::check()) {
@@ -63,9 +72,61 @@ class HostApplicationController extends Controller
 
         $application = HostApplication::query()->create($data);
 
+        $request->session()->put('host_application_id', $application->id);
+        $request->session()->regenerate();
+
+        return redirect()->route('host.apply.banking');
+    }
+
+    public function storeBanking(
+        StoreHostBankingDetailRequest $request,
+        HostApplicationAdminNotifier $notifier,
+        HostApplicationApprovalService $approvalService,
+        HostApplicationAutoApproveAdminNotifier $autoApproveAdminNotifier,
+    ): RedirectResponse {
+        $application = $this->resolvePendingApplicationFromSession($request);
+        if ($application === null) {
+            abort(403);
+        }
+
+        $validated = $request->validated();
+
+        if (Schema::hasTable((new HostBankingDetail)->getTable())) {
+            HostBankingDetail::query()->updateOrCreate(
+                ['host_application_id' => $application->id],
+                [
+                    'user_id' => $application->user_id ?? Auth::id(),
+                    'account_holder_name' => $validated['account_holder_name'],
+                    'bank_name' => $validated['bank_name'],
+                    'account_type' => $validated['account_type'],
+                    'routing_number' => $validated['routing_number'],
+                    'account_number' => $validated['account_number'],
+                    'bank_country' => $validated['bank_country'],
+                    'notes' => $validated['notes'] ?? null,
+                ],
+            );
+        }
+
+        return $this->finalizeApplication(
+            $request,
+            $application,
+            $notifier,
+            $approvalService,
+            $autoApproveAdminNotifier,
+        );
+    }
+
+    private function finalizeApplication(
+        Request $request,
+        HostApplication $application,
+        HostApplicationAdminNotifier $notifier,
+        HostApplicationApprovalService $approvalService,
+        HostApplicationAutoApproveAdminNotifier $autoApproveAdminNotifier,
+    ): RedirectResponse {
         if (ApplicationSetting::instance()->host_registration_auto_approve) {
             try {
-                $approvalService->autoApproveFromRegistration($application);
+                $hostUser = $approvalService->autoApproveFromRegistration($application);
+                $this->linkBankingDetailToUser($application, $hostUser);
                 $autoApproveAdminNotifier->notify($application->fresh());
             } catch (\Throwable $e) {
                 Log::error('host_registration_auto_approve_failed', [
@@ -84,10 +145,41 @@ class HostApplicationController extends Controller
             }
         }
 
-        $request->session()->forget('host_apply_terms_accepted');
+        $request->session()->forget(['host_apply_terms_accepted', 'host_application_id']);
 
         return redirect()
             ->route('host.apply.submitted')
             ->with('host_application_submitted', true);
+    }
+
+    private function linkBankingDetailToUser(HostApplication $application, User $user): void
+    {
+        if (! Schema::hasTable((new HostBankingDetail)->getTable())) {
+            return;
+        }
+
+        HostBankingDetail::query()
+            ->where('host_application_id', $application->id)
+            ->update(['user_id' => $user->id]);
+    }
+
+    private function resolvePendingApplicationFromSession(Request $request): ?HostApplication
+    {
+        if (! $request->session()->has('host_application_id')) {
+            return null;
+        }
+
+        $application = HostApplication::query()->find($request->session()->get('host_application_id'));
+        if ($application === null || ! $application->isPending()) {
+            $request->session()->forget(['host_application_id', 'host_apply_terms_accepted']);
+
+            return null;
+        }
+
+        if ($application->user_id !== null && Auth::id() !== $application->user_id) {
+            return null;
+        }
+
+        return $application;
     }
 }

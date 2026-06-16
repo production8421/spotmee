@@ -224,7 +224,7 @@
 
                             <div class="col-12">
                                 <div class="form-group mb-0 pt-1">
-                                    <button class="btn btn-primary w-100" type="submit">{{ __('Submit application') }}</button>
+                                    <button class="btn btn-primary w-100" type="submit">{{ __('Continue to banking details') }}</button>
                                     <p class="text-muted small mt-3 mb-0 text-center">
                                         <a href="{{ route('login') }}">{{ __('Already have an account? Sign in') }}</a>
                                     </p>

@@ -93,3 +93,22 @@
         <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
 </div>
+
+@if ($editing && $user?->hasRole(\App\Enums\UserRole::Host->value))
+    <div class="form-group">
+        <label class="col-form-label" for="stripe_connect_account_id">{{ __('Stripe Connect account ID') }}</label>
+        <input
+            class="form-control @error('stripe_connect_account_id') is-invalid @enderror"
+            id="stripe_connect_account_id"
+            type="text"
+            name="stripe_connect_account_id"
+            value="{{ old('stripe_connect_account_id', $user->stripe_connect_account_id) }}"
+            placeholder="acct_..."
+            autocomplete="off"
+        >
+        <small class="text-muted">{{ __('Required for automatic host payout splits. Create a connected account in Stripe, then paste the account ID here.') }}</small>
+        @error('stripe_connect_account_id')
+            <div class="invalid-feedback d-block">{{ $message }}</div>
+        @enderror
+    </div>
+@endif

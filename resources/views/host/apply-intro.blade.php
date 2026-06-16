@@ -150,9 +150,13 @@
                                         <i class="fa-solid fa-circle-check text-primary me-3 mt-1 flex-shrink-0" aria-hidden="true"></i>
                                         <span>{{ __('Address details') }}</span>
                                     </li>
-                                    <li class="list-group-item d-flex align-items-start border-0 py-2 py-md-3">
+                                    <li class="list-group-item d-flex align-items-start border-0 border-bottom py-2 py-md-3">
                                         <i class="fa-solid fa-circle-check text-primary me-3 mt-1 flex-shrink-0" aria-hidden="true"></i>
                                         <span>{{ __('Social Security Number (optional)') }}</span>
+                                    </li>
+                                    <li class="list-group-item d-flex align-items-start border-0 py-2 py-md-3">
+                                        <i class="fa-solid fa-circle-check text-primary me-3 mt-1 flex-shrink-0" aria-hidden="true"></i>
+                                        <span>{{ __('Bank account details for payouts') }}</span>
                                     </li>
                                 </ul>
                             </div>

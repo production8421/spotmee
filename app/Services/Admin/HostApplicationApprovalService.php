@@ -6,9 +6,11 @@ use App\Enums\HostApplicationStatus;
 use App\Enums\UserRole;
 use App\Mail\HostApprovedMail;
 use App\Models\HostApplication;
+use App\Models\HostBankingDetail;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 final class HostApplicationApprovalService
@@ -29,6 +31,8 @@ final class HostApplicationApprovalService
             return $this->provisionApprovedHost($application, $admin->id, $plainPassword);
         });
 
+        $this->linkBankingDetailToHostUser($application, $hostUser);
+
         Mail::to($hostUser->email)->send(new HostApprovedMail($hostUser, $application->fresh(), $plainPassword, $admin));
     }
 
@@ -48,6 +52,8 @@ final class HostApplicationApprovalService
         $hostUser = DB::transaction(function () use ($application, $plainPassword) {
             return $this->provisionApprovedHost($application, null, $plainPassword);
         });
+
+        $this->linkBankingDetailToHostUser($application, $hostUser);
 
         Mail::to($hostUser->email)->send(new HostApprovedMail($hostUser, $application->fresh(), $plainPassword, null));
 
@@ -104,5 +110,16 @@ final class HostApplicationApprovalService
             'password' => $plainPassword,
             'email_verified_at' => now(),
         ]);
+    }
+
+    private function linkBankingDetailToHostUser(HostApplication $application, User $user): void
+    {
+        if (! Schema::hasTable((new HostBankingDetail)->getTable())) {
+            return;
+        }
+
+        HostBankingDetail::query()
+            ->where('host_application_id', $application->id)
+            ->update(['user_id' => $user->id]);
     }
 }

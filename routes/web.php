@@ -9,10 +9,14 @@ use App\Http\Controllers\Admin\GymBookingController;
 use App\Http\Controllers\Admin\GymListingController;
 use App\Http\Controllers\Admin\HostApplicationController as AdminHostApplicationController;
 use App\Http\Controllers\Admin\MediaLibraryController;
+use App\Http\Controllers\Admin\PaymentManagementController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\CronController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Host\GymListingController as HostGymListingController;
+use App\Http\Controllers\Host\HostBankingDetailController;
+use App\Http\Controllers\Host\HostBookingController;
 use App\Http\Controllers\Host\HostApplicationController as GuestHostApplicationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -31,11 +35,19 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 
+Route::get('cron/run', [CronController::class, 'run'])
+    ->middleware('throttle:30,1')
+    ->name('cron.run');
+
 Route::get('host/apply', [GuestHostApplicationController::class, 'intro'])->name('host.apply');
 Route::post('host/apply/begin', [GuestHostApplicationController::class, 'begin'])
     ->middleware('throttle:20,1')
     ->name('host.apply.begin');
 Route::get('host/apply/create', [GuestHostApplicationController::class, 'create'])->name('host.apply.create');
+Route::get('host/apply/banking', [GuestHostApplicationController::class, 'banking'])->name('host.apply.banking');
+Route::post('host/apply/banking', [GuestHostApplicationController::class, 'storeBanking'])
+    ->middleware('throttle:10,1')
+    ->name('host.apply.banking.store');
 Route::get('host/apply/submitted', [GuestHostApplicationController::class, 'submitted'])->name('host.apply.submitted');
 Route::post('host/apply', [GuestHostApplicationController::class, 'store'])
     ->middleware('throttle:10,1')
@@ -345,6 +357,11 @@ Route::middleware('auth')->group(function (): void {
         ->name('host.')
         ->group(function (): void {
             Route::resource('gym-listings', HostGymListingController::class);
+            Route::get('banking', [HostBankingDetailController::class, 'edit'])->name('banking.edit');
+            Route::put('banking', [HostBankingDetailController::class, 'update'])
+                ->middleware('throttle:10,1')
+                ->name('banking.update');
+            Route::get('bookings', [HostBookingController::class, 'index'])->name('bookings.index');
         });
 
     Route::middleware(['role:'.UserRole::Administrator->value])
@@ -407,6 +424,20 @@ Route::middleware('auth')->group(function (): void {
 
             Route::get('gym-bookings', [GymBookingController::class, 'index'])
                 ->name('gym-bookings.index');
+
+            Route::prefix('payment-management')->name('payment-management.')->group(function (): void {
+                Route::get('host-banking', [PaymentManagementController::class, 'hostBanking'])
+                    ->name('host-banking.index');
+                Route::get('user-payments', [PaymentManagementController::class, 'userPayments'])
+                    ->name('user-payments.index');
+                Route::get('booking-details', [PaymentManagementController::class, 'bookingDetails'])
+                    ->name('booking-details.index');
+                Route::get('booking-details/share-host-earnings', fn () => redirect()->route('admin.payment-management.booking-details.index'));
+                Route::post('booking-details/host-payout-settings', [PaymentManagementController::class, 'updateHostPayoutSettings'])
+                    ->name('booking-details.host-payout-settings.update');
+                Route::post('booking-details/{booking}/payout-split', [PaymentManagementController::class, 'updateBookingPayoutSplit'])
+                    ->name('booking-details.payout-split.update');
+            });
 
             Route::resource('blog', BlogController::class)
                 ->except(['show'])

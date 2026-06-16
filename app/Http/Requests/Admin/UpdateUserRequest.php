@@ -32,6 +32,7 @@ class UpdateUserRequest extends FormRequest
             ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', Rule::in(UserRole::values())],
+            'stripe_connect_account_id' => ['nullable', 'string', 'max:255', 'regex:/^acct_[A-Za-z0-9]*$/'],
         ];
     }
 }

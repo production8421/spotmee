@@ -1,10 +1,11 @@
 @php
-    /** @var int $step Current step: 1 = overview, 2 = application, 3 = complete */
-    $step = max(1, min(3, (int) ($step ?? 1)));
+    /** @var int $step Current step: 1 = overview, 2 = application, 3 = banking, 4 = complete */
+    $step = max(1, min(4, (int) ($step ?? 1)));
     $steps = [
         1 => __('Overview'),
         2 => __('Application'),
-        3 => __('Complete'),
+        3 => __('Banking details'),
+        4 => __('Complete'),
     ];
 @endphp
 
@@ -125,6 +126,8 @@
             <span class="d-none d-sm-inline"> — {{ __('Review requirements and accept terms') }}</span>
         @elseif ($step === 2)
             <span class="d-none d-sm-inline"> — {{ __('Enter your details') }}</span>
+        @elseif ($step === 3)
+            <span class="d-none d-sm-inline"> — {{ __('Add banking details for payouts') }}</span>
         @else
             <span class="d-none d-sm-inline"> — {{ __('Application received') }}</span>
         @endif

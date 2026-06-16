@@ -12,6 +12,7 @@ use App\Models\GymBooking;
 use App\Models\GymListing;
 use App\Models\User;
 use App\Services\GymListing\BookingWebhookDispatcher;
+use App\Services\Payments\HostPayoutScheduler;
 use App\Support\RyjGymSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -26,6 +27,7 @@ final class GymBookingCreationService
 {
     public function __construct(
         private readonly BookingWebhookDispatcher $bookingWebhooks,
+        private readonly HostPayoutScheduler $hostPayoutScheduler,
     ) {}
 
     /**
@@ -329,6 +331,7 @@ final class GymBookingCreationService
 
         $booking = $result['booking'];
         $booking->loadMissing('gymListing');
+        $this->hostPayoutScheduler->scheduleForBooking($booking);
         $listingForWebhook = $booking->gymListing ?? $listing;
         if ($listingForWebhook instanceof GymListing) {
             try {

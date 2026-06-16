@@ -54,6 +54,20 @@
                       <svg class="fill-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-ecommerce"></use>
                       </svg><span>{{ __('My gym listings') }}</span></a></li>
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('host.banking.edit') }}">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-contact"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-contact"></use>
+                      </svg><span>{{ __('Banking details') }}</span></a></li>
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('host.bookings.index') }}">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-calendar"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-calender"></use>
+                      </svg><span>{{ __('Booking details') }}</span></a></li>
                   @endrole
                   @role('Administrator')
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('admin.users.index') }}">
@@ -90,6 +104,19 @@
                       <svg class="fill-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-calender"></use>
                       </svg><span>{{ __('Gym Bookings') }}</span></a></li>
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title" href="#" role="button">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-ecommerce"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-ecommerce"></use>
+                      </svg><span>{{ __('Payment Management') }}</span></a>
+                    <ul class="sidebar-submenu">
+                      <li><a href="{{ route('admin.payment-management.host-banking.index') }}"><span>{{ __('Host banking details') }}</span></a></li>
+                      <li><a href="{{ route('admin.payment-management.user-payments.index') }}"><span>{{ __('User payments') }}</span></a></li>
+                      <li><a href="{{ route('admin.payment-management.booking-details.index') }}"><span>{{ __('Booking details & profit') }}</span></a></li>
+                    </ul>
+                  </li>
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('admin.notifications.index') }}">
                       <svg class="stroke-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#notification"></use>

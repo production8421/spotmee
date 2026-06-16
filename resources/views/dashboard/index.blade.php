@@ -113,6 +113,344 @@
         </div>
 
         @php
+            $analytics = $adminStats['analytics'] ?? null;
+            $chartTotals = is_array($analytics) ? ($analytics['totals'] ?? []) : [];
+            $chartCurrency = strtoupper((string) ($chartTotals['currency'] ?? 'USD'));
+        @endphp
+        @if ($analytics)
+            <div class="row g-3 mb-4" id="dashboard-analytics">
+                <div class="col-12">
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <div>
+                            <h5 class="mb-0">{{ __('Analytics') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">{{ __('Booking trends, revenue, and platform profit overview.') }}</p>
+                        </div>
+                        <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.payment-management.booking-details.index') }}">{{ __('View profit details') }}</a>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card h-100">
+                        <div class="card-body py-3">
+                            <div class="text-muted small text-uppercase">{{ __('Total revenue') }}</div>
+                            <div class="fs-5 fw-semibold mb-0">{{ $chartCurrency }} {{ number_format((float) ($chartTotals['revenue'] ?? 0), 2) }}</div>
+                            <div class="text-muted small mt-1">{{ __('All confirmed bookings') }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card h-100">
+                        <div class="card-body py-3">
+                            <div class="text-muted small text-uppercase">{{ __('Total platform profit') }}</div>
+                            <div class="fs-5 fw-semibold text-success mb-0">{{ $chartCurrency }} {{ number_format((float) ($chartTotals['platform_profit'] ?? 0), 2) }}</div>
+                            <div class="text-muted small mt-1">{{ __('Margin') }}: {{ number_format((float) ($chartTotals['profit_margin_pct'] ?? 0), 2) }}%</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card h-100">
+                        <div class="card-body py-3">
+                            <div class="text-muted small text-uppercase">{{ __('Total host payout') }}</div>
+                            <div class="fs-5 fw-semibold mb-0">{{ $chartCurrency }} {{ number_format((float) ($chartTotals['host_payout'] ?? 0), 2) }}</div>
+                            <div class="text-muted small mt-1">{{ __('Estimated from tier settings') }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card h-100">
+                        <div class="card-body py-3">
+                            <div class="text-muted small text-uppercase">{{ __('Total bookings') }}</div>
+                            <div class="fs-5 fw-semibold mb-0">{{ number_format($adminStats['gym_bookings_count']) }}</div>
+                            <div class="text-muted small mt-1">{{ __('All statuses') }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card h-100">
+                        <div class="card-header border-bottom pb-3">
+                            <h5 class="mb-0">{{ __('Bookings & revenue trend') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">{{ __('Last 6 months by booking date.') }}</p>
+                        </div>
+                        <div class="card-body">
+                            <div id="dashboard-bookings-revenue-chart" style="min-height: 320px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header border-bottom pb-3">
+                            <h5 class="mb-0">{{ __('Booking status') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">{{ __('Confirmed vs cancelled and other statuses.') }}</p>
+                        </div>
+                        <div class="card-body d-flex align-items-center justify-content-center">
+                            <div id="dashboard-booking-status-chart" style="min-height: 320px; width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-8">
+                    <div class="card h-100">
+                        <div class="card-header border-bottom pb-3">
+                            <h5 class="mb-0">{{ __('Profit split trend') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">{{ __('Platform profit vs host payout (confirmed bookings).') }}</p>
+                        </div>
+                        <div class="card-body">
+                            <div id="dashboard-profit-split-chart" style="min-height: 320px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-header border-bottom pb-3">
+                            <h5 class="mb-0">{{ __('Gym listings') }}</h5>
+                            <p class="text-muted small mb-0 mt-1">{{ __('Approval and publication breakdown.') }}</p>
+                        </div>
+                        <div class="card-body d-flex align-items-center justify-content-center">
+                            <div id="dashboard-gym-listings-chart" style="min-height: 320px; width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+                @if (! empty($analytics['payout_status']['values'] ?? []))
+                    <div class="col-lg-4">
+                        <div class="card h-100">
+                            <div class="card-header border-bottom pb-3">
+                                <h5 class="mb-0">{{ __('Host payout status') }}</h5>
+                                <p class="text-muted small mb-0 mt-1">{{ __('Stripe split status across bookings.') }}</p>
+                            </div>
+                            <div class="card-body d-flex align-items-center justify-content-center">
+                                <div id="dashboard-payout-status-chart" style="min-height: 320px; width: 100%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                @endif
+            </div>
+
+            @push('scripts')
+                <script src="{{ asset(config('cuba.assets_path').'/js/chart/apex-chart/apex-chart.js') }}"></script>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function () {
+                        if (typeof ApexCharts === 'undefined') {
+                            return;
+                        }
+
+                        const analytics = @json($analytics);
+                        const currency = @json($chartCurrency);
+                        const chartFont = 'Rubik, sans-serif';
+                        const mutedColor = '#8D8D8D';
+
+                        const bookingsTrend = analytics.bookings_trend || {};
+                        const trendLabels = bookingsTrend.labels || [];
+
+                        new ApexCharts(document.querySelector('#dashboard-bookings-revenue-chart'), {
+                            chart: {
+                                height: 320,
+                                type: 'line',
+                                toolbar: { show: false },
+                                fontFamily: chartFont,
+                            },
+                            series: [
+                                {
+                                    name: @json(__('Bookings')),
+                                    type: 'column',
+                                    data: bookingsTrend.counts || [],
+                                },
+                                {
+                                    name: @json(__('Revenue')),
+                                    type: 'line',
+                                    data: bookingsTrend.revenue || [],
+                                },
+                            ],
+                            colors: ['#7366FF', '#48A3D7'],
+                            stroke: { width: [0, 3], curve: 'smooth' },
+                            plotOptions: {
+                                bar: { columnWidth: '45%', borderRadius: 4 },
+                            },
+                            dataLabels: { enabled: false },
+                            xaxis: {
+                                categories: trendLabels,
+                                labels: { style: { colors: mutedColor } },
+                            },
+                            yaxis: [
+                                {
+                                    title: { text: @json(__('Bookings')), style: { color: mutedColor } },
+                                    labels: { style: { colors: mutedColor } },
+                                },
+                                {
+                                    opposite: true,
+                                    title: { text: currency, style: { color: mutedColor } },
+                                    labels: {
+                                        style: { colors: mutedColor },
+                                        formatter: function (value) {
+                                            return value.toFixed(0);
+                                        },
+                                    },
+                                },
+                            ],
+                            legend: { position: 'top' },
+                            grid: {
+                                borderColor: '#f2f2f2',
+                                strokeDashArray: 4,
+                            },
+                            tooltip: {
+                                shared: true,
+                                intersect: false,
+                                y: {
+                                    formatter: function (value, opts) {
+                                        if (opts.seriesIndex === 1) {
+                                            return currency + ' ' + Number(value).toFixed(2);
+                                        }
+                                        return value;
+                                    },
+                                },
+                            },
+                        }).render();
+
+                        const bookingStatus = analytics.booking_status || {};
+                        if ((bookingStatus.values || []).length > 0) {
+                            new ApexCharts(document.querySelector('#dashboard-booking-status-chart'), {
+                                chart: {
+                                    type: 'donut',
+                                    height: 320,
+                                    fontFamily: chartFont,
+                                },
+                                series: bookingStatus.values || [],
+                                labels: bookingStatus.labels || [],
+                                colors: ['#7366FF', '#FFAE1A', '#FC4438', '#8D8D8D'],
+                                legend: { position: 'bottom' },
+                                dataLabels: { enabled: true },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '62%',
+                                            labels: {
+                                                show: true,
+                                                total: {
+                                                    show: true,
+                                                    label: @json(__('Total')),
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            }).render();
+                        }
+
+                        new ApexCharts(document.querySelector('#dashboard-profit-split-chart'), {
+                            chart: {
+                                height: 320,
+                                type: 'area',
+                                toolbar: { show: false },
+                                fontFamily: chartFont,
+                            },
+                            series: [
+                                {
+                                    name: @json(__('Platform profit')),
+                                    data: bookingsTrend.platform_profit || [],
+                                },
+                                {
+                                    name: @json(__('Host payout')),
+                                    data: bookingsTrend.host_payout || [],
+                                },
+                            ],
+                            colors: ['#54BA4A', '#7366FF'],
+                            stroke: { curve: 'smooth', width: 2 },
+                            fill: {
+                                type: 'gradient',
+                                gradient: {
+                                    shadeIntensity: 0.4,
+                                    opacityFrom: 0.45,
+                                    opacityTo: 0.05,
+                                },
+                            },
+                            dataLabels: { enabled: false },
+                            xaxis: {
+                                categories: trendLabels,
+                                labels: { style: { colors: mutedColor } },
+                            },
+                            yaxis: {
+                                labels: {
+                                    style: { colors: mutedColor },
+                                    formatter: function (value) {
+                                        return currency + ' ' + Number(value).toFixed(0);
+                                    },
+                                },
+                            },
+                            legend: { position: 'top' },
+                            grid: {
+                                borderColor: '#f2f2f2',
+                                strokeDashArray: 4,
+                            },
+                            tooltip: {
+                                y: {
+                                    formatter: function (value) {
+                                        return currency + ' ' + Number(value).toFixed(2);
+                                    },
+                                },
+                            },
+                        }).render();
+
+                        const gymListings = analytics.gym_listings || {};
+                        if ((gymListings.values || []).some(function (value) { return value > 0; })) {
+                            new ApexCharts(document.querySelector('#dashboard-gym-listings-chart'), {
+                                chart: {
+                                    type: 'donut',
+                                    height: 320,
+                                    fontFamily: chartFont,
+                                },
+                                series: gymListings.values || [],
+                                labels: gymListings.labels || [],
+                                colors: ['#54BA4A', '#FFAE1A', '#FC4438', '#8D8D8D'],
+                                legend: { position: 'bottom' },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '62%',
+                                            labels: {
+                                                show: true,
+                                                total: {
+                                                    show: true,
+                                                    label: @json(__('Total')),
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            }).render();
+                        }
+
+                        const payoutStatus = analytics.payout_status || {};
+                        const payoutEl = document.querySelector('#dashboard-payout-status-chart');
+                        if (payoutEl && (payoutStatus.values || []).length > 0) {
+                            new ApexCharts(payoutEl, {
+                                chart: {
+                                    type: 'donut',
+                                    height: 320,
+                                    fontFamily: chartFont,
+                                },
+                                series: payoutStatus.values || [],
+                                labels: payoutStatus.labels || [],
+                                colors: ['#7366FF', '#54BA4A', '#FFAE1A', '#FC4438', '#48A3D7', '#8D8D8D'],
+                                legend: { position: 'bottom' },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: '62%',
+                                            labels: {
+                                                show: true,
+                                                total: {
+                                                    show: true,
+                                                    label: @json(__('Total')),
+                                                },
+                                            },
+                                        },
+                                    },
+                                },
+                            }).render();
+                        }
+                    });
+                </script>
+            @endpush
+        @endif
+
+        @php
             $recentNotes = $adminStats['recent_notifications'] ?? collect();
         @endphp
         <div class="row g-3 mb-4">

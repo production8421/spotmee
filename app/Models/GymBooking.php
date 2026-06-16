@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\HostPayoutStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Carbon;
@@ -37,6 +38,14 @@ class GymBooking extends Model
         'coupon_id',
         'coupon_discount',
         'coupon_applied_slots',
+        'host_payout_scheduled_at',
+        'host_payout_amount',
+        'host_payout_status',
+        'host_payout_processed_at',
+        'stripe_transfer_id',
+        'host_payout_skip_reason',
+        'host_payout_failure_reason',
+        'host_payout_split_enabled',
     ];
 
     /**
@@ -55,6 +64,10 @@ class GymBooking extends Model
             'total_price' => 'decimal:2',
             'coupon_discount' => 'decimal:2',
             'coupon_applied_slots' => 'integer',
+            'host_payout_scheduled_at' => 'datetime',
+            'host_payout_amount' => 'decimal:2',
+            'host_payout_processed_at' => 'datetime',
+            'host_payout_split_enabled' => 'boolean',
         ];
     }
 
@@ -119,5 +132,33 @@ class GymBooking extends Model
             ['booking' => $this->id],
             absolute: true,
         );
+    }
+
+    public function hostPayoutStatusEnum(): ?HostPayoutStatus
+    {
+        return HostPayoutStatus::tryFrom((string) ($this->host_payout_status ?? ''));
+    }
+
+    public function hostPayoutStatusLabel(): string
+    {
+        $status = $this->hostPayoutStatusEnum();
+
+        return $status?->label() ?? '—';
+    }
+
+    public function isHostPayoutSplitEnabled(): bool
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasColumn($this->getTable(), 'host_payout_split_enabled')) {
+            return true;
+        }
+
+        return (bool) ($this->host_payout_split_enabled ?? true);
+    }
+
+    public function canChangeHostPayoutSplitToggle(): bool
+    {
+        $status = $this->hostPayoutStatusEnum();
+
+        return ! in_array($status, [HostPayoutStatus::Paid, HostPayoutStatus::Processing], true);
     }
 }

@@ -90,6 +90,8 @@ use Illuminate\Support\Facades\Schema;
     'smtp_from_address',
     'smtp_from_name',
     'host_registration_auto_approve',
+    'share_host_booking_earnings',
+    'host_payout_delay_hours',
 ])]
 class ApplicationSetting extends Model
 {
@@ -1207,6 +1209,38 @@ class ApplicationSetting extends Model
         return $out;
     }
 
+    public function hostPayoutDelayHours(): int
+    {
+        if (! Schema::hasColumn($this->getTable(), 'host_payout_delay_hours')) {
+            return 12;
+        }
+
+        $hours = (int) ($this->host_payout_delay_hours ?? 12);
+
+        return max(1, min(168, $hours));
+    }
+
+    /**
+     * When enabled, platform splits host payout via Stripe 12 hours after booking start.
+     * When disabled, no transfer is sent and hosts do not receive a payout share.
+     */
+    public function hostPayoutSplitEnabled(): bool
+    {
+        return $this->shareHostBookingEarningsWithHosts();
+    }
+
+    /**
+     * When enabled, hosts can see payout amounts on their booking details page.
+     */
+    public function shareHostBookingEarningsWithHosts(): bool
+    {
+        if (! Schema::hasColumn($this->getTable(), 'share_host_booking_earnings')) {
+            return true;
+        }
+
+        return (bool) ($this->share_host_booking_earnings ?? true);
+    }
+
     /**
      * “Become a Host” link when no custom URL is configured.
      */
@@ -1337,6 +1371,8 @@ class ApplicationSetting extends Model
             'smtp_port' => 'integer',
             'smtp_password' => 'encrypted',
             'host_registration_auto_approve' => 'boolean',
+            'share_host_booking_earnings' => 'boolean',
+            'host_payout_delay_hours' => 'integer',
         ];
     }
 }

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'email_verified_at'])]
+#[Fillable(['name', 'email', 'password', 'email_verified_at', 'stripe_connect_account_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -41,6 +41,14 @@ class User extends Authenticatable implements MustVerifyEmail
     public function hostApplications(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(HostApplication::class);
+    }
+
+    /**
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<HostBankingDetail, $this>
+     */
+    public function hostBankingDetail(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(HostBankingDetail::class);
     }
 
     /**
