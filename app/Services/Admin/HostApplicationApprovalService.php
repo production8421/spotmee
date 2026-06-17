@@ -8,6 +8,7 @@ use App\Mail\HostApprovedMail;
 use App\Models\HostApplication;
 use App\Models\HostBankingDetail;
 use App\Models\User;
+use App\Services\Users\UserProfilePhotoStorage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
@@ -15,6 +16,9 @@ use Illuminate\Support\Str;
 
 final class HostApplicationApprovalService
 {
+    public function __construct(
+        private readonly UserProfilePhotoStorage $photoStorage,
+    ) {}
     public function approve(HostApplication $application, User $admin): void
     {
         if ($application->isApproved() || $application->isRejected()) {
@@ -32,6 +36,7 @@ final class HostApplicationApprovalService
         });
 
         $this->linkBankingDetailToHostUser($application, $hostUser);
+        $this->copyProfilePhotoToHostUser($application, $hostUser);
 
         Mail::to($hostUser->email)->send(new HostApprovedMail($hostUser, $application->fresh(), $plainPassword, $admin));
     }
@@ -54,6 +59,7 @@ final class HostApplicationApprovalService
         });
 
         $this->linkBankingDetailToHostUser($application, $hostUser);
+        $this->copyProfilePhotoToHostUser($application, $hostUser);
 
         Mail::to($hostUser->email)->send(new HostApprovedMail($hostUser, $application->fresh(), $plainPassword, null));
 
@@ -121,5 +127,24 @@ final class HostApplicationApprovalService
         HostBankingDetail::query()
             ->where('host_application_id', $application->id)
             ->update(['user_id' => $user->id]);
+    }
+
+    private function copyProfilePhotoToHostUser(HostApplication $application, User $user): void
+    {
+        if (! Schema::hasColumn($user->getTable(), 'profile_photo_path')) {
+            return;
+        }
+
+        $sourcePath = trim((string) ($application->profile_photo_path ?? ''));
+        if ($sourcePath === '' || filled($user->profile_photo_path)) {
+            return;
+        }
+
+        $destination = $this->photoStorage->copyToUser($sourcePath, (int) $user->id);
+        if ($destination === null) {
+            return;
+        }
+
+        $user->forceFill(['profile_photo_path' => $destination])->save();
     }
 }

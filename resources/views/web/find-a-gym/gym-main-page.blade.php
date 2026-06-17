@@ -230,6 +230,13 @@
                         </div>
                     @endif
 
+                    @include('web.find-a-gym.partials.host-profile', [
+                        'listing' => $listing,
+                        'host' => $listing->user,
+                        'tierLabel' => $tierLabel,
+                        'tierFaIcon' => $tierFaIcon,
+                    ])
+
                     {{-- Facility details --}}
                     <div class="rounded-[24px] border border-[var(--color-brand-100)] bg-white p-7 shadow-[var(--shadow-sm)] sm:p-8"
                          data-aos="fade-up">
@@ -450,6 +457,32 @@
                                         <i class="fa-solid fa-shield-halved mr-1 text-[var(--color-primary)]"></i>
                                         {{ __('Secure checkout powered by Stripe') }}
                                     </p>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if ($listing->user)
+                            <div class="rounded-[24px] border border-[var(--color-brand-100)] bg-white p-5 shadow-[var(--shadow-sm)]">
+                                <p class="text-[12px] font-bold uppercase tracking-wide text-[var(--color-ink-500)]">{{ __('Hosted by') }}</p>
+                                <div class="mt-3 flex items-center gap-3">
+                                    @if ($listing->user->profilePhotoUrl())
+                                        <img
+                                            src="{{ $listing->user->profilePhotoUrl() }}"
+                                            alt="{{ $listing->user->name }}"
+                                            class="h-12 w-12 shrink-0 rounded-full border border-[var(--color-brand-100)] object-cover"
+                                            width="48"
+                                            height="48"
+                                            loading="lazy"
+                                        >
+                                    @else
+                                        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--color-brand-50)] text-[14px] font-bold text-[var(--color-primary)]">
+                                            {{ $listing->user->profileInitials() }}
+                                        </div>
+                                    @endif
+                                    <div class="min-w-0">
+                                        <p class="truncate text-[15px] font-bold text-[var(--color-ink-900)]">{{ $listing->user->name }}</p>
+                                        <p class="text-[12px] font-medium text-[var(--color-ink-500)]">{{ $tierLabel }} {{ __('host') }}</p>
+                                    </div>
                                 </div>
                             </div>
                         @endif

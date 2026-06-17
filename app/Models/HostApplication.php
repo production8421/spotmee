@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'state',
     'postal_code',
     'description',
+    'profile_photo_path',
     'status',
     'approved_at',
     'approved_by',
@@ -70,5 +71,10 @@ class HostApplication extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function profilePhotoUrl(): ?string
+    {
+        return GymListing::publicStorageUrl($this->profile_photo_path);
     }
 }

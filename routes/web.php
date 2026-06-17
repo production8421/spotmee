@@ -17,6 +17,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Host\GymListingController as HostGymListingController;
 use App\Http\Controllers\Host\HostBankingDetailController;
 use App\Http\Controllers\Host\HostBookingController;
+use App\Http\Controllers\Host\HostProfileController;
 use App\Http\Controllers\Host\HostApplicationController as GuestHostApplicationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
@@ -362,6 +363,10 @@ Route::middleware('auth')->group(function (): void {
                 ->middleware('throttle:10,1')
                 ->name('banking.update');
             Route::get('bookings', [HostBookingController::class, 'index'])->name('bookings.index');
+            Route::get('profile', [HostProfileController::class, 'edit'])->name('profile.edit');
+            Route::put('profile', [HostProfileController::class, 'update'])
+                ->middleware('throttle:10,1')
+                ->name('profile.update');
         });
 
     Route::middleware(['role:'.UserRole::Administrator->value])

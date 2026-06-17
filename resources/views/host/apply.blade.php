@@ -30,7 +30,7 @@
         <div class="login-card login-dark host-apply-form">
             <div class="w-100 d-flex justify-content-center">
                 <div class="login-main">
-                    <form class="theme-form" method="POST" action="{{ route('host.apply.store') }}" novalidate>
+                    <form class="theme-form" method="POST" action="{{ route('host.apply.store') }}" enctype="multipart/form-data" novalidate>
                         @csrf
                         <a class="logo" href="{{ route('login') }}">
                             @include('cuba.partials.brand-header-images')
@@ -45,6 +45,14 @@
                         @include('host.partials.apply-progress', ['step' => 2])
 
                         <div class="row g-3">
+                            <div class="col-12">
+                                @include('partials.profile-photo-upload', [
+                                    'photoUrl' => auth()->user()?->profilePhotoUrl(),
+                                    'initials' => auth()->user()?->profileInitials() ?? '?',
+                                    'showRemove' => false,
+                                ])
+                            </div>
+
                             <div class="col-lg-6">
                                 <div class="form-group">
                                     <label class="col-form-label" for="full_name">{{ __('Full Name') }}</label>

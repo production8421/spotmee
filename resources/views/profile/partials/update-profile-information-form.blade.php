@@ -6,9 +6,17 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="theme-form">
+    <form method="post" action="{{ route('profile.update') }}" class="theme-form" @if($user->hasRole(\App\Enums\UserRole::Host->value)) enctype="multipart/form-data" @endif>
         @csrf
         @method('patch')
+
+        @if ($user->hasRole(\App\Enums\UserRole::Host->value))
+            @include('partials.profile-photo-upload', [
+                'photoUrl' => $user->profilePhotoUrl(),
+                'initials' => $user->profileInitials(),
+                'showRemove' => filled($user->profile_photo_path),
+            ])
+        @endif
 
         <div class="form-group">
             <label class="col-form-label" for="name">{{ __('Name') }}</label>

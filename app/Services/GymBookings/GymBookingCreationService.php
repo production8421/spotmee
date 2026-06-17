@@ -72,6 +72,7 @@ final class GymBookingCreationService
             $validated['time_slots']
         )));
         $this->assertSlotsValidForListing($listing, $date, $slotDuration, $timeSlots);
+        $this->assertSlotsNotInPast($date, $timeSlots);
 
         $numberOfPersons = max(1, (int) $validated['number_of_persons']);
         $this->assertCapacityAvailable($listing, $date, $timeSlots, $numberOfPersons);
@@ -419,6 +420,35 @@ final class GymBookingCreationService
             }
         }
 
+    }
+
+    /**
+     * @param  list<string>  $timeSlots  normalized HH:mm|HH:mm
+     */
+    private function assertSlotsNotInPast(Carbon $date, array $timeSlots): void
+    {
+        $tz = config('app.timezone');
+        $bookingDay = $date->copy()->timezone($tz)->startOfDay();
+        $today = Carbon::now($tz)->startOfDay();
+
+        if (! $bookingDay->equalTo($today)) {
+            return;
+        }
+
+        $nowMinutes = Carbon::now($tz)->hour * 60 + Carbon::now($tz)->minute;
+
+        foreach ($timeSlots as $slot) {
+            $parts = explode('|', $slot, 2);
+            if (count($parts) !== 2) {
+                continue;
+            }
+
+            if ($this->minutesFromMidnight($parts[0]) < $nowMinutes) {
+                throw ValidationException::withMessages([
+                    'time_slots' => __('One or more time slots are in the past. Please choose a future time.'),
+                ]);
+            }
+        }
     }
 
     /**

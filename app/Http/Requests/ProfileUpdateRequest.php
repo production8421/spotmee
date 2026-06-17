@@ -16,7 +16,7 @@ class ProfileUpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'email' => [
                 'required',
@@ -27,5 +27,12 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
         ];
+
+        if ($this->user()?->hasRole(\App\Enums\UserRole::Host->value)) {
+            $rules['profile_photo'] = ['nullable', 'image', 'max:5120'];
+            $rules['remove_profile_photo'] = ['nullable', 'boolean'];
+        }
+
+        return $rules;
     }
 }

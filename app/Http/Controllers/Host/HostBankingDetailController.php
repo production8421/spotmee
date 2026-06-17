@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Host;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Host\UpdateHostBankingDetailRequest;
 use App\Models\HostBankingDetail;
+use App\Services\Payments\StripeHostConnectProvisioner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
@@ -21,8 +22,10 @@ class HostBankingDetailController extends Controller
         ]);
     }
 
-    public function update(UpdateHostBankingDetailRequest $request): RedirectResponse
-    {
+    public function update(
+        UpdateHostBankingDetailRequest $request,
+        StripeHostConnectProvisioner $connectProvisioner,
+    ): RedirectResponse {
         if (! Schema::hasTable((new HostBankingDetail)->getTable())) {
             return redirect()
                 ->route('host.banking.edit')
@@ -31,8 +34,9 @@ class HostBankingDetailController extends Controller
 
         $validated = $request->validated();
         $userId = (int) $request->user()->id;
+        $user = $request->user();
 
-        HostBankingDetail::query()->updateOrCreate(
+        $banking = HostBankingDetail::query()->updateOrCreate(
             ['user_id' => $userId],
             [
                 'account_holder_name' => $validated['account_holder_name'],
@@ -45,8 +49,12 @@ class HostBankingDetailController extends Controller
             ],
         );
 
+        $connectId = $user ? $connectProvisioner->syncForUser($user, $banking, $request->ip()) : null;
+
         return redirect()
             ->route('host.banking.edit')
-            ->with('status', __('Banking details saved.'));
+            ->with('status', $connectId
+                ? __('Banking details saved. Your payout bank account is linked for automatic transfers.')
+                : __('Banking details saved. Automatic payouts will run once Stripe payout setup is complete.'));
     }
 }

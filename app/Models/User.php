@@ -12,7 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'email_verified_at', 'stripe_connect_account_id'])]
+#[Fillable(['name', 'email', 'password', 'email_verified_at', 'stripe_connect_account_id', 'profile_photo_path'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -63,6 +63,22 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasRole(UserRole::Host->value)
             || $this->hasRole(UserRole::Administrator->value);
+    }
+
+    public function profilePhotoUrl(): ?string
+    {
+        return GymListing::publicStorageUrl($this->profile_photo_path);
+    }
+
+    public function profileInitials(): string
+    {
+        $parts = preg_split('/\s+/', trim((string) $this->name)) ?: [];
+        $initials = '';
+        foreach (array_slice($parts, 0, 2) as $part) {
+            $initials .= strtoupper(substr($part, 0, 1));
+        }
+
+        return $initials !== '' ? $initials : '?';
     }
 
     /**

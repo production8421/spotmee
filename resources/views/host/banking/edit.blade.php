@@ -41,7 +41,7 @@
             <div class="card">
                 <div class="card-header">
                     <h5 class="mb-0">{{ $bankingDetail ? __('Update banking details') : __('Add banking details') }}</h5>
-                    <p class="text-muted small mb-0 mt-1">{{ __('Add or update the bank account we use to send your host payouts.') }}</p>
+                    <p class="text-muted small mb-0 mt-1">{{ __('Add or update the bank account we use to send your host payouts. After you save, we link this account for automatic Stripe transfers — no separate Stripe setup is required.') }}</p>
                 </div>
                 <div class="card-body">
                     <div class="alert alert-light border mb-4" role="note">

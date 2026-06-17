@@ -106,7 +106,7 @@
             placeholder="acct_..."
             autocomplete="off"
         >
-        <small class="text-muted">{{ __('Required for automatic host payout splits. Create a connected account in Stripe, then paste the account ID here.') }}</small>
+        <small class="text-muted">{{ __('Optional. Usually filled automatically when the host saves banking details. Only set manually if you need to override Stripe Connect linking.') }}</small>
         @error('stripe_connect_account_id')
             <div class="invalid-feedback d-block">{{ $message }}</div>
         @enderror

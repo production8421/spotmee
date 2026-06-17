@@ -10,6 +10,8 @@ use App\Http\Requests\Host\StoreHostBankingDetailRequest;
 use App\Models\ApplicationSetting;
 use App\Models\HostApplication;
 use App\Models\HostBankingDetail;
+use App\Services\Payments\StripeHostConnectProvisioner;
+use App\Services\Users\UserProfilePhotoStorage;
 use App\Models\User;
 use App\Services\Admin\HostApplicationApprovalService;
 use App\Services\Host\HostApplicationAdminNotifier;
@@ -62,15 +64,37 @@ class HostApplicationController extends Controller
         return view('host.apply-submitted');
     }
 
-    public function store(StoreHostApplicationRequest $request): RedirectResponse
+    public function store(StoreHostApplicationRequest $request, UserProfilePhotoStorage $photoStorage): RedirectResponse
     {
         $data = $request->validated();
+        unset($data['profile_photo'], $data['remove_profile_photo']);
         $data['status'] = HostApplicationStatus::Pending;
         if (Auth::check()) {
             $data['user_id'] = Auth::id();
         }
 
         $application = HostApplication::query()->create($data);
+
+        if ($request->hasFile('profile_photo')) {
+            $application->forceFill([
+                'profile_photo_path' => $photoStorage->storeForHostApplication(
+                    $request->file('profile_photo'),
+                    (int) $application->id,
+                ),
+            ])->save();
+
+            if (Auth::check()) {
+                $user = Auth::user();
+                if ($user !== null) {
+                    $photoStorage->delete($user->profile_photo_path);
+                    $userPath = $photoStorage->copyToUser(
+                        (string) $application->profile_photo_path,
+                        (int) $user->id,
+                    ) ?? $photoStorage->storeForUser($request->file('profile_photo'), (int) $user->id);
+                    $user->forceFill(['profile_photo_path' => $userPath])->save();
+                }
+            }
+        }
 
         $request->session()->put('host_application_id', $application->id);
         $request->session()->regenerate();
@@ -83,6 +107,7 @@ class HostApplicationController extends Controller
         HostApplicationAdminNotifier $notifier,
         HostApplicationApprovalService $approvalService,
         HostApplicationAutoApproveAdminNotifier $autoApproveAdminNotifier,
+        StripeHostConnectProvisioner $connectProvisioner,
     ): RedirectResponse {
         $application = $this->resolvePendingApplicationFromSession($request);
         if ($application === null) {
@@ -92,7 +117,7 @@ class HostApplicationController extends Controller
         $validated = $request->validated();
 
         if (Schema::hasTable((new HostBankingDetail)->getTable())) {
-            HostBankingDetail::query()->updateOrCreate(
+            $banking = HostBankingDetail::query()->updateOrCreate(
                 ['host_application_id' => $application->id],
                 [
                     'user_id' => $application->user_id ?? Auth::id(),
@@ -105,6 +130,11 @@ class HostApplicationController extends Controller
                     'notes' => $validated['notes'] ?? null,
                 ],
             );
+
+            $hostUser = $application->user ?? Auth::user();
+            if ($hostUser && $banking instanceof HostBankingDetail) {
+                $connectProvisioner->syncForUser($hostUser, $banking, $request->ip());
+            }
         }
 
         return $this->finalizeApplication(

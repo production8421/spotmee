@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Notifications\HostApplicationSubmitted;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
 class HostApplicationTest extends TestCase
@@ -21,7 +22,7 @@ class HostApplicationTest extends TestCase
         $response->assertOk();
         $response->assertSeeText(__('Become a Host'));
         $response->assertSeeText(__('How it works'));
-        $response->assertSeeText(__('Step 1 of 3'));
+        $response->assertSeeText(__('Step 1 of 4'));
     }
 
     public function test_create_form_redirects_without_accepting_terms(): void
@@ -39,7 +40,7 @@ class HostApplicationTest extends TestCase
         $this->get(route('host.apply.create'))
             ->assertOk()
             ->assertSeeText(__('Become a host'))
-            ->assertSeeText(__('Step 2 of 3'));
+            ->assertSeeText(__('Step 2 of 4'));
     }
 
     public function test_begin_requires_terms(): void
@@ -52,23 +53,14 @@ class HostApplicationTest extends TestCase
 
     public function test_guest_can_submit_host_application(): void
     {
-        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
+        $this->beginApplication();
 
-        $response = $this->post(route('host.apply.store'), [
-            'full_name' => 'Jamie Host',
-            'date_of_birth' => '1990-05-15',
-            'social_security_number' => '',
-            'phone' => '555-0100',
+        $response = $this->submitApplication([
             'email' => 'jamie@example.com',
-            'street_address' => '123 Main St',
-            'city' => 'Austin',
-            'state' => 'TX',
-            'postal_code' => '78701',
-            'description' => '',
         ]);
 
-        $response->assertRedirect(route('host.apply.submitted'));
-        $response->assertSessionHas('host_application_submitted', true);
+        $response->assertRedirect(route('host.apply.banking'));
+        $response->assertSessionHas('host_application_id');
 
         $this->assertDatabaseHas('host_applications', [
             'full_name' => 'Jamie Host',
@@ -81,20 +73,12 @@ class HostApplicationTest extends TestCase
 
     public function test_ssn_is_normalized_and_stored_encrypted(): void
     {
-        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
+        $this->beginApplication();
 
-        $this->post(route('host.apply.store'), [
-            'full_name' => 'Jamie Host',
-            'date_of_birth' => '1990-05-15',
-            'social_security_number' => '123-45-6789',
-            'phone' => '555-0100',
+        $this->submitApplication([
             'email' => 'jamie2@example.com',
-            'street_address' => '123 Main St',
-            'city' => 'Austin',
-            'state' => 'TX',
-            'postal_code' => '78701',
-            'description' => null,
-        ])->assertRedirect(route('host.apply.submitted'));
+            'social_security_number' => '123-45-6789',
+        ])->assertRedirect(route('host.apply.banking'));
 
         $this->assertSame('123456789', HostApplication::query()->first()->social_security_number);
     }
@@ -107,20 +91,9 @@ class HostApplicationTest extends TestCase
 
     public function test_submitted_page_shows_after_successful_application(): void
     {
-        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
-
-        $this->post(route('host.apply.store'), [
-            'full_name' => 'Jamie Host',
-            'date_of_birth' => '1990-05-15',
-            'social_security_number' => '',
-            'phone' => '555-0100',
-            'email' => 'jamie3@example.com',
-            'street_address' => '123 Main St',
-            'city' => 'Austin',
-            'state' => 'TX',
-            'postal_code' => '78701',
-            'description' => '',
-        ]);
+        $this->beginApplication();
+        $this->submitApplication(['email' => 'jamie3@example.com']);
+        $this->submitBanking();
 
         $this->get(route('host.apply.submitted'))
             ->assertOk()
@@ -130,19 +103,9 @@ class HostApplicationTest extends TestCase
 
     public function test_terms_session_cleared_after_successful_submit(): void
     {
-        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
-        $this->post(route('host.apply.store'), [
-            'full_name' => 'Jamie Host',
-            'date_of_birth' => '1990-05-15',
-            'social_security_number' => '',
-            'phone' => '555-0100',
-            'email' => 'jamie4@example.com',
-            'street_address' => '123 Main St',
-            'city' => 'Austin',
-            'state' => 'TX',
-            'postal_code' => '78701',
-            'description' => '',
-        ]);
+        $this->beginApplication();
+        $this->submitApplication(['email' => 'jamie4@example.com']);
+        $this->submitBanking();
 
         $this->get(route('host.apply.create'))
             ->assertRedirect(route('host.apply'));
@@ -154,19 +117,12 @@ class HostApplicationTest extends TestCase
         $admin = User::factory()->create(['email' => 'admin-notify-test@example.com']);
         $admin->assignRole(UserRole::Administrator->value);
 
-        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
-        $this->post(route('host.apply.store'), [
-            'full_name' => 'Jamie Host',
-            'date_of_birth' => '1990-05-15',
-            'social_security_number' => '',
-            'phone' => '555-0100',
+        $this->beginApplication();
+        $this->submitApplication([
             'email' => 'jamie-notify@example.com',
-            'street_address' => '123 Main St',
-            'city' => 'Austin',
-            'state' => 'TX',
-            'postal_code' => '78701',
             'description' => 'Test note',
-        ])->assertRedirect(route('host.apply.submitted'));
+        ]);
+        $this->submitBanking();
 
         $admin->refresh();
         $this->assertCount(1, $admin->notifications);
@@ -184,18 +140,18 @@ class HostApplicationTest extends TestCase
         $admin = User::factory()->create();
         $admin->assignRole(UserRole::Administrator->value);
 
-        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
-        $this->post(route('host.apply.store'), [
+        $this->beginApplication();
+        $this->submitApplication([
             'full_name' => 'Pat Host',
             'date_of_birth' => '1991-01-10',
-            'social_security_number' => '',
             'phone' => '555-0199',
             'email' => 'pat@example.com',
             'street_address' => '9 Oak Rd',
             'city' => 'Dallas',
-            'state' => 'TX',
             'postal_code' => '75201',
-            'description' => '',
+        ]);
+        $this->submitBanking([
+            'account_holder_name' => 'Pat Host',
         ]);
 
         $notificationId = $admin->fresh()->notifications->first()->id;
@@ -205,5 +161,45 @@ class HostApplicationTest extends TestCase
             ->assertRedirect();
 
         $this->assertNotNull($admin->notifications()->whereKey($notificationId)->value('read_at'));
+    }
+
+    private function beginApplication(): void
+    {
+        $this->post(route('host.apply.begin'), ['terms_accepted' => '1']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function submitApplication(array $overrides = []): TestResponse
+    {
+        return $this->post(route('host.apply.store'), array_merge([
+            'full_name' => 'Jamie Host',
+            'date_of_birth' => '1990-05-15',
+            'social_security_number' => '',
+            'phone' => '555-0100',
+            'email' => 'jamie@example.com',
+            'street_address' => '123 Main St',
+            'city' => 'Austin',
+            'state' => 'TX',
+            'postal_code' => '78701',
+            'description' => '',
+        ], $overrides));
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     */
+    private function submitBanking(array $overrides = []): TestResponse
+    {
+        return $this->post(route('host.apply.banking.store'), array_merge([
+            'account_holder_name' => 'Jamie Host',
+            'bank_name' => 'Test Bank',
+            'account_type' => 'checking',
+            'routing_number' => '021000021',
+            'account_number' => '123456789',
+            'account_number_confirmation' => '123456789',
+            'notes' => '',
+        ], $overrides));
     }
 }

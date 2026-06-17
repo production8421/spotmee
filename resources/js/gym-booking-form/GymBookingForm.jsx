@@ -648,26 +648,7 @@ const BookingFormContent = ({ localizedData }) => {
     });
   };
 
-  // Get availability display text for selected date
-  const getAvailabilityText = () => {
-    if (!bookingDate) return null;
-    const operatingHours = getOperatingHours(bookingDate);
-    if (!operatingHours) return null;
-
-    const formatTime = (timeStr) => {
-      const [hours, minutes] = timeStr.split(":");
-      const hour = parseInt(hours, 10);
-      const ampm = hour >= 12 ? "PM" : "AM";
-      const displayHour = hour % 12 || 12;
-      return `${displayHour}:${minutes} ${ampm}`;
-    };
-
-    const slotDuration = getSlotDuration();
-    const slotText = "1 hour";
-
-    return `Available: ${formatTime(operatingHours.startTime)} - ${formatTime(operatingHours.endTime)} • ${slotText} slots`;
-  };
-
+  // Get availability display text for selected date (moved below generateTimeSlots — see after slot generator).
   // Normalize time string to HH:mm for comparison (handles "4:37:00" or "04:37")
   const normalizeTimeStr = (t) => {
     if (!t) return "00:00";
@@ -837,6 +818,14 @@ const BookingFormContent = ({ localizedData }) => {
     calculateTotalPrice(firstStart, lastEnd, headcount, currentTrainerSelections, applyPtFreeTrial, sorted.length);
   };
 
+  /** Minutes from midnight for the visitor's current local time (used to hide past slots on today). */
+  const currentLocalMinutes = () => dayjs().hour() * 60 + dayjs().minute();
+
+  const isSelectedDateToday = (date) => !!date && date.isSame(dayjs(), "day");
+
+  const isSlotStartInPastForToday = (slotStartMinutes) =>
+    isSelectedDateToday(bookingDate) && slotStartMinutes < currentLocalMinutes();
+
   /** "9:00", "09:00:00", "9:00:00 AM" → minutes from midnight (WP / Laravel schedules use mixed formats). */
   const timeStrToMinutes = (t) => {
     const raw = String(t ?? "").trim();
@@ -889,9 +878,14 @@ const BookingFormContent = ({ localizedData }) => {
       return `${displayHour}:${mins.toString().padStart(2, '0')} ${ampm}`;
     };
 
-    // Generate slots
+    // Generate slots (skip times that already started when booking for today)
     let currentStart = startMinutes;
     while (currentStart + slotDuration <= endMinutes) {
+      if (isSlotStartInPastForToday(currentStart)) {
+        currentStart += slotDuration;
+        continue;
+      }
+
       const slotEnd = currentStart + slotDuration;
       const startTimeStr = `${Math.floor(currentStart / 60).toString().padStart(2, '0')}:${(currentStart % 60).toString().padStart(2, '0')}`;
       const endTimeStr = `${Math.floor(slotEnd / 60).toString().padStart(2, '0')}:${(slotEnd % 60).toString().padStart(2, '0')}`;
@@ -927,6 +921,51 @@ const BookingFormContent = ({ localizedData }) => {
     }
 
     return slots;
+  };
+
+  const formatScheduleTime12h = (timeStr) => {
+    const totalMinutes = timeStrToMinutes(timeStr);
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const ampm = hours >= 12 ? "PM" : "AM";
+    const displayHour = hours % 12 || 12;
+    return `${displayHour}:${mins.toString().padStart(2, "0")} ${ampm}`;
+  };
+
+  const getBookableSlots = () => generateTimeSlots().filter((slot) => !slot.disabled);
+
+  // Availability banner — for today, only mention slots that are still bookable.
+  const getAvailabilityText = () => {
+    if (!bookingDate) return null;
+    const operatingHours = getOperatingHours(bookingDate);
+    if (!operatingHours) return null;
+
+    const startLabel = formatScheduleTime12h(operatingHours.startTime);
+    const endLabel = formatScheduleTime12h(operatingHours.endTime);
+
+    if (!isSelectedDateToday(bookingDate)) {
+      return `Available: ${startLabel} - ${endLabel} • 1 hour slots`;
+    }
+
+    const bookableSlots = getBookableSlots();
+    if (bookableSlots.length === 0) {
+      const endMinutes = timeStrToMinutes(operatingHours.endTime);
+      if (currentLocalMinutes() >= endMinutes) {
+        return __("Today's gym hours have ended. Please select a future date.");
+      }
+
+      return __("No remaining slots for today — all scheduled times have passed. Please select a future date.");
+    }
+
+    const first = bookableSlots[0];
+    const last = bookableSlots[bookableSlots.length - 1];
+
+    return `Available today: ${formatScheduleTime12h(first.startTime)} - ${formatScheduleTime12h(last.endTime)} • 1 hour slots`;
+  };
+
+  const getAvailabilityAlertType = () => {
+    if (!bookingDate || !isSelectedDateToday(bookingDate)) return "success";
+    return getBookableSlots().length === 0 ? "warning" : "success";
   };
 
   // Handle slot selection (multiple slots)
@@ -1260,6 +1299,24 @@ const BookingFormContent = ({ localizedData }) => {
       setApplyingCoupon(false);
     }
   };
+
+  // Drop past slot selections if the user keeps the form open on today's date.
+  useEffect(() => {
+    if (!bookingDate || !isSelectedDateToday(bookingDate)) return;
+
+    const slots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
+    if (slots.length === 0) return;
+
+    const futureSlots = slots.filter((slotValue) => {
+      const startPart = String(slotValue).split("|")[0];
+      return !isSlotStartInPastForToday(timeStrToMinutes(startPart));
+    });
+
+    if (futureSlots.length !== slots.length) {
+      form.setFieldsValue({ timeSlot: futureSlots.length > 0 ? futureSlots : null });
+      setCalculatedPrice(null);
+    }
+  }, [bookingDate, watchedTimeSlots, form]);
 
   // When a promo code is entered, ask the server for the authoritative breakdown (coupon rules, caps, etc.).
   useEffect(() => {
@@ -1654,7 +1711,7 @@ const BookingFormContent = ({ localizedData }) => {
           {bookingDate && getAvailabilityText() && (
             <Alert
               message={getAvailabilityText()}
-              type="success"
+              type={getAvailabilityAlertType()}
               showIcon
               style={{ marginBottom: 16, marginTop: -8 }}
             />
@@ -1681,7 +1738,11 @@ const BookingFormContent = ({ localizedData }) => {
                   placeholder="Choose one or more time slots"
                   options={generateTimeSlots()}
                   onChange={handleSlotChange}
-                  notFoundContent="No available slots for this day"
+                  notFoundContent={
+                    isSelectedDateToday(bookingDate)
+                      ? __("No remaining slots for today. Please choose a future date.")
+                      : __("No available slots for this day")
+                  }
                 />
               </Form.Item>
             </>

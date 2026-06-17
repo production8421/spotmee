@@ -47,6 +47,13 @@
                       </svg><span>{{ __('My gym bookings') }}</span></a></li>
                   @endrole
                   @role('Host')
+                  <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('host.profile.edit') }}">
+                      <svg class="stroke-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-user"></use>
+                      </svg>
+                      <svg class="fill-icon">
+                        <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#fill-user"></use>
+                      </svg><span>{{ __('Host profile') }}</span></a></li>
                   <li class="sidebar-list"><i class="fa-solid fa-thumbtack"></i><a class="sidebar-link sidebar-title link-nav" href="{{ route('host.gym-listings.index') }}">
                       <svg class="stroke-icon">
                         <use href="{{ $cubaAsset('svg/icon-sprite.svg') }}#stroke-ecommerce"></use>

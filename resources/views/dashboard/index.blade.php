@@ -582,6 +582,34 @@
     @endisset
 
     @isset($hostStats)
+        @php
+            $hostUser = auth()->user();
+        @endphp
+        <div class="card mb-4">
+            <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                @if ($hostUser?->profilePhotoUrl())
+                    <img
+                        src="{{ $hostUser->profilePhotoUrl() }}"
+                        alt="{{ $hostUser->name }}"
+                        class="rounded-circle border object-fit-cover"
+                        width="72"
+                        height="72"
+                    >
+                @else
+                    <div
+                        class="rounded-circle border bg-light d-flex align-items-center justify-content-center text-muted fw-semibold"
+                        style="width: 72px; height: 72px;"
+                    >
+                        {{ $hostUser?->profileInitials() ?? '?' }}
+                    </div>
+                @endif
+                <div class="flex-grow-1">
+                    <h5 class="mb-1">{{ $hostUser?->name }}</h5>
+                    <p class="text-muted small mb-0">{{ __('Manage your host profile photo and display name.') }}</p>
+                </div>
+                <a class="btn btn-outline-primary btn-sm" href="{{ route('host.profile.edit') }}">{{ __('Edit profile') }}</a>
+            </div>
+        </div>
         <div class="row g-3 mb-4">
             <div class="col-sm-6 col-md-3">
                 <div class="card border-0 h-100">

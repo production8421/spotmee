@@ -15,6 +15,10 @@ use Stripe\Transfer;
 
 final class StripeHostPayoutService
 {
+    public function __construct(
+        private readonly StripeHostConnectProvisioner $connectProvisioner,
+    ) {}
+
     public function processDueBooking(GymBooking $booking): void
     {
         if (! Schema::hasColumn($booking->getTable(), 'host_payout_status')) {
@@ -46,14 +50,18 @@ final class StripeHostPayoutService
             return;
         }
 
-        $booking->loadMissing('gymListing.user');
+        $booking->loadMissing('gymListing.user.hostBankingDetail');
         $host = $booking->gymListing?->user;
-        $connectAccountId = trim((string) ($host?->stripe_connect_account_id ?? ''));
+        $connectAccountId = $this->connectProvisioner->ensureForHostUser($host);
 
-        if ($connectAccountId === '') {
+        if ($connectAccountId === null || $connectAccountId === '') {
+            $failureReason = $host?->hostBankingDetail
+                ? __('Host bank account could not be linked for automatic payout. Check banking details or contact support.')
+                : __('Host has not submitted banking details for payout.');
+
             $booking->forceFill([
                 'host_payout_status' => HostPayoutStatus::AwaitingConnect->value,
-                'host_payout_failure_reason' => __('Host Stripe Connect account is not configured.'),
+                'host_payout_failure_reason' => $failureReason,
             ])->save();
 
             return;
@@ -71,7 +79,8 @@ final class StripeHostPayoutService
 
         DB::transaction(function () use ($booking): void {
             $locked = GymBooking::query()->whereKey($booking->id)->lockForUpdate()->first();
-            if ($locked === null || $locked->host_payout_status !== HostPayoutStatus::Pending->value) {
+            $status = HostPayoutStatus::tryFrom((string) ($locked?->host_payout_status ?? ''));
+            if ($locked === null || ! in_array($status, [HostPayoutStatus::Pending, HostPayoutStatus::AwaitingConnect], true)) {
                 return;
             }
 

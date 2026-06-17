@@ -179,7 +179,7 @@
                                 <option value="pending" @selected(($filters['payout_status'] ?? '') === 'pending')>{{ __('Scheduled') }}</option>
                                 <option value="paid" @selected(($filters['payout_status'] ?? '') === 'paid')>{{ __('Paid to host') }}</option>
                                 <option value="skipped" @selected(($filters['payout_status'] ?? '') === 'skipped')>{{ __('Skipped') }}</option>
-                                <option value="awaiting_connect" @selected(($filters['payout_status'] ?? '') === 'awaiting_connect')>{{ __('Awaiting Stripe Connect') }}</option>
+                                <option value="awaiting_connect" @selected(($filters['payout_status'] ?? '') === 'awaiting_connect')>{{ __('Awaiting bank link') }}</option>
                                 <option value="failed" @selected(($filters['payout_status'] ?? '') === 'failed')>{{ __('Failed') }}</option>
                                 <option value="processing" @selected(($filters['payout_status'] ?? '') === 'processing')>{{ __('Processing') }}</option>
                             </select>

@@ -20,6 +20,7 @@ class PublicGymController extends Controller
     public function show(string $slug): View
     {
         $listing = GymListing::query()
+            ->with('user:id,name,profile_photo_path')
             ->where('is_published', true)
             ->where('slug', $slug)
             ->firstOrFail();

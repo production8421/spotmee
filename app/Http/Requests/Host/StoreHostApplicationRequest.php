@@ -56,6 +56,7 @@ class StoreHostApplicationRequest extends FormRequest
             'state' => ['required', 'string', 'max:120', 'regex:/^[^\x00-\x08\x0B\x0C\x0E-\x1F<>]*$/u'],
             'postal_code' => ['required', 'string', 'max:32', 'regex:/^[^\x00-\x08\x0B\x0C\x0E-\x1F<>]*$/u'],
             'description' => ['nullable', 'string', 'max:5000', 'regex:/^[^\x00-\x08\x0B\x0C\x0E-\x1F<>]*$/u'],
+            'profile_photo' => ['nullable', 'image', 'max:5120'],
         ];
     }
 }

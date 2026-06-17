@@ -19,7 +19,7 @@ enum HostPayoutStatus: string
             self::Processing => __('Processing'),
             self::Paid => __('Paid to host'),
             self::Failed => __('Failed'),
-            self::AwaitingConnect => __('Awaiting Stripe Connect'),
+            self::AwaitingConnect => __('Awaiting bank link'),
         };
     }
 }
