@@ -122,10 +122,10 @@
                         </div>
                     </div>
 
-                    @if (is_array($gymListing->gallery_paths) && count($gymListing->gallery_paths) > 0)
+                    @if (count($gymListing->existingGalleryPaths()) > 0)
                         <h6 class="fw-semibold border-bottom pb-2 mb-3">{{ __('Gallery') }}</h6>
                         <div class="row g-2 mb-4">
-                            @foreach ($gymListing->gallery_paths as $path)
+                            @foreach ($gymListing->existingGalleryPaths() as $path)
                                 <div class="col-6 col-md-3 col-lg-2">
                                     <img src="{{ \App\Models\GymListing::publicStorageUrl($path) }}" alt="" class="img-fluid rounded border w-100" style="height: 100px; object-fit: cover;">
                                 </div>

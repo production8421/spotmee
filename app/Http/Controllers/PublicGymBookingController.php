@@ -371,4 +371,5 @@ class PublicGymBookingController extends Controller
             return '';
         }
     }
+    
 }

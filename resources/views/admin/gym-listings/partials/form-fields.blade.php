@@ -442,9 +442,9 @@
 
 <div class="mb-4">
     <label class="form-label fw-semibold">{{ __('Gallery images') }}</label>
-    @if ($isEdit && is_array($gymListing->gallery_paths) && count($gymListing->gallery_paths) > 0)
+    @if ($isEdit && count($gymListing->existingGalleryPaths()) > 0)
         <div class="row g-2 mb-2">
-            @foreach ($gymListing->gallery_paths as $path)
+            @foreach ($gymListing->existingGalleryPaths() as $path)
                 @php
                     $gid = 'rmg_'.md5($path);
                 @endphp

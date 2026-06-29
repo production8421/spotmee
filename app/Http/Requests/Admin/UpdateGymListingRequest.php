@@ -61,7 +61,7 @@ class UpdateGymListingRequest extends FormRequest
                 return;
             }
 
-            $current = $listing->gallery_paths ?? [];
+            $current = $listing->existingGalleryPaths();
             $remove = $this->input('remove_gallery', []);
             if (! is_array($remove)) {
                 return;

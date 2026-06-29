@@ -190,9 +190,6 @@
                                 @endif
                             </div>
                         @endforeach
-                        @for ($i = $thumbCount; $i < 4; $i++)
-                            <div class="min-h-0 rounded-[16px] bg-[var(--color-brand-50)] sm:rounded-[20px]" aria-hidden="true"></div>
-                        @endfor
                     </div>
                 @endif
             </div>

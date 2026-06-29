@@ -128,6 +128,9 @@ class GymListingController extends Controller
 
     public function edit(GymListing $gymListing): View
     {
+        $gymListing->syncPrunedGalleryPaths();
+        $gymListing->syncMissingMainImagePath();
+
         return view('admin.gym-listings.edit', [
             'gymListing' => $gymListing,
             'gymRoutePrefix' => 'admin.gym-listings',
@@ -140,13 +143,13 @@ class GymListingController extends Controller
         $disk = Storage::disk('public');
 
         $remove = array_values(array_intersect(
-            $gymListing->gallery_paths ?? [],
+            $gymListing->existingGalleryPaths(),
             $validated['remove_gallery'] ?? []
         ));
         foreach ($remove as $path) {
             $disk->delete($path);
         }
-        $paths = array_values(array_diff($gymListing->gallery_paths ?? [], $remove));
+        $paths = array_values(array_diff($gymListing->existingGalleryPaths(), $remove));
         foreach ($request->file('gallery', []) ?? [] as $file) {
             $paths[] = $file->store("gym-listings/{$gymListing->id}/gallery", 'public');
         }

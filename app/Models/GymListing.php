@@ -273,7 +273,68 @@ class GymListing extends Model
 
     public function mainImageUrl(): ?string
     {
+        if (! $this->storagePathExists($this->main_image_path)) {
+            return null;
+        }
+
         return self::publicStorageUrl($this->main_image_path);
+    }
+
+    public function storagePathExists(?string $path): bool
+    {
+        return is_string($path) && $path !== '' && Storage::disk('public')->exists($path);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function existingGalleryPaths(): array
+    {
+        $paths = $this->gallery_paths ?? [];
+        if (! is_array($paths)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $paths,
+            fn (mixed $path): bool => is_string($path) && $this->storagePathExists($path)
+        ));
+    }
+
+    /**
+     * Remove gallery paths whose files are missing from storage.
+     */
+    public function syncPrunedGalleryPaths(): bool
+    {
+        $pruned = $this->existingGalleryPaths();
+        $current = array_values(is_array($this->gallery_paths) ? $this->gallery_paths : []);
+        if ($pruned === $current) {
+            return false;
+        }
+
+        $this->gallery_paths = $pruned;
+        $this->saveQuietly();
+
+        return true;
+    }
+
+    /**
+     * Clear main image path when the file no longer exists.
+     */
+    public function syncMissingMainImagePath(): bool
+    {
+        if ($this->main_image_path === null || $this->main_image_path === '') {
+            return false;
+        }
+
+        if ($this->storagePathExists($this->main_image_path)) {
+            return false;
+        }
+
+        $this->main_image_path = null;
+        $this->saveQuietly();
+
+        return true;
     }
 
     /**
@@ -281,11 +342,9 @@ class GymListing extends Model
      */
     public function galleryUrls(): array
     {
-        $paths = $this->gallery_paths ?? [];
-
         return array_values(array_filter(array_map(
-            fn (mixed $p) => is_string($p) ? self::publicStorageUrl($p) : null,
-            $paths
+            fn (string $path): ?string => self::publicStorageUrl($path),
+            $this->existingGalleryPaths()
         )));
     }
 

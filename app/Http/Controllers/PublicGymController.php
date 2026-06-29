@@ -25,6 +25,9 @@ class PublicGymController extends Controller
             ->where('slug', $slug)
             ->firstOrFail();
 
+        $listing->syncPrunedGalleryPaths();
+        $listing->syncMissingMainImagePath();
+
         $settings = ApplicationSetting::instance();
         $slotOffers = RyjGymSchedule::gymScheduleOfferSlotLengths(
             is_array($listing->availability_schedule) ? $listing->availability_schedule : null
