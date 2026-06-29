@@ -151,7 +151,7 @@
                         <div class="card-body py-3">
                             <div class="text-muted small text-uppercase">{{ __('Total host payout') }}</div>
                             <div class="fs-5 fw-semibold mb-0">{{ $chartCurrency }} {{ number_format((float) ($chartTotals['host_payout'] ?? 0), 2) }}</div>
-                            <div class="text-muted small mt-1">{{ __('Estimated from tier settings') }}</div>
+                            <div class="text-muted small mt-1">{{ __('Estimated from host rates & SPOTMEE profit %') }}</div>
                         </div>
                     </div>
                 </div>
@@ -563,6 +563,10 @@
                                 <span class="badge badge-light-primary rounded-pill">{{ $snap['legal_urls_filled'] }} / 6</span>
                             </li>
                             <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                <span class="text-muted">{{ __('SPOTMEE profit (host pricing)') }}</span>
+                                <span class="badge badge-light-primary">{{ number_format($snap['platform_commission_pct'], 2) }}%</span>
+                            </li>
+                            <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                                 <span class="text-muted">{{ __('Branding logos') }}</span>
                                 @if ($snap['branding_configured'])
                                     <span class="badge badge-light-success">{{ __('Custom') }}</span>
@@ -574,6 +578,7 @@
                         <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
                             <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.settings.edit') }}">{{ __('Branding settings') }}</a>
                             <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.gym-listings.settings.edit') }}">{{ __('Gym listing settings') }}</a>
+                            <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.payment-management.booking-details.index') }}">{{ __('Payment & profit') }}</a>
                         </div>
                     </div>
                 </div>
@@ -608,6 +613,15 @@
                     <p class="text-muted small mb-0">{{ __('Manage your host profile photo and display name.') }}</p>
                 </div>
                 <a class="btn btn-outline-primary btn-sm" href="{{ route('host.profile.edit') }}">{{ __('Edit profile') }}</a>
+            </div>
+        </div>
+        <div class="card mb-4 border-primary-subtle">
+            <div class="card-body">
+                <h5 class="mb-2">{{ __('Your pricing') }}</h5>
+                <p class="text-muted small mb-3">
+                    {{ __('You are free to charge what you want for each gym listing. SPOTMEE takes :pct% on top of your hourly rate — set your price when creating or editing a listing.', ['pct' => number_format($hostStats['platform_commission_pct'] ?? 20, 2)]) }}
+                </p>
+                <a class="btn btn-outline-primary btn-sm" href="{{ route('host.gym-listings.create') }}">{{ __('Add listing with your rate') }}</a>
             </div>
         </div>
         <div class="row g-3 mb-4">

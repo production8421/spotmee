@@ -161,4 +161,40 @@ class GymBooking extends Model
 
         return ! in_array($status, [HostPayoutStatus::Paid, HostPayoutStatus::Processing], true);
     }
+
+    /**
+     * Stripe PaymentIntent used for this checkout (primary row in a date-range batch stores it).
+     */
+    public function stripePaymentIntentIdForStripe(): ?string
+    {
+        if (filled($this->stripe_payment_intent_id)) {
+            return (string) $this->stripe_payment_intent_id;
+        }
+
+        if (! filled($this->guest_email) || ! $this->gym_listing_id || ! $this->user_id) {
+            return null;
+        }
+
+        $createdAt = $this->created_at;
+        if (! $createdAt instanceof \DateTimeInterface) {
+            return null;
+        }
+
+        $windowStart = Carbon::parse($createdAt)->subMinutes(2);
+        $windowEnd = Carbon::parse($createdAt)->addMinutes(2);
+
+        $siblingPi = static::query()
+            ->where('gym_listing_id', $this->gym_listing_id)
+            ->where('user_id', $this->user_id)
+            ->where('guest_email', $this->guest_email)
+            ->where('start_time', $this->start_time)
+            ->where('end_time', $this->end_time)
+            ->whereNotNull('stripe_payment_intent_id')
+            ->whereBetween('created_at', [$windowStart, $windowEnd])
+            ->whereKeyNot($this->id ?? 0)
+            ->orderBy('id')
+            ->value('stripe_payment_intent_id');
+
+        return filled($siblingPi) ? (string) $siblingPi : null;
+    }
 }

@@ -74,8 +74,9 @@ Route::get(
         $searchBy = trim((string) $request->query('searchby', ''));
         $city = trim((string) $request->query('city', ''));
         $selectedService = trim((string) $request->query('service', ''));
+        $selectedServiceType = trim((string) $request->query('service_type', ''));
 
-        if ($searchBy === '' && $city === '' && $selectedService === '') {
+        if ($searchBy === '' && $city === '' && $selectedService === '' && $selectedServiceType === '') {
             return view('web.find-a-gym.location-directory');
         }
 
@@ -86,6 +87,7 @@ Route::get(
                 'state' => '',
                 'stateLabel' => __('All States'),
                 'selectedService' => $selectedService,
+                'selectedServiceType' => $selectedServiceType,
                 'searchBy' => $searchBy,
                 'searchCity' => $city,
                 'listings' => new LengthAwarePaginator([], 0, 12, $page, [
@@ -95,36 +97,24 @@ Route::get(
             ]);
         }
 
-        $serviceAliases = [
-            'boxing' => ['boxing'],
-            'yoga' => ['yoga'],
-            'crossfit' => ['crossfit', 'fitness', 'fitness_class'],
-            'personal_training' => ['personal_training', 'personal-training'],
-            'cardio' => ['cardio'],
-            'group_classes' => ['group_classes', 'group_class'],
-        ];
-
         $redirectState = GymListingSearch::redirectStateCodeIfAbbrev($searchBy, $city);
         if ($redirectState !== null) {
             return redirect()->route('find-a-gym.state', array_filter([
                 'state' => $redirectState,
                 'service' => $selectedService !== '' ? $selectedService : null,
+                'service_type' => $selectedServiceType !== '' ? $selectedServiceType : null,
             ]));
         }
 
         $query = GymListing::query()->where('is_published', true);
-
-        GymListingSearch::applyLocationFilters($query, $searchBy, $city);
-
-        if ($selectedService !== '') {
-            $aliases = $serviceAliases[$selectedService] ?? [$selectedService];
-            $query->where(function ($sub) use ($aliases): void {
-                foreach ($aliases as $alias) {
-                    $sub->orWhereJsonContains('service_options', $alias)
-                        ->orWhere('service_options', 'like', '%"'.addcslashes($alias, '%_\\').'"%');
-                }
-            });
-        }
+        GymListingSearch::applyPublishedBrowseFilters(
+            $query,
+            '',
+            $searchBy,
+            $city,
+            $selectedService,
+            $selectedServiceType,
+        );
 
         $locationQuery = trim($searchBy) !== '' ? trim($searchBy) : trim($city);
 
@@ -133,6 +123,7 @@ Route::get(
             'stateLabel' => $locationQuery !== '' ? __('Search results') : __('All States'),
             'locationQuery' => $locationQuery,
             'selectedService' => $selectedService,
+            'selectedServiceType' => $selectedServiceType,
             'searchBy' => $searchBy,
             'searchCity' => $city,
             'listings' => $query
@@ -151,12 +142,14 @@ Route::get(
         $searchBy = trim((string) $request->query('searchby', ''));
         $city = trim((string) $request->query('city', ''));
         $selectedService = trim((string) $request->query('service', ''));
+        $selectedServiceType = trim((string) $request->query('service_type', ''));
 
         if ($searchBy !== '' || $city !== '') {
             return redirect()->route('find-a-gym', array_filter([
                 'searchby' => $searchBy !== '' ? $searchBy : null,
                 'city' => $searchBy === '' && $city !== '' ? $city : null,
                 'service' => $selectedService !== '' ? $selectedService : null,
+                'service_type' => $selectedServiceType !== '' ? $selectedServiceType : null,
             ]));
         }
 
@@ -166,6 +159,7 @@ Route::get(
             return view('web.find-a-gym.gym-list', [
                 'state' => $selectedState,
                 'selectedService' => $selectedService,
+                'selectedServiceType' => $selectedServiceType,
                 'searchBy' => $searchBy,
                 'searchCity' => $city,
                 'listings' => new LengthAwarePaginator([], 0, 12, $page, [
@@ -175,34 +169,22 @@ Route::get(
             ]);
         }
 
-        $serviceAliases = [
-            'boxing' => ['boxing'],
-            'yoga' => ['yoga'],
-            'crossfit' => ['crossfit', 'fitness', 'fitness_class'],
-            'personal_training' => ['personal_training', 'personal-training'],
-            'cardio' => ['cardio'],
-            'group_classes' => ['group_classes', 'group_class'],
-        ];
-
-        $query = GymListing::query()
-            ->where('is_published', true)
-            ->whereRaw('UPPER(state) = ?', [$selectedState]);
-
-        if ($selectedService !== '') {
-            $aliases = $serviceAliases[$selectedService] ?? [$selectedService];
-            $query->where(function ($sub) use ($aliases): void {
-                foreach ($aliases as $alias) {
-                    $sub->orWhereJsonContains('service_options', $alias)
-                        ->orWhere('service_options', 'like', '%"'.addcslashes($alias, '%_\\').'"%');
-                }
-            });
-        }
+        $query = GymListing::query()->where('is_published', true);
+        GymListingSearch::applyPublishedBrowseFilters(
+            $query,
+            $selectedState,
+            $searchBy,
+            $city,
+            $selectedService,
+            $selectedServiceType,
+        );
 
         return view('web.find-a-gym.gym-list', [
             'state' => $selectedState,
             'stateLabel' => config('gym_listing.states.'.$selectedState, $selectedState),
             'locationQuery' => '',
             'selectedService' => $selectedService,
+            'selectedServiceType' => $selectedServiceType,
             'searchBy' => $searchBy,
             'searchCity' => $city,
             'listings' => $query

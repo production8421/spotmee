@@ -3,6 +3,8 @@
 @section('content')
 
 @php
+    use App\Support\GymBrowseCatalog;
+
     $stateDirectory = [
         'AL' => 'Alabama', 'AK' => 'Alaska', 'AZ' => 'Arizona', 'AR' => 'Arkansas', 'CA' => 'California',
         'CO' => 'Colorado', 'CT' => 'Connecticut', 'DE' => 'Delaware', 'FL' => 'Florida', 'GA' => 'Georgia',
@@ -15,15 +17,8 @@
         'SD' => 'South Dakota', 'TN' => 'Tennessee', 'TX' => 'Texas', 'UT' => 'Utah', 'VT' => 'Vermont',
         'VA' => 'Virginia', 'WA' => 'Washington', 'WV' => 'West Virginia', 'WI' => 'Wisconsin', 'WY' => 'Wyoming',
     ];
-    $serviceDirectory = [
-        ['key' => 'boxing',            'label' => 'Boxing',            'icon_path' => asset('images/rent-your-jim/boxing.png')],
-        ['key' => 'yoga',              'label' => 'Yoga',              'icon_path' => asset('images/rent-your-jim/yoga.png')],
-        ['key' => 'crossfit',          'label' => 'CrossFit',          'icon_path' => asset('images/rent-your-jim/fitness.png')],
-        ['key' => 'personal_training', 'label' => 'Personal Training', 'icon_path' => asset('images/rent-your-jim/personal-training.png')],
-        ['key' => 'weightlifting',     'label' => 'Weightlifting',     'icon_path' => asset('images/rent-your-jim/weights_lifting.png')],
-        ['key' => 'cardio',            'label' => 'Cardio',            'icon_path' => asset('images/rent-your-jim/cardio.png')],
-        ['key' => 'group_classes',     'label' => 'Group Classes',     'icon_path' => asset('images/rent-your-jim/group_class.png')],
-    ];
+    $serviceTypeDirectory = GymBrowseCatalog::serviceTypes();
+    $activityDirectory = GymBrowseCatalog::browseActivities();
     $stateChunks = array_chunk($stateDirectory, 10, true);
 
     $sampleGyms = [
@@ -119,8 +114,8 @@
                 </div>
             </div>
 
-            {{-- Services --}}
-            <div>
+            {{-- Service types (how the space is offered) --}}
+            <div class="mb-12">
                 <div class="mb-6">
                     <h3 class="relative inline-block text-[22px] font-bold text-[var(--color-ink-900)] sm:text-[26px]">
                         {{ __('Browse by Service Type') }}
@@ -128,14 +123,48 @@
                     </h3>
                 </div>
 
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    @foreach ($serviceTypeDirectory as $serviceType)
+                        <a href="{{ route('find-a-gym', ['service_type' => $serviceType['key']]) }}"
+                           class="group flex h-full flex-col rounded-2xl border border-[var(--color-brand-100)] bg-white p-5 transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:shadow-[var(--shadow-sm)]">
+                            <span class="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-[var(--color-brand-50)] text-[var(--color-primary)] transition-colors group-hover:bg-white">
+                                <i class="fa-solid {{ $serviceType['icon'] }} text-[20px]"></i>
+                            </span>
+                            <span class="text-[18px] font-bold text-[var(--color-ink-900)] group-hover:text-[var(--color-primary)]">
+                                {{ __($serviceType['label']) }}
+                            </span>
+                            <p class="mt-2 text-[14px] leading-relaxed text-[var(--color-ink-500)]">
+                                {{ __($serviceType['description']) }}
+                                @if ($serviceType['example'] !== '')
+                                    <span class="text-[var(--color-ink-400)]">
+                                        ({{ __('example') }}: {{ __($serviceType['example']) }})
+                                    </span>
+                                @endif
+                            </p>
+                        </a>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Activities --}}
+            <div>
+                <div class="mb-6">
+                    <h3 class="relative inline-block text-[22px] font-bold text-[var(--color-ink-900)] sm:text-[26px]">
+                        {{ __('Browse by Activity') }}
+                        <span class="absolute -bottom-2 left-0 h-[3px] w-12 rounded-full bg-[var(--color-primary)]"></span>
+                    </h3>
+                </div>
+
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    @foreach ($serviceDirectory as $serviceItem)
+                    @foreach ($activityDirectory as $serviceItem)
                         <a href="{{ route('find-a-gym', ['service' => $serviceItem['key']]) }}"
                            class="group inline-flex items-center gap-3 rounded-xl border border-[var(--color-brand-100)] bg-white px-4 py-3 text-[15px] font-semibold text-[var(--color-ink-700)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)] hover:shadow-[var(--shadow-sm)]">
-                            <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-brand-50)] transition-colors group-hover:bg-white">
-                                <img src="{{ $serviceItem['icon_path'] }}" alt="{{ $serviceItem['label'] }}"
-                                     class="h-6 w-6 object-contain">
-                            </span>
+                            @if ($serviceItem['icon_path'] !== '')
+                                <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-[var(--color-brand-50)] transition-colors group-hover:bg-white">
+                                    <img src="{{ $serviceItem['icon_path'] }}" alt="{{ $serviceItem['label'] }}"
+                                         class="h-6 w-6 object-contain">
+                                </span>
+                            @endif
                             {{ $serviceItem['label'] }}
                         </a>
                     @endforeach

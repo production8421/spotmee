@@ -44,16 +44,10 @@ class GymBookingProfitMarginService
         }
 
         $settings = ApplicationSetting::instance();
-        $hostTier = $listing->hostTierKey();
-        $tier = match (strtolower($hostTier)) {
-            'gold' => 'gold',
-            'platinum' => 'platinum',
-            default => 'silver',
-        };
 
-        $gymCommissionPct = (float) ($settings->{"{$tier}_tier_admin_commission_1_hour_pct"} ?? 0);
-        $hostBasePerSlot = (float) ($settings->{"{$tier}_tier_price_1_hour"} ?? 0);
-        $customerRatePerSlot = (float) ($settings->publicGuestTierRates($tier)['rate_1hr'] ?? 0);
+        $gymCommissionPct = $listing->guestSessionCommissionPct();
+        $hostBasePerSlot = (float) ($listing->hostSessionBasePrice1hr() ?? 0);
+        $customerRatePerSlot = (float) ($listing->guestSessionRate1hr() ?? 0);
 
         $fullGymCustomer = round($slotCount * $customerRatePerSlot * $persons, 2);
         $couponAppliedSlots = (int) ($booking->coupon_applied_slots ?? 0);
@@ -113,7 +107,9 @@ class GymBookingProfitMarginService
             'pt_commission_pct' => $ptCommissionPct,
             'coupon_discount' => $couponDiscount,
             'slot_count' => $slotCount,
-            'host_tier' => ucfirst($tier),
+            'host_tier' => $listing->usesCustomHostPricing()
+                ? __('Host rate (:pct% SPOTMEE)', ['pct' => number_format($gymCommissionPct, 2)])
+                : '—',
             'currency' => $currency,
             'estimated' => $hostBasePerSlot <= 0 && $customerRatePerSlot <= 0,
         ];

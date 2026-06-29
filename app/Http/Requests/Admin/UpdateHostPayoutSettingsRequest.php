@@ -19,6 +19,7 @@ class UpdateHostPayoutSettingsRequest extends FormRequest
         return [
             'share_host_booking_earnings' => ['required', 'boolean'],
             'host_payout_delay_hours' => ['required', 'integer', 'min:1', 'max:168'],
+            'platform_commission_pct' => ['required', 'numeric', 'min:0', 'max:100'],
         ];
     }
 
@@ -27,6 +28,7 @@ class UpdateHostPayoutSettingsRequest extends FormRequest
         $this->merge([
             'share_host_booking_earnings' => $this->boolean('share_host_booking_earnings'),
             'host_payout_delay_hours' => (int) $this->input('host_payout_delay_hours', 12),
+            'platform_commission_pct' => round((float) $this->input('platform_commission_pct', 20), 2),
         ]);
     }
 }

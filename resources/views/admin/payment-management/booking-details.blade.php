@@ -73,6 +73,24 @@
                             @enderror
                         </div>
                         <div class="col-lg-2">
+                            <label class="form-label fw-semibold mb-1" for="platform_commission_pct">{{ __('SPOTMEE profit (%)') }}</label>
+                            <input
+                                class="form-control @error('platform_commission_pct') is-invalid @enderror"
+                                id="platform_commission_pct"
+                                type="number"
+                                name="platform_commission_pct"
+                                min="0"
+                                max="100"
+                                step="0.01"
+                                value="{{ old('platform_commission_pct', $platformCommissionPct ?? 20) }}"
+                                required
+                            >
+                            @error('platform_commission_pct')
+                                <div class="invalid-feedback d-block">{{ $message }}</div>
+                            @enderror
+                            <p class="text-muted small mb-0 mt-1">{{ __('Applied when hosts set their own hourly rate.') }}</p>
+                        </div>
+                        <div class="col-lg-2">
                             <button class="btn btn-primary w-100" type="submit">{{ __('Save payout settings') }}</button>
                         </div>
                     </form>
@@ -240,7 +258,7 @@
                                             <div class="fw-semibold">{{ $booking->gymListing?->name ?? '—' }}</div>
                                             <div class="text-muted small">{{ $booking->gymListing?->user?->name ?? '—' }}</div>
                                             @if ($profit)
-                                                <div class="text-muted small">{{ __('Tier') }}: {{ $profit['host_tier'] }}</div>
+                                                <div class="text-muted small">{{ __('Pricing') }}: {{ $profit['host_tier'] }}</div>
                                             @endif
                                         </td>
                                         <td class="small">

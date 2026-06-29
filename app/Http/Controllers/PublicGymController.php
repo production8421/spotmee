@@ -29,8 +29,7 @@ class PublicGymController extends Controller
         $slotOffers = RyjGymSchedule::gymScheduleOfferSlotLengths(
             is_array($listing->availability_schedule) ? $listing->availability_schedule : null
         );
-        $tier = $listing->hostTierKey();
-        $pricing = $settings->publicGuestTierRates($tier);
+        $pricing = $listing->publicGuestSessionPricing();
 
         $photos = [];
         if ($listing->mainImageUrl()) {
@@ -58,6 +57,8 @@ class PublicGymController extends Controller
             'personalTrainingAvailable' => (bool) $listing->personal_training_available,
             'personalTrainingAvailability' => is_array($listing->personal_training_availability) ? $listing->personal_training_availability : [],
             'rate1hr' => $pricing['rate_1hr'] ?? 0,
+            'hostBase1hr' => $pricing['host_base_1hr'] ?? 0,
+            'platformCommissionPct' => $pricing['commission_pct'] ?? $settings->platformCommissionPct(),
             'ptSlotPrice' => $ptSlotPrice,
             'ptTrainerLevels' => $ptLevels,
             'ptAddonEnabled' => (bool) $listing->personal_training_available && count($ptLevels) > 0,

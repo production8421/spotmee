@@ -45,7 +45,7 @@ class GymListingController extends Controller
             'gymListingsIndexHeading' => __('All gym listings'),
             'gymListingsShowHostFilter' => true,
             'gymListingsShowHostNameColumn' => true,
-            'gymListingsShowHostTierColumn' => true,
+            'gymListingsShowHostTierColumn' => false,
             'filterHosts' => $filterHosts,
             'filters' => $request->validated(),
         ]);

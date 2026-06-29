@@ -88,6 +88,53 @@ return [
         'weights_lifting' => 'Weights lifting',
     ],
 
+    /*
+    | How the host offers their space (find-a-gym “Browse by Service Type”).
+    */
+    'service_types' => [
+        'private' => [
+            'label' => 'Private',
+            'description' => 'When hosts offer exclusivity for one individual',
+            'example' => 'personal trainer',
+            'icon' => 'fa-user',
+        ],
+        'semi_private' => [
+            'label' => 'Semi-Private',
+            'description' => 'When hosts offer service to a specified number of people',
+            'example' => 'weights, kickboxing',
+            'icon' => 'fa-user-group',
+        ],
+        'open' => [
+            'label' => 'Open',
+            'description' => 'When hosts offer services on an open public platform',
+            'example' => 'yoga classes',
+            'icon' => 'fa-people-roof',
+        ],
+    ],
+
+  /*
+    | Activity shortcuts on find-a-gym browse / filter UI.
+    */
+    'browse_activities' => [
+        'boxing' => ['label' => 'Boxing', 'icon' => 'images/rent-your-jim/boxing.png'],
+        'yoga' => ['label' => 'Yoga', 'icon' => 'images/rent-your-jim/yoga.png'],
+        'crossfit' => ['label' => 'CrossFit', 'icon' => 'images/rent-your-jim/fitness.png'],
+        'personal_training' => ['label' => 'Personal Training', 'icon' => 'images/rent-your-jim/personal-training.png'],
+        'weightlifting' => ['label' => 'Weightlifting', 'icon' => 'images/rent-your-jim/weights_lifting.png'],
+        'cardio' => ['label' => 'Cardio', 'icon' => 'images/rent-your-jim/cardio.png'],
+        'group_classes' => ['label' => 'Group Classes', 'icon' => 'images/rent-your-jim/group_class.png'],
+    ],
+
+    'browse_activity_aliases' => [
+        'boxing' => ['boxing'],
+        'yoga' => ['yoga'],
+        'crossfit' => ['crossfit', 'fitness', 'fitness_class'],
+        'personal_training' => ['personal_training', 'personal-training'],
+        'weightlifting' => ['weights_lifting', 'kickboxing'],
+        'cardio' => ['cardio'],
+        'group_classes' => ['group_classes', 'group_class'],
+    ],
+
     'amenities' => [
         'bathroom' => 'Bathroom',
         'tv' => 'TV',

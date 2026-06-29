@@ -2,11 +2,14 @@
 @section('title', 'Gym Listings — SPOTMEE')
 @section('content')
     @php
+        use App\Support\GymBrowseCatalog;
+
         $isStateBrowsePage = request()->routeIs('find-a-gym.state');
         $selectedState     = $isStateBrowsePage
             ? strtoupper((string) ($state ?? request()->route('state', '')))
             : '';
         $selectedService = (string) ($selectedService ?? request('service', ''));
+        $selectedServiceType = (string) ($selectedServiceType ?? request('service_type', ''));
         $searchBy        = (string) ($searchBy ?? request('searchby', ''));
         $searchCity      = (string) ($searchCity ?? request('city', ''));
         $searchInputValue = trim($searchBy) !== '' ? trim($searchBy) : trim($searchCity);
@@ -17,15 +20,10 @@
         $totalGyms   = isset($listings) ? $listings->total() : 0;
         $countLabel  = trans_choice('{0} No gyms found|{1} 1 gym found|[2,*] :count gyms found', $totalGyms, ['count' => $totalGyms]);
 
-        $serviceFilters = [
-            ['key' => 'boxing',            'label' => 'Boxing',            'icon_path' => asset('images/rent-your-jim/boxing.png')],
-            ['key' => 'yoga',              'label' => 'Yoga',              'icon_path' => asset('images/rent-your-jim/yoga.png')],
-            ['key' => 'crossfit',          'label' => 'CrossFit',          'icon_path' => asset('images/rent-your-jim/fitness.png')],
-            ['key' => 'personal_training', 'label' => 'Personal Training', 'icon_path' => asset('images/rent-your-jim/personal-training.png')],
-            ['key' => 'cardio',            'label' => 'Cardio',            'icon_path' => asset('images/rent-your-jim/cardio.png')],
-            ['key' => 'group_classes',     'label' => 'Group Classes',     'icon_path' => asset('images/rent-your-jim/group_class.png')],
-        ];
-        $activeServiceLabel = collect($serviceFilters)->firstWhere('key', $selectedService)['label'] ?? '';
+        $serviceTypeFilters = GymBrowseCatalog::serviceTypes();
+        $activityFilters = GymBrowseCatalog::browseActivities();
+        $activeServiceLabel = collect($activityFilters)->firstWhere('key', $selectedService)['label'] ?? '';
+        $activeServiceTypeLabel = GymBrowseCatalog::serviceTypeLabel($selectedServiceType);
         $locationQuery = trim((string) ($locationQuery ?? ''));
         if ($locationQuery === '' && trim($searchBy) !== '') {
             $locationQuery = trim($searchBy);
@@ -83,6 +81,9 @@
                             @if ($selectedService !== '')
                                 <input type="hidden" name="service" value="{{ $selectedService }}">
                             @endif
+                            @if ($selectedServiceType !== '')
+                                <input type="hidden" name="service_type" value="{{ $selectedServiceType }}">
+                            @endif
                         </label>
                         <button type="submit" class="btn btn-primary justify-center sm:w-auto">
                             {{ __('Search') }}
@@ -99,45 +100,91 @@
         <section class="site-container pt-10 sm:pt-14">
             <div class="rounded-[22px] border border-[var(--color-brand-100)] bg-white p-4 shadow-[var(--shadow-sm)] sm:p-5"
                  data-aos="fade-up">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="mr-2 hidden items-center gap-2 px-1 text-[13px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-500)] sm:inline-flex">
-                        <i class="fa-solid fa-filter text-[11px] text-[var(--color-primary)]"></i>
-                        {{ __('Filter') }}
-                    </span>
+                @php
+                    $allGymsHref = $selectedState !== ''
+                        ? route('find-a-gym.state', ['state' => $selectedState])
+                        : route('find-a-gym', array_filter(['searchby' => $searchBy, 'city' => $searchCity]));
+                    $allActive = $selectedService === '' && $selectedServiceType === '';
+                @endphp
 
-                    @php
-                        $allGymsHref = $selectedState !== ''
-                            ? route('find-a-gym.state', ['state' => $selectedState])
-                            : route('find-a-gym', ['searchby' => $searchBy, 'city' => $searchCity]);
-                        $allActive = $selectedService === '';
-                    @endphp
-                    <a href="{{ $allGymsHref }}"
-                       @class([
-                            'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-all duration-200',
-                            'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[var(--shadow-sm)]' => $allActive,
-                            'border-[var(--color-brand-100)] bg-white text-[var(--color-ink-700)] hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)]' => ! $allActive,
-                       ])>
-                        <i class="fa-solid fa-layer-group text-[12px]"></i>
-                        {{ __('All Gyms') }}
-                    </a>
+                <div class="mb-4">
+                    <p class="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-500)]">
+                        {{ __('Service type') }}
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        @foreach ($serviceTypeFilters as $serviceType)
+                            @php
+                                $isActive = $selectedServiceType === $serviceType['key'];
+                                $typeHref = $selectedState !== ''
+                                    ? route('find-a-gym.state', array_filter([
+                                        'state' => $selectedState,
+                                        'service_type' => $serviceType['key'],
+                                        'service' => $selectedService !== '' ? $selectedService : null,
+                                    ]))
+                                    : route('find-a-gym', array_filter([
+                                        'service_type' => $serviceType['key'],
+                                        'service' => $selectedService !== '' ? $selectedService : null,
+                                        'searchby' => $searchBy !== '' ? $searchBy : null,
+                                        'city' => $searchCity !== '' ? $searchCity : null,
+                                    ]));
+                            @endphp
+                            <a href="{{ $typeHref }}"
+                               @class([
+                                    'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-all duration-200',
+                                    'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[var(--shadow-sm)]' => $isActive,
+                                    'border-[var(--color-brand-100)] bg-white text-[var(--color-ink-700)] hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)]' => ! $isActive,
+                               ])>
+                                <i class="fa-solid {{ $serviceType['icon'] }} text-[12px]"></i>
+                                {{ $serviceType['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
+                </div>
 
-                    @foreach ($serviceFilters as $service)
-                        @php
-                            $isActive = $selectedService === $service['key'];
-                            $serviceHref = $selectedState !== ''
-                                ? route('find-a-gym.state', ['state' => $selectedState, 'service' => $service['key']])
-                                : route('find-a-gym', ['service' => $service['key'], 'searchby' => $searchBy, 'city' => $searchCity]);
-                        @endphp
-                        <a href="{{ $serviceHref }}"
+                <div>
+                    <p class="mb-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[var(--color-ink-500)]">
+                        {{ __('Activity') }}
+                    </p>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <a href="{{ $allGymsHref }}"
                            @class([
                                 'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-all duration-200',
-                                'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[var(--shadow-sm)]' => $isActive,
-                                'border-[var(--color-brand-100)] bg-white text-[var(--color-ink-700)] hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)]' => ! $isActive,
+                                'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[var(--shadow-sm)]' => $allActive,
+                                'border-[var(--color-brand-100)] bg-white text-[var(--color-ink-700)] hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)]' => ! $allActive,
                            ])>
-                            <img src="{{ $service['icon_path'] }}" alt="" class="h-5 w-5 object-contain shrink-0">
-                            {{ $service['label'] }}
+                            <i class="fa-solid fa-layer-group text-[12px]"></i>
+                            {{ __('All Gyms') }}
                         </a>
-                    @endforeach
+
+                        @foreach ($activityFilters as $service)
+                            @php
+                                $isActive = $selectedService === $service['key'];
+                                $serviceHref = $selectedState !== ''
+                                    ? route('find-a-gym.state', array_filter([
+                                        'state' => $selectedState,
+                                        'service' => $service['key'],
+                                        'service_type' => $selectedServiceType !== '' ? $selectedServiceType : null,
+                                    ]))
+                                    : route('find-a-gym', array_filter([
+                                        'service' => $service['key'],
+                                        'service_type' => $selectedServiceType !== '' ? $selectedServiceType : null,
+                                        'searchby' => $searchBy !== '' ? $searchBy : null,
+                                        'city' => $searchCity !== '' ? $searchCity : null,
+                                    ]));
+                            @endphp
+                            <a href="{{ $serviceHref }}"
+                               @class([
+                                    'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-semibold transition-all duration-200',
+                                    'border-[var(--color-primary)] bg-[var(--color-primary)] text-white shadow-[var(--shadow-sm)]' => $isActive,
+                                    'border-[var(--color-brand-100)] bg-white text-[var(--color-ink-700)] hover:border-[var(--color-primary)] hover:bg-[var(--color-brand-50)] hover:text-[var(--color-primary)]' => ! $isActive,
+                               ])>
+                                @if ($service['icon_path'] !== '')
+                                    <img src="{{ $service['icon_path'] }}" alt="" class="h-5 w-5 object-contain shrink-0">
+                                @endif
+                                {{ $service['label'] }}
+                            </a>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </section>
@@ -166,8 +213,12 @@
                                 {{ __('Showing listings in') }}
                                 <span class="font-semibold text-[var(--color-ink-900)]">{{ $stateLabel }}</span>
                             @endif
+                            @if ($activeServiceTypeLabel !== '' && $selectedServiceType !== '')
+                                · {{ __('Type') }}:
+                                <span class="font-semibold text-[var(--color-primary)]">{{ $activeServiceTypeLabel }}</span>
+                            @endif
                             @if ($activeServiceLabel !== '')
-                                · {{ __('Service') }}:
+                                · {{ __('Activity') }}:
                                 <span class="font-semibold text-[var(--color-primary)]">{{ $activeServiceLabel }}</span>
                             @endif
                         </p>
@@ -175,7 +226,7 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    @if ($searchBy !== '' || $selectedService !== '' || $searchCity !== '')
+                    @if ($searchBy !== '' || $selectedService !== '' || $selectedServiceType !== '' || $searchCity !== '')
                         <a href="{{ $selectedState !== '' ? route('find-a-gym.state', ['state' => $selectedState]) : route('find-a-gym') }}"
                            class="inline-flex items-center gap-2 rounded-full border border-[var(--color-brand-100)] bg-white px-3 py-1.5 text-[12px] font-semibold text-[var(--color-ink-700)] transition-colors hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]">
                             <i class="fa-solid fa-xmark text-[11px]"></i>
@@ -211,9 +262,10 @@
                             $areaLabel     = config('gym_listing.area_sizes.'.((string) $listing->area_size), (string) $listing->area_size);
                             $facilityLabel = config('gym_listing.facility_types.'.((string) $listing->facility_type), (string) $listing->facility_type);
 
-                            $tierKey   = method_exists($listing, 'hostTierKey') ? $listing->hostTierKey() : 'silver';
-                            $tierRates = $settings?->publicGuestTierRates($tierKey) ?? [];
-                            $rate1hr   = $tierRates['rate_1hr'] ?? null;
+                            $listingPricing = method_exists($listing, 'publicGuestSessionPricing')
+                                ? $listing->publicGuestSessionPricing()
+                                : [];
+                            $rate1hr   = $listingPricing['rate_1hr'] ?? null;
 
                             $reviewsCount = (int) ($listing->reviews_count ?? 0);
                             $reviewsAvg   = $reviewsCount > 0 ? round((float) $listing->reviews_avg_rating, 1) : 0.0;

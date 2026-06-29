@@ -23,12 +23,6 @@ class UpdateGymListingSettingsRequest extends FormRequest
         ]);
 
         foreach ([
-            'silver_tier_price_1_hour',
-            'silver_tier_admin_commission_1_hour_pct',
-            'gold_tier_price_1_hour',
-            'gold_tier_admin_commission_1_hour_pct',
-            'platinum_tier_price_1_hour',
-            'platinum_tier_admin_commission_1_hour_pct',
             'pt_silver_price_per_slot',
             'pt_silver_admin_commission_pct',
             'pt_gold_price_per_slot',
@@ -64,12 +58,6 @@ class UpdateGymListingSettingsRequest extends FormRequest
             'stripe_test_secret_key' => ['nullable', 'string', 'max:255'],
             'stripe_live_publishable_key' => ['nullable', 'string', 'max:255'],
             'stripe_live_secret_key' => ['nullable', 'string', 'max:255'],
-            'silver_tier_price_1_hour' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'silver_tier_admin_commission_1_hour_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'gold_tier_price_1_hour' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'gold_tier_admin_commission_1_hour_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'platinum_tier_price_1_hour' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
-            'platinum_tier_admin_commission_1_hour_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pt_silver_price_per_slot' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],
             'pt_silver_admin_commission_pct' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'pt_gold_price_per_slot' => ['nullable', 'numeric', 'min:0', 'max:999999.99'],

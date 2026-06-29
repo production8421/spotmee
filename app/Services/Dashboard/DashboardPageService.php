@@ -190,6 +190,7 @@ final class DashboardPageService
                 $s->legal_host_registration_url,
             ])->filter()->count(),
             'branding_configured' => filled($s->header_logo_path) || filled($s->footer_logo_path),
+            'platform_commission_pct' => $s->platformCommissionPct(),
         ];
     }
 
@@ -204,6 +205,7 @@ final class DashboardPageService
                 'listings_published' => 0,
                 'listings_pending' => 0,
                 'listings_declined' => 0,
+                'platform_commission_pct' => ApplicationSetting::instance()->platformCommissionPct(),
             ];
         }
 
@@ -238,6 +240,7 @@ final class DashboardPageService
             'listings_published' => $published,
             'listings_pending' => $pending,
             'listings_declined' => $declined,
+            'platform_commission_pct' => ApplicationSetting::instance()->platformCommissionPct(),
         ];
     }
 }

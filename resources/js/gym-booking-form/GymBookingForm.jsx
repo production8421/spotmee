@@ -51,6 +51,8 @@ function buildLocalizedFromBootstrap(b) {
     pricing: {
       rate_1hr: Number(b.rate1hr) || 0,
       hourly_rate: Number(b.rate1hr) || 0,
+      host_base_1hr: Number(b.hostBase1hr) || 0,
+      platform_commission_pct: Number(b.platformCommissionPct) || 0,
     },
     personal_trainer_price: Number(b.ptSlotPrice) || 0,
     personal_trainer_commission: 0,
@@ -74,6 +76,10 @@ const BookingFormContent = ({ localizedData }) => {
   const [form] = Form.useForm();
   /** Single source of truth with DatePicker (avoids stale React state vs Form field). */
   const bookingDate = Form.useWatch("bookingDate", form);
+  const bookingDateRange = Form.useWatch("bookingDateRange", form);
+  /** Single date vs inclusive date range (same time slots each day). */
+  const [dateSelectionMode, setDateSelectionMode] = useState("single");
+  const MAX_BOOKING_RANGE_DAYS = 60;
   /** Re-render slot options when party size / selection changes (parent must subscribe; nested Form fields alone do not). */
   const watchedNumberOfPersons = Form.useWatch("numberOfPersons", form);
   const watchedTimeSlots = Form.useWatch("timeSlot", form);
@@ -104,9 +110,10 @@ const BookingFormContent = ({ localizedData }) => {
   const csrfToken = localizedData?.csrf || "";
   const gymTitle = localizedData?.gym_title || "Gym";
   const pricing = localizedData?.pricing || {
-    hourly_rate: 30,
-    rate_1hr: 30,
-    tier: "silver",
+    hourly_rate: 0,
+    rate_1hr: 0,
+    host_base_1hr: 0,
+    platform_commission_pct: 0,
   };
   const stripePublishableKey = localizedData?.stripe_publishable_key || "";
   const paymentIntentUrl = localizedData?.payment_intent_url || "";
@@ -285,6 +292,57 @@ const BookingFormContent = ({ localizedData }) => {
     return false;
   };
 
+  const enumerateDatesInclusive = (start, end) => {
+    if (!start || !end) {
+      return start ? [start] : [];
+    }
+    const dates = [];
+    let cursor = start.startOf("day");
+    const last = end.startOf("day");
+    while (cursor.isBefore(last) || cursor.isSame(last, "day")) {
+      dates.push(cursor);
+      if (dates.length >= MAX_BOOKING_RANGE_DAYS) {
+        break;
+      }
+      cursor = cursor.add(1, "day");
+    }
+    return dates;
+  };
+
+  const getSelectedBookingDates = () => {
+    if (dateSelectionMode === "range") {
+      if (Array.isArray(bookingDateRange) && bookingDateRange[0] && bookingDateRange[1]) {
+        return enumerateDatesInclusive(bookingDateRange[0], bookingDateRange[1]);
+      }
+      return [];
+    }
+    return bookingDate ? [bookingDate] : [];
+  };
+
+  const getDayCount = () => Math.max(1, getSelectedBookingDates().length);
+
+  /** First day used for slot generation and PT schedule lookup (range start or single date). */
+  const getPrimarySchedulingDate = () => {
+    if (dateSelectionMode === "range") {
+      if (Array.isArray(bookingDateRange) && bookingDateRange[0]) {
+        return bookingDateRange[0];
+      }
+      return null;
+    }
+    return bookingDate || null;
+  };
+
+  const hasCompleteDateSelection = () => {
+    if (dateSelectionMode === "range") {
+      return (
+        Array.isArray(bookingDateRange) &&
+        bookingDateRange[0] &&
+        bookingDateRange[1]
+      );
+    }
+    return !!bookingDate;
+  };
+
   // Get operating hours for selected date
   const getOperatingHours = (date) => {
     if (!date) return null;
@@ -305,9 +363,9 @@ const BookingFormContent = ({ localizedData }) => {
   const getSlotDuration = () => 60;
 
   /** Gym offers 60-minute slots — required before PT add-on (same rule as `RyjGymSchedule::gymAvailabilityAllowsOneHourPt`). */
-  const gymAllowsOneHourPt = () => {
-    if (!bookingDate) return false;
-    const row = getOperatingHours(bookingDate);
+  const gymDateAllowsOneHourPt = (date) => {
+    if (!date) return false;
+    const row = getOperatingHours(date);
     if (!row) return false;
     const closed =
       row.isClosed === true ||
@@ -319,6 +377,12 @@ const BookingFormContent = ({ localizedData }) => {
     const durs = row.slotDuration;
     const arr = Array.isArray(durs) ? durs.map(String) : durs != null && durs !== "" ? [String(durs)] : [];
     return arr.includes("60");
+  };
+
+  const gymAllowsOneHourPt = () => {
+    const dates = getSelectedBookingDates();
+    if (dates.length === 0) return false;
+    return dates.every((date) => gymDateAllowsOneHourPt(date));
   };
 
   /**
@@ -339,7 +403,16 @@ const BookingFormContent = ({ localizedData }) => {
     return fromSchedule;
   };
 
-  const getPersonLimit = () => getPersonLimitForDate(bookingDate);
+  const getPersonLimit = () => {
+    const dates = getSelectedBookingDates();
+    if (dates.length === 0) {
+      return getPersonLimitForDate(getPrimarySchedulingDate());
+    }
+    return dates.reduce(
+      (min, date) => Math.min(min, getPersonLimitForDate(date)),
+      getPersonLimitForDate(dates[0])
+    );
+  };
 
   // Get disabled hours for time picker based on gym availability
   const getDisabledHours = (isEndTime = false) => {
@@ -565,7 +638,9 @@ const BookingFormContent = ({ localizedData }) => {
     // Add personal trainer fee based on number of selected trainer slots
     const trainerSlotCount = getTrainerSlotCount(trainerSelections);
     const trainerFee = computeTrainerFeeTotal(trainerSelections, applyPtFreeTrial && trainerSlotCount > 0);
-    const totalPrice = basePrice + trainerFee;
+    const dayCount = getDayCount();
+    const dailyTotal = basePrice + trainerFee;
+    const totalPrice = dailyTotal * dayCount;
     const ptLevelLabels = [];
     getTrainerSlotsEnabled().forEach((slot) => {
       getSlotLevelKeys(slot).forEach((key) => {
@@ -590,6 +665,8 @@ const BookingFormContent = ({ localizedData }) => {
       ptLevelLabels,
       includesTrainer: trainerSlotCount > 0,
       ptFreeTrial: applyPtFreeTrial && trainerSlotCount > 0,
+      dayCount,
+      dailyTotal: dailyTotal.toFixed(2),
       total: totalPrice.toFixed(2),
       currentRate: pricePerSlot.toFixed(2),
       rateType: '1 hour',
@@ -617,9 +694,9 @@ const BookingFormContent = ({ localizedData }) => {
     const applyPtFreeTrial = ptAddOnType === "free_trial" && !!ptFreeTrialSlot && trialStillIn;
     const headcount = Math.max(1, parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1);
     calculateTotalPrice(firstStart, lastEnd, headcount, trainerPerSlot, applyPtFreeTrial, sortedSlots.length);
-  }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, ptLevelsPerSlot, watchedTimeSlots, watchedNumberOfPersons]);
+  }, [trainerPerSlot, ptAddOnType, ptFreeTrialSlot, ptLevelsPerSlot, watchedTimeSlots, watchedNumberOfPersons, dateSelectionMode, bookingDate, bookingDateRange]);
 
-  // Handle date change
+  // Handle date change (single date or start of range)
   const handleDateChange = (date) => {
     setCalculatedPrice(null);
     setTrainerPerSlot({});
@@ -645,6 +722,55 @@ const BookingFormContent = ({ localizedData }) => {
     form.setFieldsValue({
       timeSlot: null,
       numberOfPersons: Math.min(Math.max(1, currentPersons), limit),
+    });
+  };
+
+  const handleDateRangeChange = (range) => {
+    setCalculatedPrice(null);
+    setTrainerPerSlot({});
+    setPtAddOnType("paid");
+    setPtFreeTrialSlot(null);
+    setSelectedPtLevels([]);
+
+    if (Array.isArray(range) && range[0] && range[1]) {
+      const days = enumerateDatesInclusive(range[0], range[1]);
+      if (days.length > MAX_BOOKING_RANGE_DAYS) {
+        message.warning(
+          __(`You may book at most ${MAX_BOOKING_RANGE_DAYS} days at once.`, "rent-your-jim")
+        );
+        form.setFieldsValue({ bookingDateRange: null, bookingDate: null, timeSlot: null });
+        setSelectedDurationType(null);
+        return;
+      }
+      const closedDay = days.find((d) => !isDayAvailable(d));
+      if (closedDay) {
+        message.warning(
+          __("One or more days in that range are not available. Choose a range of open days only.", "rent-your-jim")
+        );
+        form.setFieldsValue({ bookingDateRange: null, bookingDate: null, timeSlot: null });
+        setSelectedDurationType(null);
+        return;
+      }
+      form.setFieldsValue({ bookingDate: range[0] });
+      handleDateChange(range[0]);
+    } else {
+      form.setFieldsValue({ bookingDate: null, timeSlot: null });
+      handleDateChange(null);
+    }
+  };
+
+  const handleDateSelectionModeChange = (mode) => {
+    setDateSelectionMode(mode);
+    setCalculatedPrice(null);
+    setTrainerPerSlot({});
+    setPtAddOnType("paid");
+    setPtFreeTrialSlot(null);
+    setSelectedPtLevels([]);
+    setSelectedDurationType(null);
+    form.setFieldsValue({
+      bookingDate: null,
+      bookingDateRange: null,
+      timeSlot: null,
     });
   };
 
@@ -678,10 +804,10 @@ const BookingFormContent = ({ localizedData }) => {
     return [normalizeTimeStr(first[0].trim()), normalizeTimeStr(last[1].trim())];
   };
 
-  // Sum persons already booked overlapping [start, end] on selected date (same idea as Laravel `sumPersonsOverlapping`)
-  const getAlreadyBookedForSlot = (slotStartStr, slotEndStr) => {
-    if (!bookingDate || !blockedTimes || !Array.isArray(blockedTimes)) return 0;
-    const dateStr = bookingDate.format("YYYY-MM-DD");
+  // Sum persons already booked overlapping [start, end] on a given date.
+  const getAlreadyBookedForSlotOnDate = (date, slotStartStr, slotEndStr) => {
+    if (!date || !blockedTimes || !Array.isArray(blockedTimes)) return 0;
+    const dateStr = date.format("YYYY-MM-DD");
     let sum = 0;
     blockedTimes.forEach((b) => {
       if (b.date !== dateStr) return;
@@ -689,6 +815,22 @@ const BookingFormContent = ({ localizedData }) => {
       sum += b.number_of_persons != null ? parseInt(b.number_of_persons, 10) : 1;
     });
     return sum;
+  };
+
+  const getMinimumSpotsLeftForSlot = (slotStartStr, slotEndStr) => {
+    const dates = getSelectedBookingDates();
+    if (dates.length === 0) return 0;
+    const numberOfPersons = Math.max(
+      1,
+      parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1
+    );
+    let minLeft = Infinity;
+    dates.forEach((d) => {
+      const limit = getPersonLimitForDate(d);
+      const booked = getAlreadyBookedForSlotOnDate(d, slotStartStr, slotEndStr);
+      minLeft = Math.min(minLeft, Math.max(0, limit - booked));
+    });
+    return minLeft === Infinity ? 0 : minLeft;
   };
 
   // Normalize slot value "H:mm|H:mm" or "HH:mm|HH:mm" to "HH:mm|HH:mm" for comparison
@@ -727,11 +869,11 @@ const BookingFormContent = ({ localizedData }) => {
     return g.start >= p.start && g.end <= p.end;
   };
 
-  const slotHasPersonalTrainingAvailable = (slotValue) => {
-    if (!personalTrainerAvailable || !bookingDate || !slotValue) return false;
-    if (!gymAllowsOneHourPt()) return false;
+  const slotHasPtOnDate = (date, slotValue) => {
+    if (!personalTrainerAvailable || !date || !slotValue) return false;
+    if (!gymDateAllowsOneHourPt(date)) return false;
     const dayNames = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-    const dayName = dayNames[bookingDate.day()];
+    const dayName = dayNames[date.day()];
     const ptRow = personalTrainerSchedule?.[dayName];
     if (!ptRow) return false;
     const ptDayClosed =
@@ -745,6 +887,13 @@ const BookingFormContent = ({ localizedData }) => {
       if (guestSlotContainedInPtHourSlot(guestNorm, s)) return true;
     }
     return false;
+  };
+
+  const slotHasPersonalTrainingAvailable = (slotValue) => {
+    if (!personalTrainerAvailable || !slotValue) return false;
+    const dates = getSelectedBookingDates();
+    if (dates.length === 0) return false;
+    return dates.every((date) => slotHasPtOnDate(date, slotValue));
   };
 
   const isSlotPtAvailable = (slotValue) => slotHasPersonalTrainingAvailable(slotValue);
@@ -783,8 +932,7 @@ const BookingFormContent = ({ localizedData }) => {
       if (p.length < 2) continue;
       const rs = normalizeTimeStr(p[0].trim());
       const re = normalizeTimeStr(p[1].trim());
-      const already = getAlreadyBookedForSlot(rs, re);
-      const spotsLeft = Math.max(0, limit - already);
+      const spotsLeft = getMinimumSpotsLeftForSlot(rs, re);
       minSpotsLeft = Math.min(minSpotsLeft, spotsLeft);
     }
     if (!Number.isFinite(minSpotsLeft)) {
@@ -849,8 +997,10 @@ const BookingFormContent = ({ localizedData }) => {
 
   // Generate available time slots for dropdown (port of WP rent-your-jim `generateTimeSlots` + Laravel capacity)
   const generateTimeSlots = () => {
-    if (!bookingDate) return [];
-    const operatingHours = getOperatingHours(bookingDate);
+    if (!hasCompleteDateSelection()) return [];
+    const slotReferenceDate = getPrimarySchedulingDate();
+    if (!slotReferenceDate) return [];
+    const operatingHours = getOperatingHours(slotReferenceDate);
     if (!operatingHours || !operatingHours.startTime || !operatingHours.endTime) return [];
     if (operatingHours.isClosed === true || operatingHours.isClosed === "true" || operatingHours.isClosed === 1) {
       return [];
@@ -858,7 +1008,7 @@ const BookingFormContent = ({ localizedData }) => {
 
     const slotDuration = getSlotDuration();
     const slots = [];
-    const personLimit = getPersonLimit();
+    const personLimit = getPersonLimitForDate(slotReferenceDate);
     const numberOfPersons = Math.max(
       1,
       parseInt(String(watchedNumberOfPersons ?? 1), 10) || 1
@@ -881,7 +1031,7 @@ const BookingFormContent = ({ localizedData }) => {
     // Generate slots (skip times that already started when booking for today)
     let currentStart = startMinutes;
     while (currentStart + slotDuration <= endMinutes) {
-      if (isSlotStartInPastForToday(currentStart)) {
+      if (isSelectedDateToday(slotReferenceDate) && isSlotStartInPastForToday(currentStart)) {
         currentStart += slotDuration;
         continue;
       }
@@ -894,8 +1044,8 @@ const BookingFormContent = ({ localizedData }) => {
       // Per-slot capacity (Laravel checks each interval); gaps in a multi-slot pick stay bookable for others.
       const rangeStart = normalizeTimeStr(startTimeStr);
       const rangeEnd = normalizeTimeStr(endTimeStr);
-      const alreadyBooked = getAlreadyBookedForSlot(rangeStart, rangeEnd);
-      const spotsLeft = Math.max(0, personLimit - alreadyBooked);
+      const alreadyBooked = getMinimumSpotsLeftForSlot(rangeStart, rangeEnd);
+      const spotsLeft = alreadyBooked;
       const isFullyBooked = spotsLeft < numberOfPersons;
       const isAlreadySelected = selectedSet.has(slotValue);
       // Do not disable already-selected options: Ant Design Select can drop disabled
@@ -936,14 +1086,19 @@ const BookingFormContent = ({ localizedData }) => {
 
   // Availability banner — for today, only mention slots that are still bookable.
   const getAvailabilityText = () => {
-    if (!bookingDate) return null;
-    const operatingHours = getOperatingHours(bookingDate);
+    const scheduleDate = getPrimarySchedulingDate();
+    if (!scheduleDate) return null;
+    const operatingHours = getOperatingHours(scheduleDate);
     if (!operatingHours) return null;
 
     const startLabel = formatScheduleTime12h(operatingHours.startTime);
     const endLabel = formatScheduleTime12h(operatingHours.endTime);
 
-    if (!isSelectedDateToday(bookingDate)) {
+    if (dateSelectionMode === "range" && getDayCount() > 1) {
+      return null;
+    }
+
+    if (!isSelectedDateToday(scheduleDate)) {
       return `Available: ${startLabel} - ${endLabel} • 1 hour slots`;
     }
 
@@ -964,7 +1119,8 @@ const BookingFormContent = ({ localizedData }) => {
   };
 
   const getAvailabilityAlertType = () => {
-    if (!bookingDate || !isSelectedDateToday(bookingDate)) return "success";
+    const scheduleDate = getPrimarySchedulingDate();
+    if (!scheduleDate || !isSelectedDateToday(scheduleDate)) return "success";
     return getBookableSlots().length === 0 ? "warning" : "success";
   };
 
@@ -1097,12 +1253,27 @@ const BookingFormContent = ({ localizedData }) => {
     const guest_email =
       guestEmailRaw ||
       (isSubscriber && subscriberAccountEmail ? subscriberAccountEmail : "");
+    const startDate =
+      dateSelectionMode === "range" &&
+      Array.isArray(values.bookingDateRange) &&
+      values.bookingDateRange[0]
+        ? values.bookingDateRange[0]
+        : values.bookingDate;
+    if (!startDate) {
+      throw new Error("Missing booking date");
+    }
     const payload = {
       guest_name: values.guestName || "",
       guest_email,
       guest_phone: values.guestPhone || "",
       notes: values.notes || "",
-      booking_date: values.bookingDate.format("YYYY-MM-DD"),
+      booking_date: startDate.format("YYYY-MM-DD"),
+      booking_end_date:
+        dateSelectionMode === "range" &&
+        Array.isArray(values.bookingDateRange) &&
+        values.bookingDateRange[1]
+          ? values.bookingDateRange[1].format("YYYY-MM-DD")
+          : null,
       slot_duration_minutes: slotDur,
       time_slots: normalizedSlots,
       number_of_persons: values.numberOfPersons ?? 1,
@@ -1192,6 +1363,7 @@ const BookingFormContent = ({ localizedData }) => {
         parseInt(String(data.coupon_applied_slots ?? 0), 10) || 0
       ),
       subtotalBeforeCoupon: Number(data.subtotal_before_coupon).toFixed(2),
+      dayCount: Math.max(1, parseInt(String(data.day_count ?? 1), 10) || 1),
     }));
   };
 
@@ -1228,7 +1400,7 @@ const BookingFormContent = ({ localizedData }) => {
   async function performQuoteRequest() {
     if (!quoteUrl) return "error";
     const values = form.getFieldsValue(true);
-    if (!values.bookingDate || !Array.isArray(values.timeSlot) || values.timeSlot.length === 0) {
+    if (!values.bookingDate && !(Array.isArray(values.bookingDateRange) && values.bookingDateRange[0])) {
       return "noop";
     }
     const couponTrim = String(values.couponCode ?? "").trim();
@@ -1278,7 +1450,7 @@ const BookingFormContent = ({ localizedData }) => {
       message.warning(__("Promo codes are not available for this listing.", "rent-your-jim"));
       return;
     }
-    if (!values.bookingDate || !Array.isArray(values.timeSlot) || values.timeSlot.length === 0) {
+    if (!hasCompleteDateSelection() || !Array.isArray(values.timeSlot) || values.timeSlot.length === 0) {
       message.warning(__("Select date and time slots first.", "rent-your-jim"));
       return;
     }
@@ -1328,7 +1500,7 @@ const BookingFormContent = ({ localizedData }) => {
     if (!couponTrim) return;
 
     const timeSlots = Array.isArray(watchedTimeSlots) ? watchedTimeSlots : [];
-    if (!bookingDate || timeSlots.length === 0) return;
+    if (!hasCompleteDateSelection() || timeSlots.length === 0) return;
 
     const delayMs = 450;
     const timer = setTimeout(() => {
@@ -1386,7 +1558,7 @@ const BookingFormContent = ({ localizedData }) => {
     if (currentStep === 0) {
       setStep0Error(null);
       // Validate booking details first
-      if (!values.bookingDate || !values.timeSlot || values.timeSlot.length === 0) {
+      if (!hasCompleteDateSelection() || !values.timeSlot || values.timeSlot.length === 0) {
         setStep0Error(__("Please select date and at least one time slot", "rent-your-jim"));
         return;
       }
@@ -1691,24 +1863,62 @@ const BookingFormContent = ({ localizedData }) => {
             guestEmail: isSubscriber && subscriberAccountEmail ? subscriberAccountEmail : undefined,
           }}
         >
-          {/* Date Selection */}
-          <Form.Item
-            label="Select Date"
-            name="bookingDate"
-            rules={[{ required: true, message: "Please select a date" }]}
-          >
-            <DatePicker
-              style={{ width: "100%" }}
-              format="MMMM D, YYYY"
-              disabledDate={disabledDate}
-              placeholder="Choose a date"
-              size="large"
-              onChange={handleDateChange}
-            />
+          {/* Date selection mode */}
+          <Form.Item label={__("Booking dates", "rent-your-jim")}>
+            <Radio.Group
+              value={dateSelectionMode}
+              onChange={(e) => handleDateSelectionModeChange(e.target.value)}
+            >
+              <Radio value="single">{__("Single date", "rent-your-jim")}</Radio>
+              <Radio value="range">{__("Date range", "rent-your-jim")}</Radio>
+            </Radio.Group>
           </Form.Item>
 
+          {dateSelectionMode === "single" ? (
+            <Form.Item
+              label={__("Select Date", "rent-your-jim")}
+              name="bookingDate"
+              rules={[{ required: true, message: __("Please select a date", "rent-your-jim") }]}
+            >
+              <DatePicker
+                style={{ width: "100%" }}
+                format="MMMM D, YYYY"
+                disabledDate={disabledDate}
+                placeholder={__("Choose a date", "rent-your-jim")}
+                size="large"
+                onChange={handleDateChange}
+              />
+            </Form.Item>
+          ) : (
+            <>
+              <Form.Item
+                label={__("Select date range", "rent-your-jim")}
+                name="bookingDateRange"
+                rules={[
+                  {
+                    required: true,
+                    message: __("Please select a start and end date", "rent-your-jim"),
+                  },
+                ]}
+                extra={__(
+                  "The same time slots will be booked on each day in the range (up to 60 days).",
+                  "rent-your-jim"
+                )}
+              >
+                <DatePicker.RangePicker
+                  style={{ width: "100%" }}
+                  format="MMMM D, YYYY"
+                  disabledDate={disabledDate}
+                  placeholder={[__("Start date", "rent-your-jim"), __("End date", "rent-your-jim")]}
+                  size="large"
+                  onChange={handleDateRangeChange}
+                />
+              </Form.Item>
+            </>
+          )}
+
           {/* Availability Info */}
-          {bookingDate && getAvailabilityText() && (
+          {hasCompleteDateSelection() && getAvailabilityText() && (
             <Alert
               message={getAvailabilityText()}
               type={getAvailabilityAlertType()}
@@ -1718,20 +1928,27 @@ const BookingFormContent = ({ localizedData }) => {
           )}
 
           {/* Time Slot Selection */}
-          {bookingDate && (
+          {hasCompleteDateSelection() && (
             <>
               <Form.Item
-                label={<><ClockCircleOutlined /> Select Time Slots</>}
+                label={<><ClockCircleOutlined /> {__("Select Time Slots", "rent-your-jim")}</>}
                 name="timeSlot"
-                rules={[{ required: true, message: "Please select at least one time slot" }]}
+                rules={[{ required: true, message: __("Please select at least one time slot", "rent-your-jim") }]}
                 validateTrigger={["onChange", "onSubmit"]}
-                extra={__(
-                  "You can choose multiple slots on the same day; they do not need to be back-to-back.",
-                  "rent-your-jim"
-                )}
+                extra={
+                  dateSelectionMode === "range"
+                    ? __(
+                        "Same slots apply to every day in your range. They do not need to be back-to-back.",
+                        "rent-your-jim"
+                      )
+                    : __(
+                        "You can choose multiple slots on the same day; they do not need to be back-to-back.",
+                        "rent-your-jim"
+                      )
+                }
               >
                 <Select
-                  key={`slots-${bookingDate ? bookingDate.format("YYYY-MM-DD") : "none"}-${selectedDurationType ?? "x"}`}
+                  key={`slots-${dateSelectionMode}-${bookingDate ? bookingDate.format("YYYY-MM-DD") : "none"}-${Array.isArray(bookingDateRange) && bookingDateRange[1] ? bookingDateRange[1].format("YYYY-MM-DD") : "x"}-${selectedDurationType ?? "x"}`}
                   mode="multiple"
                   style={{ width: "100%" }}
                   size="large"
@@ -1739,17 +1956,29 @@ const BookingFormContent = ({ localizedData }) => {
                   options={generateTimeSlots()}
                   onChange={handleSlotChange}
                   notFoundContent={
-                    isSelectedDateToday(bookingDate)
-                      ? __("No remaining slots for today. Please choose a future date.")
-                      : __("No available slots for this day")
+                    isSelectedDateToday(getPrimarySchedulingDate())
+                      ? __("No remaining slots for today. Please choose a future date.", "rent-your-jim")
+                      : __("No available slots for this day", "rent-your-jim")
                   }
                 />
               </Form.Item>
             </>
           )}
 
+          {hasCompleteDateSelection() && getDayCount() > 1 && (
+            <Alert
+              type="info"
+              showIcon
+              style={{ marginBottom: 16 }}
+              message={__(
+                `${getDayCount()} days selected — the same time slots will repeat each day.`,
+                "rent-your-jim"
+              )}
+            />
+          )}
+
           {/* Number of Persons */}
-          {bookingDate && (
+          {hasCompleteDateSelection() && (
             <Form.Item
               label={<><TeamOutlined /> Number of Persons</>}
               name="numberOfPersons"
@@ -1784,7 +2013,7 @@ const BookingFormContent = ({ localizedData }) => {
           )}
 
           {/* Personal Trainer Option - Per Slot (only slots with PT available) */}
-          {bookingDate &&
+          {hasCompleteDateSelection() &&
             personalTrainerAvailable &&
             selectedBookingSlots.length > 0 &&
             selectedBookingSlots.some(isSlotPtAvailable) && (
@@ -1853,10 +2082,15 @@ const BookingFormContent = ({ localizedData }) => {
                         : `(+$${Number(ptTrainerLevelsList[0]?.price_per_slot || personalTrainerPrice).toFixed(2)}/slot)`}
                     </span>
                   </Radio>
-                  <Radio value="free_trial" style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
+                  <Radio value="free_trial" disabled={getDayCount() > 1} style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
                     <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
                       <span>{__("Use free personal training trial (one slot)", "rent-your-jim")}</span>
                       <span style={{ color: "#52c41a" }}>{__("FREE", "rent-your-jim")}</span>
+                      {getDayCount() > 1 ? (
+                        <span style={{ color: "#999", marginLeft: 4 }}>
+                          ({__("single day only", "rent-your-jim")})
+                        </span>
+                      ) : null}
                     </span>
                   </Radio>
                 </Radio.Group>
@@ -2061,6 +2295,17 @@ const BookingFormContent = ({ localizedData }) => {
                   <span className="ryj-price-value">
                     {calculatedPrice.slots} slot{calculatedPrice.slots !== 1 ? 's' : ''} 
                     ({calculatedPrice.slotDuration} min each)
+                  </span>
+                </div>
+                <div className="ryj-price-row">
+                  <span className="ryj-price-label">{__("Days", "rent-your-jim")}:</span>
+                  <span className="ryj-price-value">
+                    {calculatedPrice.dayCount ?? 1} {__(calculatedPrice.dayCount === 1 ? "day" : "days", "rent-your-jim")}
+                    {(calculatedPrice.dayCount ?? 1) > 1 && calculatedPrice.dailyTotal ? (
+                      <span style={{ color: "#666", marginLeft: 6 }}>
+                        ({__("$", "rent-your-jim")}{calculatedPrice.dailyTotal}/{__("day", "rent-your-jim")})
+                      </span>
+                    ) : null}
                   </span>
                 </div>
                 <div className="ryj-price-row">

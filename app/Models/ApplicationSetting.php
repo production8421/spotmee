@@ -92,6 +92,7 @@ use Illuminate\Support\Facades\Schema;
     'host_registration_auto_approve',
     'share_host_booking_earnings',
     'host_payout_delay_hours',
+    'platform_commission_pct',
 ])]
 class ApplicationSetting extends Model
 {
@@ -1220,6 +1221,17 @@ class ApplicationSetting extends Model
         return max(1, min(168, $hours));
     }
 
+    public function platformCommissionPct(): float
+    {
+        if (! Schema::hasColumn($this->getTable(), 'platform_commission_pct')) {
+            return 20.0;
+        }
+
+        $pct = (float) ($this->platform_commission_pct ?? 20);
+
+        return max(0.0, min(100.0, round($pct, 2)));
+    }
+
     /**
      * When enabled, platform splits host payout via Stripe 12 hours after booking start.
      * When disabled, no transfer is sent and hosts do not receive a payout share.
@@ -1373,6 +1385,7 @@ class ApplicationSetting extends Model
             'host_registration_auto_approve' => 'boolean',
             'share_host_booking_earnings' => 'boolean',
             'host_payout_delay_hours' => 'integer',
+            'platform_commission_pct' => 'decimal:2',
         ];
     }
 }

@@ -16,6 +16,7 @@ use App\Services\Payments\HostPayoutScheduler;
 use App\Support\RyjGymSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -61,7 +62,10 @@ final class GymBookingCreationService
     {
         $listing->loadMissing('user');
 
-        $date = Carbon::parse($validated['booking_date'])->startOfDay();
+        $bookingDates = $this->resolveBookingDateList($validated);
+        $dayCount = count($bookingDates);
+        $date = $bookingDates[0];
+
         $slotDuration = (int) $validated['slot_duration_minutes'];
         if ($slotDuration !== 60) {
             throw ValidationException::withMessages(['slot_duration_minutes' => __('Invalid slot length.')]);
@@ -71,11 +75,12 @@ final class GymBookingCreationService
             fn (mixed $s) => $this->normalizeSlotValue((string) $s),
             $validated['time_slots']
         )));
-        $this->assertSlotsValidForListing($listing, $date, $slotDuration, $timeSlots);
-        $this->assertSlotsNotInPast($date, $timeSlots);
-
         $numberOfPersons = max(1, (int) $validated['number_of_persons']);
-        $this->assertCapacityAvailable($listing, $date, $timeSlots, $numberOfPersons);
+        foreach ($bookingDates as $bookingDate) {
+            $this->assertSlotsValidForListing($listing, $bookingDate, $slotDuration, $timeSlots);
+            $this->assertSlotsNotInPast($bookingDate, $timeSlots);
+            $this->assertCapacityAvailable($listing, $bookingDate, $timeSlots, $numberOfPersons);
+        }
 
         $guestEmail = $this->effectiveGuestEmailForBooking($validated);
         $guestName = trim((string) ($validated['guest_name'] ?? ''));
@@ -90,6 +95,11 @@ final class GymBookingCreationService
         $ptFreeTrialSlot = isset($validated['pt_free_trial_slot']) ? (string) $validated['pt_free_trial_slot'] : null;
 
         $ptFreeTrial = $ptAddon === 'free_trial' && $ptFreeTrialSlot !== '' && $ptFreeTrialSlot !== null;
+        if ($dayCount > 1 && $ptFreeTrial) {
+            throw ValidationException::withMessages([
+                'pt_addon' => __('Free personal training trial is only available for single-day bookings.'),
+            ]);
+        }
         if ($ptFreeTrial) {
             if ($guestEmail === '') {
                 throw ValidationException::withMessages([
@@ -116,9 +126,13 @@ final class GymBookingCreationService
             throw ValidationException::withMessages(['pt_free_trial_slot' => __('Free trial applies to exactly one personal training slot.')]);
         }
 
-        $tier = $listing->hostTierKey();
-        $settings = ApplicationSetting::instance();
-        $rates = $settings->publicGuestTierRates($tier);
+        $guestRate1hr = $listing->guestSessionRate1hr();
+        if ($guestRate1hr === null || $guestRate1hr <= 0) {
+            throw ValidationException::withMessages([
+                'time_slots' => __('This gym has not set an hourly session price yet. Please contact the host.'),
+            ]);
+        }
+
         $ptPricing = $this->resolvePtTrainerPricing(
             $listing,
             $validated,
@@ -135,7 +149,7 @@ final class GymBookingCreationService
             $slotCount,
             $slotDuration,
             $numberOfPersons,
-            (float) ($rates['rate_1hr'] ?? 0),
+            (float) $guestRate1hr,
             $trainerFeePrecalc,
             $ptFreeTrial && $trainerSlotCount > 0
         );
@@ -143,6 +157,12 @@ final class GymBookingCreationService
         $fullGymBaseBeforeCoupon = $fullBreakdown['base'];
         $base = $fullBreakdown['base'];
         $trainerFee = $fullBreakdown['trainer_fee'];
+
+        if ($dayCount > 1) {
+            $fullGymBaseBeforeCoupon = round($fullGymBaseBeforeCoupon * $dayCount, 2);
+            $base = round($base * $dayCount, 2);
+            $trainerFee = round($trainerFee * $dayCount, 2);
+        }
 
         $couponId = null;
         $couponCodeApplied = null;
@@ -169,14 +189,18 @@ final class GymBookingCreationService
             );
 
             if ($coupon->percent_discount_enabled) {
-                $subtotal = round($fullBreakdown['base'] + $trainerFee, 2);
+                $subtotal = round($base + $trainerFee, 2);
                 $pct = (float) ($coupon->percent_discount ?? 0);
                 $couponDiscount = round(min($subtotal, $subtotal * ($pct / 100)), 2);
-                $base = $fullBreakdown['base'];
                 $couponAppliedSlots = 0;
                 $couponId = $coupon->id;
                 $couponCodeApplied = $coupon->code;
             } else {
+                if ($dayCount > 1) {
+                    throw ValidationException::withMessages([
+                        'coupon_code' => __('Free-slot coupons cannot be used with a date range. Book one day at a time or use a percent-off coupon.'),
+                    ]);
+                }
                 $slotFreeSessionsCoupon = true;
                 $usedSlots = $this->sumCouponAppliedSlotsForIdentity(
                     $coupon->id,
@@ -196,7 +220,7 @@ final class GymBookingCreationService
                     $paidSlots,
                     $slotDuration,
                     $numberOfPersons,
-                    (float) ($rates['rate_1hr'] ?? 0),
+                    (float) $guestRate1hr,
                     $trainerFeePrecalc,
                     $ptFreeTrial && $trainerSlotCount > 0
                 );
@@ -215,6 +239,8 @@ final class GymBookingCreationService
 
         return [
             'date' => $date,
+            'booking_dates' => array_map(static fn (Carbon $d) => $d->format('Y-m-d'), $bookingDates),
+            'day_count' => $dayCount,
             'slot_duration' => $slotDuration,
             'time_slots' => $timeSlots,
             'number_of_persons' => $numberOfPersons,
@@ -246,8 +272,120 @@ final class GymBookingCreationService
     public function createFromPublicRequest(GymListing $listing, array $validated, ?string $stripePaymentIntentId = null): array
     {
         $q = $this->resolvePublicBookingQuote($listing, $validated);
+        $bookingDates = array_map(
+            static fn (string $d) => Carbon::parse($d)->startOfDay(),
+            $q['booking_dates'] ?? [$q['date']->format('Y-m-d')]
+        );
+        $dayCount = count($bookingDates);
 
+        if ($dayCount === 1) {
+            return $this->createSingleBookingFromQuote($listing, $validated, $q, $stripePaymentIntentId);
+        }
+
+        $perDayTotals = $this->splitAmountAcrossDays((float) $q['total_price'], $dayCount);
+        $perDayCouponDiscounts = $this->splitAmountAcrossDays((float) ($q['coupon_discount'] ?? 0), $dayCount);
+        $perDayBases = $this->splitAmountAcrossDays((float) $q['base_price'], $dayCount);
+        $perDayTrainerFees = $this->splitAmountAcrossDays((float) $q['trainer_fee'], $dayCount);
+
+        $result = DB::transaction(function () use (
+            $listing,
+            $validated,
+            $q,
+            $stripePaymentIntentId,
+            $bookingDates,
+            $perDayTotals,
+            $perDayCouponDiscounts,
+            $perDayBases,
+            $perDayTrainerFees,
+        ) {
+            [$user, $temporaryPassword] = $this->resolveOrCreateGuestUser(
+                $q['guest_email'],
+                $q['guest_name'],
+            );
+
+            $bookings = [];
+
+            foreach ($bookingDates as $index => $date) {
+                $dayQuote = array_merge($q, [
+                    'date' => $date,
+                    'total_price' => $perDayTotals[$index],
+                    'base_price' => $perDayBases[$index],
+                    'trainer_fee' => $perDayTrainerFees[$index],
+                    'coupon_discount' => $perDayCouponDiscounts[$index],
+                ]);
+                $paymentIntentForDay = $index === 0 ? $stripePaymentIntentId : null;
+                $created = $this->persistBookingFromQuote(
+                    $listing,
+                    $validated,
+                    $dayQuote,
+                    $paymentIntentForDay,
+                    $user,
+                    $index === 0,
+                );
+                $bookings[] = $created['booking'];
+            }
+
+            return [
+                'booking' => $bookings[0],
+                'bookings' => $bookings,
+                'user' => $user,
+                'temporary_password' => $temporaryPassword,
+            ];
+        });
+
+        foreach ($result['bookings'] as $booking) {
+            $booking->loadMissing('gymListing');
+            $this->hostPayoutScheduler->scheduleForBooking($booking);
+        }
+
+        $this->schedulePostBookingSideEffects(
+            $listing,
+            $result['bookings'],
+            $result['temporary_password'],
+        );
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array{booking: GymBooking, user: User, temporary_password: ?string}
+     */
+    private function createSingleBookingFromQuote(
+        GymListing $listing,
+        array $validated,
+        array $q,
+        ?string $stripePaymentIntentId,
+    ): array {
         $result = DB::transaction(function () use ($listing, $validated, $q, $stripePaymentIntentId) {
+            return $this->persistBookingFromQuote($listing, $validated, $q, $stripePaymentIntentId);
+        });
+
+        $booking = $result['booking'];
+        $booking->loadMissing('gymListing');
+        $this->hostPayoutScheduler->scheduleForBooking($booking);
+        $this->schedulePostBookingSideEffects(
+            $listing,
+            [$booking],
+            $result['temporary_password'],
+        );
+
+        return $result;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @param  array<string, mixed>  $q
+     * @return array{booking: GymBooking, user: User, temporary_password: ?string}
+     */
+    private function persistBookingFromQuote(
+        GymListing $listing,
+        array $validated,
+        array $q,
+        ?string $stripePaymentIntentId,
+        ?User $existingUser = null,
+        bool $lockCoupon = true,
+    ): array {
             $guestEmail = $q['guest_email'];
             $guestName = $q['guest_name'];
             $date = $q['date'];
@@ -263,7 +401,7 @@ final class GymBookingCreationService
             $couponDiscount = isset($q['coupon_discount']) ? (float) $q['coupon_discount'] : 0.0;
             $couponAppliedSlots = (int) ($q['coupon_applied_slots'] ?? 0);
 
-            if ($couponId !== null) {
+            if ($lockCoupon && $couponId !== null) {
                 $couponRow = Coupon::query()->whereKey($couponId)->lockForUpdate()->first();
                 if ($couponRow === null || ! $couponRow->is_active) {
                     throw ValidationException::withMessages([
@@ -285,7 +423,12 @@ final class GymBookingCreationService
                 }
             }
 
-            [$user, $temporaryPassword] = $this->resolveOrCreateGuestUser($guestEmail, $guestName);
+            if ($existingUser !== null) {
+                $user = $existingUser;
+                $temporaryPassword = null;
+            } else {
+                [$user, $temporaryPassword] = $this->resolveOrCreateGuestUser($guestEmail, $guestName);
+            }
 
             $slotDurationMinutes = (int) $validated['slot_duration_minutes'];
             $slotCount = count($q['time_slots']);
@@ -321,34 +464,62 @@ final class GymBookingCreationService
                 'coupon_applied_slots' => $couponId !== null && $couponAppliedSlots > 0 ? $couponAppliedSlots : null,
             ]);
 
-            $this->sendNotifications($listing, $booking, $temporaryPassword);
-
             return [
                 'booking' => $booking,
                 'user' => $user,
                 'temporary_password' => $temporaryPassword,
             ];
-        });
+    }
 
-        $booking = $result['booking'];
-        $booking->loadMissing('gymListing');
-        $this->hostPayoutScheduler->scheduleForBooking($booking);
-        $listingForWebhook = $booking->gymListing ?? $listing;
-        if ($listingForWebhook instanceof GymListing) {
-            try {
-                $this->bookingWebhooks->dispatchBookingCompletedForBooking(
-                    $booking,
-                    $listingForWebhook,
-                );
-            } catch (\Throwable $e) {
-                Log::warning('booking_completed_webhook_failed', [
-                    'booking_id' => $booking->id,
-                    'message' => $e->getMessage(),
+    /**
+     * @return list<Carbon>
+     */
+    private function resolveBookingDateList(array $validated): array
+    {
+        $start = Carbon::parse($validated['booking_date'])->startOfDay();
+        $endRaw = $validated['booking_end_date'] ?? null;
+        if ($endRaw === null || $endRaw === '' || $endRaw === $validated['booking_date']) {
+            return [$start];
+        }
+
+        $end = Carbon::parse((string) $endRaw)->startOfDay();
+        if ($end->lt($start)) {
+            throw ValidationException::withMessages([
+                'booking_end_date' => __('End date must be on or after the start date.'),
+            ]);
+        }
+
+        $maxDays = 60;
+        $dates = [];
+        for ($cursor = $start->copy(); $cursor->lte($end); $cursor->addDay()) {
+            $dates[] = $cursor->copy();
+            if (count($dates) > $maxDays) {
+                throw ValidationException::withMessages([
+                    'booking_end_date' => __('You may book at most :max days at once.', ['max' => $maxDays]),
                 ]);
             }
         }
 
-        return $result;
+        return $dates;
+    }
+
+    /**
+     * @return list<float>
+     */
+    private function splitAmountAcrossDays(float $total, int $days): array
+    {
+        if ($days < 1) {
+            return [];
+        }
+        if ($days === 1) {
+            return [round($total, 2)];
+        }
+
+        $perDay = round($total / $days, 2);
+        $amounts = array_fill(0, $days, $perDay);
+        $amounts[$days - 1] = round($total - ($perDay * ($days - 1)), 2);
+
+        return $amounts;
     }
 
     /**
@@ -1094,6 +1265,53 @@ final class GymBookingCreationService
         }
 
         return (int) $q->sum('coupon_applied_slots');
+    }
+
+    /**
+     * @param  list<GymBooking>  $bookings
+     */
+    private function schedulePostBookingSideEffects(
+        GymListing $listing,
+        array $bookings,
+        ?string $temporaryPassword,
+    ): void {
+        if ($bookings === []) {
+            return;
+        }
+
+        Bus::dispatchAfterResponse(function () use ($listing, $bookings, $temporaryPassword): void {
+            /** @var GymBooking $primary */
+            $primary = $bookings[0];
+
+            try {
+                $this->sendNotifications($listing, $primary, $temporaryPassword);
+            } catch (\Throwable $e) {
+                Log::error('Gym booking notification batch failed', [
+                    'booking_id' => $primary->id,
+                    'exception' => $e::class,
+                    'message' => $e->getMessage(),
+                ]);
+            }
+
+            $listingForWebhook = $primary->gymListing ?? $listing;
+            if (! $listingForWebhook instanceof GymListing) {
+                return;
+            }
+
+            foreach ($bookings as $booking) {
+                try {
+                    $this->bookingWebhooks->dispatchBookingCompletedForBooking(
+                        $booking,
+                        $listingForWebhook,
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('booking_completed_webhook_failed', [
+                        'booking_id' => $booking->id,
+                        'message' => $e->getMessage(),
+                    ]);
+                }
+            }
+        });
     }
 
     /**

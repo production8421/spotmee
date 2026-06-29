@@ -114,6 +114,7 @@ class PaymentManagementController extends Controller
             'breadcrumbActive' => __('Booking details & profit'),
             'shareHostBookingEarnings' => $settings->hostPayoutSplitEnabled(),
             'hostPayoutDelayHours' => $settings->hostPayoutDelayHours(),
+            'platformCommissionPct' => $settings->platformCommissionPct(),
         ]);
     }
 
@@ -126,6 +127,7 @@ class PaymentManagementController extends Controller
 
         $settings->share_host_booking_earnings = $request->boolean('share_host_booking_earnings');
         $settings->host_payout_delay_hours = (int) $request->input('host_payout_delay_hours');
+        $settings->platform_commission_pct = round((float) $request->input('platform_commission_pct'), 2);
         $settings->save();
 
         $newDelay = $settings->hostPayoutDelayHours();

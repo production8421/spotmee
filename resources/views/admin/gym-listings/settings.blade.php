@@ -199,34 +199,23 @@
 
                         <hr class="text-muted my-4">
 
-                        @include('admin.gym-listings.partials.tier-pricing-block', [
-                            'tier' => 'silver',
-                            'tierTitle' => __('Silver Tier'),
-                            'gymSettingsSprite' => $gymSettingsSprite,
-                            'tierIconStroke' => 'stroke-price',
-                            'tierIconStrokeClass' => 'text-secondary',
-                            'settings' => $settings,
-                        ])
-
-                        @include('admin.gym-listings.partials.tier-pricing-block', [
-                            'tier' => 'gold',
-                            'tierTitle' => __('Gold Tier'),
-                            'gymSettingsSprite' => $gymSettingsSprite,
-                            'tierIconStroke' => 'stroke-ecommerce',
-                            'tierIconStrokeClass' => 'text-warning',
-                            'settings' => $settings,
-                        ])
-
-                        @include('admin.gym-listings.partials.tier-pricing-block', [
-                            'tier' => 'platinum',
-                            'tierTitle' => __('Platinum Tier'),
-                            'tierHeadingClass' => 'text-primary',
-                            'tierWrapperClass' => 'border rounded p-3 mb-4 bg-white border-start border-primary border-4',
-                            'gymSettingsSprite' => $gymSettingsSprite,
-                            'tierIconStroke' => 'stroke-widget',
-                            'tierIconStrokeClass' => 'text-primary',
-                            'settings' => $settings,
-                        ])
+                        <div class="rounded-3 border bg-light p-3 p-md-4 mb-4">
+                            <div class="d-flex align-items-start gap-3">
+                                @include('admin.gym-listings.partials.settings-heading-icon', [
+                                    'sprite' => $gymSettingsSprite,
+                                    'stroke' => 'stroke-price',
+                                ])
+                                <div class="min-w-0">
+                                    <h5 class="mb-2 fw-semibold">{{ __('Gym session pricing') }}</h5>
+                                    <p class="text-muted small mb-2">
+                                        {{ __('Hosts set their own hourly rate on each gym listing. SPOTMEE profit % is configured under Payment Management.') }}
+                                    </p>
+                                    <a class="btn btn-outline-primary btn-sm" href="{{ route('admin.payment-management.booking-details.index') }}">
+                                        {{ __('SPOTMEE profit (%) settings') }}
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
 
                         <hr class="text-muted my-4">
 
@@ -448,26 +437,6 @@
     function formatMoney(n) {
         return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format(n);
     }
-    function updateTierTotals(tier) {
-        var p1El = document.getElementById(tier + '_tier_price_1_hour');
-        var c1El = document.getElementById(tier + '_tier_admin_commission_1_hour_pct');
-        var out1 = document.getElementById(tier + '_total_1h');
-        if (!p1El || !out1) return;
-        var p1 = parseNum(p1El.value);
-        var c1 = parseNum(c1El.value);
-        var t1 = (p1 !== null && c1 !== null) ? p1 * (1 + c1 / 100) : null;
-        out1.textContent = t1 !== null ? formatMoney(t1) : '—';
-    }
-    var tiers = ['silver', 'gold', 'platinum'];
-    var suffixes = ['_tier_price_1_hour', '_tier_admin_commission_1_hour_pct'];
-    tiers.forEach(function (tier) {
-        suffixes.forEach(function (suf) {
-            var el = document.getElementById(tier + suf);
-            if (el) el.addEventListener('input', function () { updateTierTotals(tier); });
-        });
-        updateTierTotals(tier);
-    });
-
     function updatePtTierTotals(ptTier) {
         var pEl = document.getElementById('pt_' + ptTier + '_price_per_slot');
         var cEl = document.getElementById('pt_' + ptTier + '_admin_commission_pct');

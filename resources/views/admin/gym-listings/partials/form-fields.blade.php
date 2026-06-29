@@ -144,7 +144,15 @@
 @php
     /** Create passes gymListing null; edit passes a persisted model. Do not rely on $model->exists (can block previews). */
     $isEdit = $gymListing instanceof \App\Models\GymListing;
+    $gymRoutePrefix = $gymRoutePrefix ?? 'admin.gym-listings';
+    $requireHostPrice = $gymRoutePrefix === 'host.gym-listings';
     $cfg = config('gym_listing');
+    $platformCommissionPct = \App\Models\ApplicationSetting::instance()->platformCommissionPct();
+    $hostPriceOld = old('host_price_1_hour', $isEdit ? $gymListing->host_price_1_hour : null);
+    $hostBasePreview = is_numeric($hostPriceOld) && (float) $hostPriceOld > 0 ? round((float) $hostPriceOld, 2) : null;
+    $guestRatePreview = $hostBasePreview !== null
+        ? \App\Models\ApplicationSetting::tierTotalWithCommission($hostBasePreview, $platformCommissionPct)
+        : null;
     $equipmentOld = old('equipment');
     if ($equipmentOld !== null) {
         $equipmentRows = $equipmentOld;
@@ -284,6 +292,56 @@
             @endforeach
         </select>
         @error('check_in_method')<div class="invalid-feedback">{{ $message }}</div>@enderror
+    </div>
+</div>
+
+<h6 class="fw-semibold pb-2 mb-4 mt-5 border-bottom">{{ __('Session pricing') }}</h6>
+
+<div class="row mb-3 align-items-center">
+    <label class="col-sm-3 col-form-label fw-semibold" for="host_price_1_hour">{{ __('Your hourly rate (USD)') }} @if ($requireHostPrice)<span class="text-danger">*</span>@endif</label>
+    <div class="col-sm-9">
+        <div class="input-group" style="max-width: 14rem;">
+            <span class="input-group-text">$</span>
+            <input
+                class="form-control @error('host_price_1_hour') is-invalid @enderror"
+                id="host_price_1_hour"
+                type="number"
+                name="host_price_1_hour"
+                min="0"
+                step="0.01"
+                placeholder="80.00"
+                @if ($requireHostPrice) required min="0.01" @endif
+                value="{{ old('host_price_1_hour', $isEdit ? $gymListing->host_price_1_hour : '') }}"
+            >
+        </div>
+        <p class="text-muted small mb-0 mt-2">
+            {{ __('You choose what to charge per 1-hour session. SPOTMEE takes :pct% — guests see your rate plus that fee.', ['pct' => number_format($platformCommissionPct, 2)]) }}
+            @if ($guestRatePreview !== null)
+                {{ __('Example: you receive $:host; guests pay $:guest per hour.', ['host' => number_format($hostBasePreview, 2), 'guest' => number_format($guestRatePreview, 2)]) }}
+            @endif
+        </p>
+        @if (! $isEdit || ! $gymListing->usesCustomHostPricing())
+            <p class="text-muted small mb-0 mt-1">{{ __('Required for guests to book this listing.') }}</p>
+        @endif
+        @error('host_price_1_hour')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
+    </div>
+</div>
+
+<div class="row mb-3 align-items-center">
+    <label class="col-sm-3 col-form-label fw-semibold" for="service_type">{{ __('Service type') }} <span class="text-danger">*</span></label>
+    <div class="col-sm-9">
+        <select class="form-select @error('service_type') is-invalid @enderror" id="service_type" name="service_type" required>
+            <option value="" disabled @selected(old('service_type', $gymListing?->service_type) === null || old('service_type', $gymListing?->service_type) === '')>{{ __('Select how you offer this space') }}</option>
+            @foreach ($cfg['service_types'] ?? [] as $key => $meta)
+                <option value="{{ $key }}" @selected(old('service_type', $gymListing?->service_type) === $key)>
+                    {{ __($meta['label'] ?? $key) }}
+                </option>
+            @endforeach
+        </select>
+        <p class="text-muted small mb-0 mt-2">
+            {{ __('Private: one guest at a time. Semi-Private: a limited group. Open: public-style classes or open sessions.') }}
+        </p>
+        @error('service_type')<div class="invalid-feedback">{{ $message }}</div>@enderror
     </div>
 </div>
 

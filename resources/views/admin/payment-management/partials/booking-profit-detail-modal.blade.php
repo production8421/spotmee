@@ -30,7 +30,7 @@
                     @endif
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <div class="text-muted small text-uppercase">{{ __('Host tier') }}</div>
+                            <div class="text-muted small text-uppercase">{{ __('Session pricing') }}</div>
                             <div>{{ $profit['host_tier'] }}</div>
                         </div>
                         <div class="col-md-6">

@@ -92,7 +92,7 @@ final class StripeHostPayoutService
         $booking->refresh();
 
         try {
-            $paymentIntent = PaymentIntent::retrieve((string) $booking->stripe_payment_intent_id);
+            $paymentIntent = PaymentIntent::retrieve((string) $booking->stripePaymentIntentIdForStripe());
             $chargeId = is_string($paymentIntent->latest_charge ?? null)
                 ? $paymentIntent->latest_charge
                 : null;

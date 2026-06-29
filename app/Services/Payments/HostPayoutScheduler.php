@@ -32,7 +32,7 @@ final class HostPayoutScheduler
             return;
         }
 
-        if (! filled($booking->stripe_payment_intent_id) || (float) ($booking->total_price ?? 0) <= 0) {
+        if (! filled($booking->stripePaymentIntentIdForStripe()) || (float) ($booking->total_price ?? 0) <= 0) {
             $this->markSkipped($booking, 'no_stripe_payment');
 
             return;

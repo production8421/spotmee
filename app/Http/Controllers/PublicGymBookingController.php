@@ -81,6 +81,8 @@ class PublicGymBookingController extends Controller
             'gym_subtotal_before_coupon' => round($fullGymBase, 2),
             'subtotal_before_coupon' => round($fullGymBase + $trainerFee, 2),
             'total_price' => (float) $q['total_price'],
+            'day_count' => (int) ($q['day_count'] ?? 1),
+            'booking_dates' => $q['booking_dates'] ?? [$q['date']->format('Y-m-d')],
         ]);
     }
 
@@ -111,6 +113,12 @@ class PublicGymBookingController extends Controller
             'message' => __('Your booking is confirmed.'),
             'confirmation_code' => $booking->confirmation_code,
             'booking_id' => $booking->id,
+            'booking_ids' => isset($result['bookings'])
+                ? collect($result['bookings'])->pluck('id')->values()->all()
+                : [$booking->id],
+            'booking_dates' => isset($result['bookings'])
+                ? collect($result['bookings'])->map(fn ($b) => $b->booking_date?->format('Y-m-d') ?? (string) $b->booking_date)->values()->all()
+                : [$booking->booking_date?->format('Y-m-d') ?? (string) $booking->booking_date],
             'cancel_booking_url' => $this->cancelBookingUrlForResponse($booking),
         ]);
     }
@@ -219,106 +227,148 @@ class PublicGymBookingController extends Controller
 
         $piId = $request->validated()['payment_intent_id'];
 
-        $existing = GymBooking::query()
-            ->where('stripe_payment_intent_id', $piId)
-            ->first();
-        if ($existing !== null) {
-            return response()->json([
-                'success' => true,
-                'message' => __('Your booking is confirmed.'),
-                'confirmation_code' => $existing->confirmation_code,
-                'booking_id' => $existing->id,
-                'cancel_booking_url' => $this->cancelBookingUrlForResponse($existing),
-            ]);
-        }
-
-        $cacheKey = 'gym_booking_pi:'.$piId;
-        $cached = Cache::get($cacheKey);
-        if (! is_array($cached)
-            || ! isset($cached['gym_listing_id'], $cached['validated'])
-            || (int) $cached['gym_listing_id'] !== (int) $listing->id) {
+        $lock = Cache::lock('gym_booking_confirm:'.$piId, 120);
+        if (! $lock->get()) {
             return response()->json([
                 'success' => false,
-                'message' => __('Payment session expired or is invalid. Please start again.'),
-            ], 422);
-        }
-
-        $secret = $settings->stripeSecretKey();
-        if ($secret === null || $secret === '') {
-            return response()->json([
-                'success' => false,
-                'message' => __('Online payment is not configured.'),
-            ], 503);
-        }
-
-        Stripe::setApiKey($secret);
-
-        try {
-            $intent = PaymentIntent::retrieve($piId);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => __('Could not verify payment.'),
-            ], 502);
-        }
-
-        if ($intent->status !== 'succeeded') {
-            return response()->json([
-                'success' => false,
-                'message' => __('Payment is not complete yet.'),
-            ], 422);
-        }
-
-        /** @var array<string, mixed> $validated */
-        $validated = $cached['validated'];
-
-        try {
-            $quote = $service->resolvePublicBookingQuote($listing, $validated);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'errors' => $e->errors(),
-            ], 422);
-        }
-
-        $expectedCents = (int) round(((float) $quote['total_price']) * 100);
-        if ((int) $intent->amount !== $expectedCents) {
-            return response()->json([
-                'success' => false,
-                'message' => __('Payment amount does not match the booking.'),
-            ], 422);
+                'message' => __('Your payment is still being confirmed. Please wait a moment.'),
+            ], 409);
         }
 
         try {
-            $result = $service->createFromPublicRequest($listing, $validated, $piId);
-        } catch (ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'errors' => $e->errors(),
-            ], 422);
+            $existingBookings = GymBooking::query()
+                ->where('stripe_payment_intent_id', $piId)
+                ->orderBy('id')
+                ->get();
+            if ($existingBookings->isNotEmpty()) {
+                return response()->json($this->confirmedBookingPayload($existingBookings));
+            }
+
+            $cacheKey = 'gym_booking_pi:'.$piId;
+            $cached = Cache::get($cacheKey);
+            if (! is_array($cached)
+                || ! isset($cached['gym_listing_id'], $cached['validated'])
+                || (int) $cached['gym_listing_id'] !== (int) $listing->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Payment session expired or is invalid. Please start again.'),
+                ], 422);
+            }
+
+            $secret = $settings->stripeSecretKey();
+            if ($secret === null || $secret === '') {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Online payment is not configured.'),
+                ], 503);
+            }
+
+            Stripe::setApiKey($secret);
+
+            try {
+                $intent = PaymentIntent::retrieve($piId);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Could not verify payment.'),
+                ], 502);
+            }
+
+            if ($intent->status !== 'succeeded') {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Payment is not complete yet.'),
+                ], 422);
+            }
+
+            /** @var array<string, mixed> $validated */
+            $validated = $cached['validated'];
+
+            try {
+                $quote = $service->resolvePublicBookingQuote($listing, $validated);
+            } catch (ValidationException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            $expectedCents = (int) round(((float) $quote['total_price']) * 100);
+            if ((int) $intent->amount !== $expectedCents) {
+                return response()->json([
+                    'success' => false,
+                    'message' => __('Payment amount does not match the booking.'),
+                ], 422);
+            }
+
+            try {
+                $result = $service->createFromPublicRequest($listing, $validated, $piId);
+            } catch (ValidationException $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
+            Cache::forget($cacheKey);
+
+            $bookings = isset($result['bookings'])
+                ? collect($result['bookings'])
+                : collect([$result['booking']]);
+
+            return response()->json($this->confirmedBookingPayload($bookings));
+        } finally {
+            $lock->release();
         }
-
-        Cache::forget($cacheKey);
-
-        $booking = $result['booking'];
-
-        return response()->json([
-            'success' => true,
-            'message' => __('Your booking is confirmed.'),
-            'confirmation_code' => $booking->confirmation_code,
-            'booking_id' => $booking->id,
-            'cancel_booking_url' => $this->cancelBookingUrlForResponse($booking),
-        ]);
     }
 
-    private function cancelBookingUrlForResponse(GymBooking $booking): string
+    /**
+     * @param  \Illuminate\Support\Collection<int, GymBooking>|iterable<int, GymBooking>  $bookings
+     * @return array<string, mixed>
+     */
+    private function confirmedBookingPayload(iterable $bookings): array
     {
-        if (! $booking->isCancellable()) {
+        $collection = $bookings instanceof \Illuminate\Support\Collection
+            ? $bookings
+            : collect($bookings);
+        /** @var GymBooking|null $primary */
+        $primary = $collection->first();
+
+        if (! $primary instanceof GymBooking) {
+            return [
+                'success' => false,
+                'message' => __('Could not load booking confirmation.'),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'message' => $collection->count() > 1
+                ? __('Your bookings are confirmed.')
+                : __('Your booking is confirmed.'),
+            'confirmation_code' => $primary->confirmation_code,
+            'booking_id' => $primary->id,
+            'booking_ids' => $collection->pluck('id')->values()->all(),
+            'booking_dates' => $collection
+                ->map(fn (GymBooking $b) => $b->booking_date?->format('Y-m-d') ?? (string) $b->booking_date)
+                ->values()
+                ->all(),
+            'cancel_booking_url' => $this->cancelBookingUrlForResponse($primary),
+        ];
+    }
+
+    private function cancelBookingUrlForResponse(?GymBooking $booking): string
+    {
+        if ($booking === null || ! $booking->isCancellable()) {
             return '';
         }
 
-        return $booking->signedCancelUrl();
+        try {
+            return $booking->signedCancelUrl();
+        } catch (\Throwable) {
+            return '';
+        }
     }
 }

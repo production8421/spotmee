@@ -12,8 +12,10 @@ use Illuminate\Support\Str;
 #[Fillable([
     'user_id',
     'host_tier',
+    'host_price_1_hour',
     'pt_pricing_tier',
     'person_limit',
+    'service_type',
     'name',
     'slug',
     'description',
@@ -62,15 +64,56 @@ class GymListing extends Model
         return in_array($t, ['gold', 'platinum'], true) ? $t : 'silver';
     }
 
+    public function usesCustomHostPricing(): bool
+    {
+        return is_numeric($this->host_price_1_hour) && (float) $this->host_price_1_hour > 0;
+    }
+
+    public function hostSessionBasePrice1hr(): ?float
+    {
+        if (! $this->usesCustomHostPricing()) {
+            return null;
+        }
+
+        return round((float) $this->host_price_1_hour, 2);
+    }
+
+    public function guestSessionCommissionPct(): float
+    {
+        return ApplicationSetting::instance()->platformCommissionPct();
+    }
+
+    public function guestSessionRate1hr(): ?float
+    {
+        $base = $this->hostSessionBasePrice1hr();
+        if ($base === null) {
+            return null;
+        }
+
+        return ApplicationSetting::tierTotalWithCommission($base, $this->guestSessionCommissionPct());
+    }
+
     /**
-     * Tier used for personal-trainer add-on guest pricing (admin can override host session tier).
-     * When {@see $pt_pricing_tier} is null, pricing follows {@see hostTierKey()}.
+     * @return array{rate_1hr: ?float, host_base_1hr: ?float, commission_pct: float}
+     */
+    public function publicGuestSessionPricing(): array
+    {
+        return [
+            'rate_1hr' => $this->guestSessionRate1hr(),
+            'host_base_1hr' => $this->hostSessionBasePrice1hr(),
+            'commission_pct' => $this->guestSessionCommissionPct(),
+        ];
+    }
+
+    /**
+     * Tier used for personal-trainer add-on guest pricing (admin can override per listing).
+     * When {@see $pt_pricing_tier} is null, defaults to junior trainer pricing (silver).
      */
     public function ptPricingTierKey(): string
     {
         $raw = $this->pt_pricing_tier;
         if ($raw === null || $raw === '') {
-            return $this->hostTierKey();
+            return 'silver';
         }
         $t = strtolower((string) $raw);
 
@@ -306,6 +349,7 @@ class GymListing extends Model
             'personal_training_availability' => 'array',
             'pt_trainer_levels' => 'array',
             'person_limit' => 'integer',
+            'host_price_1_hour' => 'decimal:2',
         ];
     }
 

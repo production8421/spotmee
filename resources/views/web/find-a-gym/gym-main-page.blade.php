@@ -28,11 +28,6 @@
         $stateCode  = strtoupper((string) $listing->state);
         $stateLabel = $stateLabel ?? config('gym_listing.states.'.$stateCode, $stateCode);
 
-        $tier               = $pricing['tier'] ?? 'silver';
-        $tierLabel          = ucfirst((string) $tier);
-        $tierIconsFallback  = ['silver' => 'fa-medal', 'gold' => 'fa-trophy', 'platinum' => 'fa-gem'];
-        $tierFaIcon         = $tierIconsFallback[$tier] ?? 'fa-medal';
-        $tierIconUrl        = RyjOptionIcon::publicUrl($tier);
         $has1hr             = ($slotOffers['offers_1hr'] ?? false) && ($pricing['rate_1hr'] ?? null) !== null;
         $showPricingSection = $has1hr;
 
@@ -108,10 +103,6 @@
                         <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-50)] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
                             <i class="fa-solid fa-circle-check text-[10px]"></i>
                             {{ __('Verified host') }}
-                        </span>
-                        <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-50)] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
-                            <i class="fa-solid {{ $tierFaIcon }} text-[10px]"></i>
-                            {{ $tierLabel }} {{ __('host') }}
                         </span>
                     </div>
                     <h1 class="mt-3 text-[28px] font-bold leading-tight text-[var(--color-ink-900)] sm:text-[36px]">
@@ -233,8 +224,6 @@
                     @include('web.find-a-gym.partials.host-profile', [
                         'listing' => $listing,
                         'host' => $listing->user,
-                        'tierLabel' => $tierLabel,
-                        'tierFaIcon' => $tierFaIcon,
                     ])
 
                     {{-- Facility details --}}
@@ -404,15 +393,11 @@
                             <div class="overflow-hidden rounded-[24px] border border-[var(--color-brand-100)] bg-white shadow-[var(--shadow-md)]"
                                  data-aos="fade-left">
 
-                                {{-- Tier header --}}
+                                {{-- Pricing header --}}
                                 <div class="flex items-center justify-between bg-gradient-to-r from-[var(--color-primary)] to-[var(--color-brand-500)] px-6 py-4 text-white">
                                     <span class="inline-flex items-center gap-2 text-[13px] font-bold uppercase tracking-wide">
-                                        @if ($tierIconUrl)
-                                            <img src="{{ $tierIconUrl }}" alt="" class="h-5 w-5 object-contain">
-                                        @else
-                                            <i class="fa-solid {{ $tierFaIcon }}"></i>
-                                        @endif
-                                        {{ $tierLabel }} {{ __('host') }}
+                                        <i class="fa-solid fa-clock"></i>
+                                        {{ __('Session pricing') }}
                                     </span>
                                     <span class="inline-flex items-center gap-1.5 text-[12px] font-semibold opacity-90">
                                         <i class="fa-solid fa-circle-check"></i>
@@ -481,7 +466,7 @@
                                     @endif
                                     <div class="min-w-0">
                                         <p class="truncate text-[15px] font-bold text-[var(--color-ink-900)]">{{ $listing->user->name }}</p>
-                                        <p class="text-[12px] font-medium text-[var(--color-ink-500)]">{{ $tierLabel }} {{ __('host') }}</p>
+                                        <p class="text-[12px] font-medium text-[var(--color-ink-500)]">{{ __('Verified host') }}</p>
                                     </div>
                                 </div>
                             </div>

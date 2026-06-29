@@ -39,6 +39,9 @@ class UpdateGymListingRequest extends FormRequest
             'person_limit' => $this->person_limit === '' || $this->person_limit === null
                 ? null
                 : $this->person_limit,
+            'host_price_1_hour' => $this->host_price_1_hour === '' || $this->host_price_1_hour === null
+                ? null
+                : $this->host_price_1_hour,
             'check_in_method' => $this->check_in_method === '' || $this->check_in_method === null
                 ? null
                 : $this->check_in_method,
@@ -88,6 +91,7 @@ class UpdateGymListingRequest extends FormRequest
         $pets = array_keys(config('gym_listing.pets_policies', []));
         $checkIn = array_keys(config('gym_listing.check_in_methods', []));
         $services = array_keys(config('gym_listing.service_options', []));
+        $serviceTypes = array_keys(config('gym_listing.service_types', []));
         $amenityKeys = array_keys(config('gym_listing.amenities', []));
 
         /** @var GymListing $listing */
@@ -96,6 +100,10 @@ class UpdateGymListingRequest extends FormRequest
         $mainImageRules = $listing->main_image_path
             ? ['nullable', 'image', 'max:10240']
             : ['required', 'image', 'max:10240'];
+
+        $hostPriceRules = $this->routeIs('host.gym-listings.*')
+            ? ['required', 'numeric', 'min:0.01', 'max:99999']
+            : ['nullable', 'numeric', 'min:0', 'max:99999'];
 
         $rules = array_merge([
             'name' => ['required', 'string', 'max:255'],
@@ -109,9 +117,11 @@ class UpdateGymListingRequest extends FormRequest
             'area_size' => ['required', 'string', Rule::in($areaSizes)],
             'service_options' => ['required', 'array', 'min:1'],
             'service_options.*' => ['string', Rule::in($services)],
+            'service_type' => ['required', 'string', Rule::in($serviceTypes)],
             'pets_policy' => ['required', 'string', Rule::in($pets)],
             'check_in_method' => ['nullable', 'string', Rule::in($checkIn)],
             'person_limit' => ['nullable', 'integer', 'min:1', 'max:50'],
+            'host_price_1_hour' => $hostPriceRules,
             'description' => ['required', 'string', 'min:10'],
             'equipment' => ['required', 'array', 'min:1'],
             'equipment.*.name' => ['required', 'string', 'max:255'],

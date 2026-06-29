@@ -1,6 +1,5 @@
 @php
     $host = $host ?? $listing->user ?? null;
-    $tierLabel = $tierLabel ?? ucfirst((string) ($listing->hostTierKey() ?? 'silver'));
 @endphp
 
 @if ($host)
@@ -37,10 +36,6 @@
                     <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-50)] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
                         <i class="fa-solid fa-circle-check text-[10px]"></i>
                         {{ __('Verified host') }}
-                    </span>
-                    <span class="inline-flex items-center gap-1.5 rounded-full bg-[var(--color-brand-50)] px-3 py-1 text-[12px] font-bold uppercase tracking-wide text-[var(--color-primary)]">
-                        <i class="fa-solid {{ $tierFaIcon ?? 'fa-medal' }} text-[10px]"></i>
-                        {{ $tierLabel }} {{ __('host') }}
                     </span>
                 </div>
                 <p class="mt-3 text-[14px] leading-relaxed text-[var(--color-ink-500)]">

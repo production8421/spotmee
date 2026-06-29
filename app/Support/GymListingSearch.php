@@ -147,4 +147,106 @@ final class GymListingSearch
 
         return $digits !== null && strlen($digits) >= 3 && strlen($digits) <= 10;
     }
+
+    /**
+     * @param  Builder<GymListing>  $query
+     */
+    public static function applyActivityFilter(Builder $query, string $selectedService): void
+    {
+        $selectedService = trim($selectedService);
+        if ($selectedService === '') {
+            return;
+        }
+
+        $aliases = GymBrowseCatalog::activityFilterAliases()[$selectedService] ?? [$selectedService];
+
+        $query->where(function ($sub) use ($aliases): void {
+            foreach ($aliases as $alias) {
+                $sub->orWhereJsonContains('service_options', $alias)
+                    ->orWhere('service_options', 'like', '%"'.addcslashes($alias, '%_\\').'"%');
+            }
+        });
+    }
+
+    /**
+     * @param  Builder<GymListing>  $query
+     */
+    public static function applyServiceTypeFilter(Builder $query, string $serviceType): void
+    {
+        $allowed = array_keys(config('gym_listing.service_types', []));
+        if (! in_array($serviceType, $allowed, true)) {
+            return;
+        }
+
+        $openOptions = ['group_class', 'group_classes', 'fitness_class', 'yoga'];
+
+        $query->where(function (Builder $outer) use ($serviceType, $openOptions): void {
+            $outer->where('service_type', $serviceType);
+
+            $outer->orWhere(function (Builder $legacy) use ($serviceType, $openOptions): void {
+                $legacy->whereNull('service_type');
+
+                if ($serviceType === 'private') {
+                    $legacy->where(function (Builder $q): void {
+                        $q->where('person_limit', 1)
+                            ->orWhere(function (Builder $q2): void {
+                                $q2->where('personal_training_available', true)
+                                    ->where(function (Builder $q3): void {
+                                        $q3->whereNull('person_limit')->orWhere('person_limit', '<=', 1);
+                                    });
+                            });
+                    });
+
+                    return;
+                }
+
+                if ($serviceType === 'open') {
+                    $legacy->where(function (Builder $q) use ($openOptions): void {
+                        foreach ($openOptions as $opt) {
+                            $q->orWhereJsonContains('service_options', $opt)
+                                ->orWhere('service_options', 'like', '%"'.addcslashes($opt, '%_\\').'"%');
+                        }
+                    });
+
+                    return;
+                }
+
+                if ($serviceType === 'semi_private') {
+                    $legacy->where(function (Builder $q): void {
+                        $q->where('person_limit', '>', 1)
+                            ->orWhere(function (Builder $q2): void {
+                                $q2->whereNull('person_limit')
+                                    ->where('personal_training_available', false);
+                            });
+                    });
+                }
+            });
+        });
+    }
+
+    /**
+     * @param  Builder<GymListing>  $query
+     */
+    public static function applyPublishedBrowseFilters(
+        Builder $query,
+        string $selectedState,
+        string $searchBy,
+        string $city,
+        string $selectedService,
+        string $selectedServiceType,
+    ): void {
+        if ($selectedState !== '') {
+            $query->whereRaw('UPPER(state) = ?', [strtoupper($selectedState)]);
+        }
+
+        self::applyLocationFilters($query, $searchBy, $city);
+
+        if ($selectedService !== '') {
+            self::applyActivityFilter($query, $selectedService);
+        }
+
+        if ($selectedServiceType !== '') {
+            self::applyServiceTypeFilter($query, $selectedServiceType);
+        }
+    }
 }
